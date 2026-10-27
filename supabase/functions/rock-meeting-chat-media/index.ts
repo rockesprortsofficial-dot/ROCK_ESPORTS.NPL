@@ -4,7 +4,7 @@ import { TokenVerifier } from "npm:livekit-server-sdk@2.13.3";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-rock-room",
   "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
 };
 const BUCKET = "rock-meeting-media";
