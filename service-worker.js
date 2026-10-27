@@ -19,7 +19,7 @@ self.addEventListener('fetch', (event) => {
         return index < 0 ? source + snippet : source.slice(0, index) + snippet + source.slice(index);
       };
       html = html.replaceAll('rock-community-feed.js', 'rock-community-feed-v2.js');
-      for (const file of ['meeting-room-chat.js', 'meeting-room-guest.js', 'rock-community-feed-v2.js']) {
+      for (const file of ['meeting-room-chat.js', 'meeting-room-guest.js', 'rock-community-feed-v2.js', 'rock-connect.js']) {
         if (!html.includes(file)) {
           const scriptUrl = new URL(file, self.registration.scope).href;
           const script = '<script src="' + scriptUrl + '" defer><\/script>';
