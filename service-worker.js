@@ -14,7 +14,8 @@ self.addEventListener('fetch', (event) => {
       const type = response.headers.get('content-type') || '';
       if (!response.ok || !type.includes('text/html')) return response;
       let html = await response.text();
-      for (const file of ['meeting-room-chat.js', 'meeting-room-guest.js', 'rock-community-feed.js']) {
+      html = html.replaceAll('rock-community-feed.js', 'rock-community-feed-v2.js');
+      for (const file of ['meeting-room-chat.js', 'meeting-room-guest.js', 'rock-community-feed-v2.js']) {
         if (!html.includes(file)) {
           const scriptUrl = new URL(file, self.registration.scope).href;
           const script = '<script src="' + scriptUrl + '" defer><\/script>';
