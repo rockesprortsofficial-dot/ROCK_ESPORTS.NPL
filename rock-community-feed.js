@@ -77,14 +77,6 @@
   link.textContent = "👥 COMMUNITY";
   link.setAttribute("aria-label", "ROCK ESPORTS Community");
   nav.append(link);
-  const adminButton = nav.querySelector("#adminNavButton");
-  if (adminButton) {
-    adminButton.textContent = "🔐";
-    adminButton.setAttribute("aria-label", "ADMIN / EDIT");
-    adminButton.title = "ADMIN / EDIT";
-    adminButton.classList.add("rock-admin-icon");
-    nav.append(adminButton);
-  }
 
   let mode = "login";
   let session = null;
