@@ -8,6 +8,8 @@
   const style = document.createElement("style");
   style.textContent = `
     .rock-tab-hidden{display:none!important}.nav-inner>a.rock-active-nav{background:#0878bd;color:#fff;border-radius:9px}
+    #adminNavButton.rock-admin-icon{display:inline-flex!important;align-items:center;justify-content:center;width:28px;height:28px;min-width:28px;box-sizing:border-box;padding:0!important;margin-left:4px;font-size:13px;line-height:1;border-radius:50%;opacity:.68;flex:0 0 28px}
+    #adminNavButton.rock-admin-icon:hover,#adminNavButton.rock-admin-icon:focus-visible{opacity:1}
     #rockCommunityFeed .rock-community-card,#rockCommunityFeed .rock-community-auth,#rockCommunityFeed .rock-community-compose{background:#071626;border:1px solid #214762;border-radius:14px;padding:16px;margin:14px 0;color:#edf7ff}
     #rockCommunityFeed .rock-community-auth form,#rockCommunityFeed .rock-community-compose form{display:grid;gap:10px}
     #rockCommunityFeed input,#rockCommunityFeed textarea{box-sizing:border-box;width:100%;background:#030c16;color:#fff;border:1px solid #315a75;border-radius:9px;padding:11px;font:inherit}
@@ -66,6 +68,14 @@
   link.textContent = "👥 COMMUNITY";
   link.setAttribute("aria-label", "ROCK ESPORTS Community");
   nav.append(link);
+  const adminButton = nav.querySelector("#adminNavButton");
+  if (adminButton) {
+    adminButton.textContent = "⚙";
+    adminButton.setAttribute("aria-label", "ADMIN / EDIT");
+    adminButton.title = "ADMIN / EDIT";
+    adminButton.classList.add("rock-admin-icon");
+    nav.append(adminButton);
+  }
 
   let mode = "login";
   let session = null;
