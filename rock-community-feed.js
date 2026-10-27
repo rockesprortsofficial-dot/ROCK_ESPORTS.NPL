@@ -4,7 +4,7 @@
   if (!nav) return;
   const adminButton = nav.querySelector("#adminNavButton");
   if (adminButton) {
-    adminButton.textContent = "⚙";
+    adminButton.textContent = "🔐";
     adminButton.setAttribute("aria-label", "ADMIN / EDIT");
     adminButton.title = "ADMIN / EDIT";
     adminButton.classList.add("rock-admin-icon");
@@ -79,7 +79,7 @@
   nav.append(link);
   const adminButton = nav.querySelector("#adminNavButton");
   if (adminButton) {
-    adminButton.textContent = "⚙";
+    adminButton.textContent = "🔐";
     adminButton.setAttribute("aria-label", "ADMIN / EDIT");
     adminButton.title = "ADMIN / EDIT";
     adminButton.classList.add("rock-admin-icon");
