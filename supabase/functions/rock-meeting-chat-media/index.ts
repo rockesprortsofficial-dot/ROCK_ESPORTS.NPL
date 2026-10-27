@@ -57,7 +57,7 @@ Deno.serve(async (req: Request) => {
 
     if (req.method === "GET") {
       const { data, error } = await supabase
-        .from("rock_meeting_messages")
+        .from("rock_public_meeting_messages")
         .select("id,room_name,sender_id,sender_name,message,media_path,media_type,created_at")
         .eq("room_name", video.room)
         .order("created_at", { ascending: false })
@@ -109,7 +109,7 @@ Deno.serve(async (req: Request) => {
     }
 
     const { data: inserted, error: insertError } = await supabase
-      .from("rock_meeting_messages")
+      .from("rock_public_meeting_messages")
       .insert({
         room_name: video.room,
         sender_id: identity,
