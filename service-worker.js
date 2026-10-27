@@ -14,11 +14,13 @@ self.addEventListener('fetch', (event) => {
       const type = response.headers.get('content-type') || '';
       if (!response.ok || !type.includes('text/html')) return response;
       let html = await response.text();
-      if (!html.includes('meeting-room-chat.js')) {
-        const scriptUrl = new URL('meeting-room-chat.js', self.registration.scope).href;
-        const script = '<script src="' + scriptUrl + '" defer><\/script>';
-        if (/<\/body>/i.test(html)) html = html.replace(/<\/body>/i, script + '</body>');
-        else html += script;
+      for (const file of ['meeting-room-chat.js', 'meeting-room-guest.js']) {
+        if (!html.includes(file)) {
+          const scriptUrl = new URL(file, self.registration.scope).href;
+          const script = '<script src="' + scriptUrl + '" defer><\/script>';
+          if (/<\/body>/i.test(html)) html = html.replace(/<\/body>/i, script + '</body>');
+          else html += script;
+        }
       }
       const headers = new Headers(response.headers);
       headers.delete('content-length');
