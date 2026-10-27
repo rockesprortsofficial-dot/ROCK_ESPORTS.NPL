@@ -1,3 +1,36 @@
+self.addEventListener('install', (event) => {
+  event.waitUntil(self.skipWaiting());
+});
+
+self.addEventListener('activate', (event) => {
+  event.waitUntil(self.clients.claim());
+});
+
+self.addEventListener('fetch', (event) => {
+  if (event.request.mode !== 'navigate' || new URL(event.request.url).origin !== self.location.origin) return;
+  event.respondWith((async () => {
+    try {
+      const response = await fetch(event.request);
+      const type = response.headers.get('content-type') || '';
+      if (!response.ok || !type.includes('text/html')) return response;
+      let html = await response.text();
+      if (!html.includes('meeting-room-chat.js')) {
+        const scriptUrl = new URL('meeting-room-chat.js', self.registration.scope).href;
+        const script = '<script src="' + scriptUrl + '" defer><\/script>';
+        if (/<\/body>/i.test(html)) html = html.replace(/<\/body>/i, script + '</body>');
+        else html += script;
+      }
+      const headers = new Headers(response.headers);
+      headers.delete('content-length');
+      headers.delete('content-encoding');
+      headers.delete('transfer-encoding');
+      return new Response(html, { status: response.status, statusText: response.statusText, headers });
+    } catch (_) {
+      return fetch(event.request);
+    }
+  })());
+});
+
 self.addEventListener('push', (event) => {
   let payload = {};
   try { payload = event.data ? event.data.json() : {}; } catch (_) {}
