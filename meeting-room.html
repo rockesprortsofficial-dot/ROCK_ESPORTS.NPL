@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#06182a">
+<title>ROCK ESPORTS · Public Meeting Room</title>
+<style>
+:root{color-scheme:dark;--blue:#168bd0;--line:#2675a8;--bg:#050b13}
+*{box-sizing:border-box}
+body{margin:0;background:radial-gradient(circle at top,#0b2943,#050b13 58%);color:#edf7ff;font:16px system-ui,Segoe UI,sans-serif;min-height:100vh}
+header{padding:18px max(16px,env(safe-area-inset-left));border-bottom:1px solid #173b57;background:#06182a}
+.brand{font-weight:900;letter-spacing:1px;font-size:20px}.brand span{color:#48b5ff}
+main{width:min(1200px,100%);margin:auto;padding:22px 16px}
+.card{border:1px solid var(--line);border-radius:16px;background:#06182a;padding:18px;box-shadow:0 12px 30px #0005}
+h1{font-size:clamp(24px,5vw,38px);margin:0 0 6px}p{color:#bfd2df;line-height:1.5}
+#joinBox{max-width:600px;margin:8vh auto}
+label{display:block;font-weight:700;margin:16px 0 7px}
+input{width:100%;padding:13px;border:1px solid #38627c;border-radius:9px;background:#091d2d;color:#fff;font-size:17px}
+button{border:0;border-radius:10px;padding:12px 15px;background:var(--blue);color:white;font-weight:800;font-size:15px;cursor:pointer}
+button:disabled{opacity:.55}
+#joinButton{width:100%;margin-top:14px}
+#status{min-height:24px;color:#b9d8eb}
+#rlCall{position:fixed;inset:0;z-index:10;background:var(--bg);display:flex;flex-direction:column;padding:10px 12px calc(10px + env(safe-area-inset-bottom));gap:9px}
+#rlCall[hidden]{display:none}
+.callHead{display:flex;justify-content:space-between;align-items:center;gap:10px;min-height:42px}
+#rlCount{margin:0;font-size:13px;color:#b9d8eb}
+#rlVideos{flex:1;min-height:0;overflow:auto;display:grid;grid-template-columns:repeat(auto-fill,minmax(min(260px,45vw),1fr));grid-auto-rows:minmax(170px,32vh);gap:8px;align-content:start}
+.tile{position:relative;border:1px solid #2675a8;border-radius:12px;background:#102033;overflow:hidden;min-width:0}
+.tile video{width:100%;height:100%;object-fit:contain;background:#000}
+.tileName{position:absolute;bottom:7px;left:8px;padding:3px 8px;border-radius:7px;background:#000a;font-size:12px}
+.controls{display:flex;justify-content:center;flex-wrap:wrap;gap:9px}
+.controls button{min-width:52px;min-height:48px}
+#rlStatus{margin:0;text-align:center;font-size:13px;color:#b9d8eb}
+#remoteAudio{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)}
+@media(max-width:600px){main{padding:12px}.card{padding:15px}#rlVideos{grid-template-columns:1fr;grid-auto-rows:minmax(160px,34vh)}.controls{gap:6px}.controls button{min-width:46px;padding:9px}}
+</style>
+</head>
+<body>
+<header><div class="brand"><span>ROCK</span> ESPORTS · MEETING ROOM</div></header>
+<main><section id="joinBox" class="card">
+<h1>Public Gamer Meeting</h1>
+<p>Anyone can join the shared room. Enter a gamer name. No account, code, email or password is needed. The room is limited to 100 people.</p>
+<label for="gamerName">Your gamer name</label>
+<input id="gamerName" maxlength="32" autocomplete="nickname" placeholder="Type your name">
+<button id="joinButton" type="button">🎮 Join meeting</button>
+<p id="status" role="status">Allow microphone access when your browser asks.</p>
+</section></main>
+<section id="rlCall" hidden aria-label="ROCK ESPORTS public meeting">
+<div class="callHead"><strong id="roomTitle">ROCK ESPORTS · PUBLIC MEETING</strong><p id="rlCount">Connecting…</p></div>
+<div id="rlVideos"></div>
+<div id="remoteAudio" aria-hidden="true"></div>
+<div class="controls">
+<button id="micButton" type="button" aria-label="Mute microphone" title="Mute microphone">🎙️</button>
+<button id="camButton" type="button" aria-label="Turn camera on" title="Turn camera on">📷</button>
+<button id="screenButton" type="button" aria-label="Share screen" title="Share screen">▣</button>
+<button id="fullButton" type="button" aria-label="Full screen" title="Full screen">⛶</button>
+<button id="leaveButton" type="button" aria-label="Leave meeting" title="Leave meeting">☎</button>
+</div>
+<p id="rlStatus" role="status">Joining the meeting…</p>
+</section>
+<script src="https://cdn.jsdelivr.net/npm/livekit-client/dist/livekit-client.umd.min.js"></script>
+<script>
+(() => {
+  const SUPABASE_URL = "https://pokdcjqvyjddbixqaktj.supabase.co";
+  const SUPABASE_KEY = "sb_publishable_jK4Pnt8Ou9lZOmQ2AEB60w_YFytJcbp";
+  const ENDPOINT = SUPABASE_URL + "/functions/v1/livekit-guest-token";
+  const $ = (id) => document.getElementById(id);
+  let room = null, micOn = false, camOn = false, screenOn = false;
+
+  function updateCount() {
+    if (room) $("rlCount").textContent = (room.numParticipants || (room.remoteParticipants.size + 1)) + " / 100 people";
+  }
+
+  function attachTrack(track, participant) {
+    const id = "guest-" + track.sid;
+    if ($("rlVideos").querySelector('[data-track="' + CSS.escape(id) + '"]')) return;
+    if (track.kind === window.LivekitClient.Track.Kind.Audio) {
+      const audio = track.attach();
+      audio.autoplay = true;
+      $("remoteAudio").append(audio);
+      return;
+    }
+    const tile = document.createElement("article");
+    tile.className = "tile";
+    tile.dataset.track = id;
+    const video = track.attach();
+    video.autoplay = true;
+    video.playsInline = true;
+    const label = document.createElement("span");
+    label.className = "tileName";
+    label.textContent = participant.name || participant.identity || "Gamer";
+    tile.append(video, label);
+    $("rlVideos").append(tile);
+  }
+
+  function removeTrack(track) {
+    track.detach().forEach((element) => element.remove());
+    $("rlVideos").querySelectorAll('[data-track="guest-' + CSS.escape(track.sid) + '"]').forEach((element) => element.remove());
+  }
+
+  async function join() {
+    const name = $("gamerName").value.replace(/\s+/g, " ").trim();
+    if (name.length < 2 || name.length > 32) {
+      $("status").textContent = "Enter a gamer name between 2 and 32 characters.";
+      return;
+    }
+    if (!window.LivekitClient?.Room) {
+      $("status").textContent = "Meeting service did not load. Refresh and try again.";
+      return;
+    }
+    $("joinButton").disabled = true;
+    $("status").textContent = "Connecting…";
+    try {
+      const response = await fetch(ENDPOINT, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY },
+        body: JSON.stringify({ display_name: name }),
+      });
+      const tokenData = await response.json().catch(() => ({}));
+      if (!response.ok || !tokenData.token) throw new Error(tokenData.error || "Could not join the meeting.");
+      room = new LivekitClient.Room({ adaptiveStream: true, dynacast: true });
+      room.on(LivekitClient.RoomEvent.TrackSubscribed, (track, participant) => { attachTrack(track, participant); updateCount(); });
+      room.on(LivekitClient.RoomEvent.TrackUnsubscribed, (track) => { removeTrack(track); updateCount(); });
+      room.on(LivekitClient.RoomEvent.ParticipantConnected, updateCount);
+      room.on(LivekitClient.RoomEvent.ParticipantDisconnected, updateCount);
+      room.on(LivekitClient.RoomEvent.Disconnected, () => {
+        $("rlCall").hidden = true; $("joinBox").hidden = false; $("rlVideos").replaceChildren(); $("remoteAudio").replaceChildren();
+        room = null; micOn = false; camOn = false; screenOn = false; $("joinButton").disabled = false;
+        $("status").textContent = "You left the meeting.";
+      });
+      $("joinBox").hidden = true;
+      $("rlCall").hidden = false;
+      await room.connect(tokenData.server_url, tokenData.token);
+      room.remoteParticipants.forEach((person) => person.trackPublications.forEach((publication) => { if (publication.track) attachTrack(publication.track, person); }));
+      await room.localParticipant.setMicrophoneEnabled(true); micOn = true;
+      await room.localParticipant.setCameraEnabled(false); camOn = false;
+      $("rlStatus").textContent = "You are in the public meeting. Turn on your microphone to talk; camera starts off.";
+      $("micButton").textContent = "🎙️"; $("micButton").title = "Mute microphone";
+      $("camButton").textContent = "📷"; $("camButton").title = "Turn camera on";
+      updateCount();
+    } catch (error) {
+      $("joinBox").hidden = false; $("rlCall").hidden = true; $("joinButton").disabled = false;
+      $("status").textContent = error?.message || "Could not join the meeting.";
+    }
+  }
+
+  $("joinButton").addEventListener("click", join);
+  $("gamerName").addEventListener("keydown", (event) => { if (event.key === "Enter") join(); });
+  $("micButton").addEventListener("click", async () => {
+    if (!room) return;
+    try { micOn = !micOn; await room.localParticipant.setMicrophoneEnabled(micOn); $("micButton").textContent = micOn ? "🎙️" : "🔇"; $("micButton").title = micOn ? "Mute microphone" : "Unmute microphone"; } catch (error) { $("rlStatus").textContent = error.message || "Microphone change failed."; }
+  });
+  $("camButton").addEventListener("click", async () => {
+    if (!room) return;
+    try { camOn = !camOn; await room.localParticipant.setCameraEnabled(camOn); $("camButton").textContent = camOn ? "📹" : "📷"; $("camButton").title = camOn ? "Turn camera off" : "Turn camera on"; } catch (error) { camOn = false; $("rlStatus").textContent = error.message || "Camera change failed."; }
+  });
+  $("screenButton").addEventListener("click", async () => {
+    if (!room) return;
+    try { screenOn = !screenOn; await room.localParticipant.setScreenShareEnabled(screenOn); $("screenButton").textContent = screenOn ? "▣✓" : "▣"; } catch (error) { screenOn = false; $("rlStatus").textContent = error.message || "Screen sharing is not available."; }
+  });
+  $("fullButton").addEventListener("click", async () => {
+    try { if (!document.fullscreenElement) await $("rlCall").requestFullscreen(); else await document.exitFullscreen(); } catch (_) {}
+  });
+  $("leaveButton").addEventListener("click", async () => { if (room) await room.disconnect(); });
+})();
+</script>
+<script src="./meeting-room-chat.js"></script>
+</body>
+</html>
