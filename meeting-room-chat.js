@@ -201,7 +201,8 @@
     if (typeof originalConnect !== "function") return false;
     Room.prototype.connect = async function (serverUrl, token, ...args) {
       const result = await originalConnect.call(this, serverUrl, token, ...args);
-      mount(this, token);
+      const connectedRoom = this;
+      window.setTimeout(() => mount(connectedRoom, token), 0);
       return result;
     };
     Object.defineProperty(Room.prototype, "__rockMeetingChatWrapped", { value: true });
