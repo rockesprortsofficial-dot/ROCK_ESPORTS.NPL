@@ -1,7 +1,16 @@
 (() => {
   "use strict";
   const nav = document.querySelector(".nav-inner");
-  if (!nav || document.getElementById("rockCommunityFeed")) return;
+  if (!nav) return;
+  const adminButton = nav.querySelector("#adminNavButton");
+  if (adminButton) {
+    adminButton.textContent = "⚙";
+    adminButton.setAttribute("aria-label", "ADMIN / EDIT");
+    adminButton.title = "ADMIN / EDIT";
+    adminButton.classList.add("rock-admin-icon");
+    nav.append(adminButton);
+  }
+  if (document.getElementById("rockCommunityFeed")) return;
   const client = typeof sb !== "undefined" ? sb : null;
   if (!client) return;
 
