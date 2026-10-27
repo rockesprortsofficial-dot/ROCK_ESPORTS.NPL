@@ -113,7 +113,7 @@
   }
   client.auth.onAuthStateChange((_event, newSession) => {
     showAccount(newSession);
-    loadFeed();
+    window.setTimeout(loadFeed, 0);
   });
 
   authForm.addEventListener("submit", async (event) => {
