@@ -22,6 +22,11 @@ self.addEventListener('fetch', (event) => {
           else html += script;
         }
       }
+      if (!html.includes("rock-admin-icon-fix")) {
+        const adminFix = '<script>/* rock-admin-icon-fix */(function(){function moveAdmin(){var nav=document.querySelector(".nav-inner"),button=nav&&nav.querySelector("#adminNavButton");if(!nav||!button)return;button.textContent="⚙";button.setAttribute("aria-label","ADMIN / EDIT");button.title="ADMIN / EDIT";button.classList.add("rock-admin-icon");if(nav.lastElementChild!==button)nav.append(button)}var style=document.createElement("style");style.textContent="#adminNavButton.rock-admin-icon{display:inline-flex!important;align-items:center;justify-content:center;width:28px!important;height:28px!important;min-width:28px!important;box-sizing:border-box;padding:0!important;margin-left:4px;font-size:13px!important;line-height:1;border-radius:50%;opacity:.68;flex:0 0 28px}#adminNavButton.rock-admin-icon:hover,#adminNavButton.rock-admin-icon:focus-visible{opacity:1}";document.head.appendChild(style);moveAdmin();var nav=document.querySelector(".nav-inner");if(nav)new MutationObserver(moveAdmin).observe(nav,{childList:true})})();<\/script>';
+        if (/<\/body>/i.test(html)) html = html.replace(/<\/body>/i, adminFix + '</body>');
+        else html += adminFix;
+      }
       const headers = new Headers(response.headers);
       headers.delete('content-length');
       headers.delete('content-encoding');
