@@ -69,8 +69,15 @@
       </div>
       <div id="rockCommunityPosts" aria-live="polite"><p>पोस्टहरू खोलिँदै छन्…</p></div>
     </div>`;
+  const home = document.getElementById("home");
   const footer = document.querySelector("footer");
-  if (footer) footer.before(section); else document.body.append(section);
+  if (home) home.after(section);
+  else if (footer) footer.before(section);
+  else document.body.append(section);
+
+  // Public posts stay ahead of account controls for visitors.
+  const feedContainer = section.querySelector(".container");
+  feedContainer.insertBefore(document.getElementById("rockCommunityPosts"), section.querySelector(".rock-community-auth"));
 
   const link = document.createElement("a");
   link.href = "#rockCommunityFeed";
@@ -269,7 +276,7 @@
     const raw = decodeURIComponent(location.hash.slice(1));
     const selected = routeIds.has(raw) ? raw : "home";
     document.querySelectorAll("main>section[id],body>section[id]").forEach((item) => {
-      const visible = item.id === selected || (item.id === "rockRegAnnouncement" && ["tournament", "registration"].includes(selected));
+      const visible = item.id === selected || (item.id === "rockCommunityFeed" && selected === "home") || (item.id === "rockRegAnnouncement" && ["tournament", "registration"].includes(selected));
       item.classList.toggle("rock-tab-hidden", !visible);
     });
     nav.querySelectorAll('a[href^="#"]').forEach((item) => {
@@ -280,7 +287,11 @@
   }
   window.addEventListener("hashchange", showSelectedTab);
   showSelectedTab();
-  currentSession().then(loadFeed);
+  // Guest reading must not wait for authentication to initialize.
+  loadFeed();
+  currentSession().then(loadFeed).catch(() => {
+    authStatus.textContent = "लगइन अहिले उपलब्ध छैन। सार्वजनिक पोस्ट हेर्न सक्नुहुन्छ।";
+  });
   window.setInterval(loadFeed, 60000);
 })();
 
