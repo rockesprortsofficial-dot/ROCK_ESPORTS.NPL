@@ -324,22 +324,34 @@
     finally{sending=false;$("rcSend").disabled=false;}
   }
 
+  let recordingPending=false;
   $("rcRecord").onclick=async()=>{
     if(recorder?.state==="recording"){recorder.stop();$("rcRecord").textContent="अडियो तयार हुँदैछ…";return;}
+    if(recordingPending||recorder||sending)return;
     if(!navigator.mediaDevices?.getUserMedia||!window.MediaRecorder){say("rcChatStatus","यो उपकरणमा अडियो रेकर्ड गर्न मिल्दैन।");return;}
+    const recordingUser=session?.user?.id,recordingRoom=activeRoom?.id;if(!recordingUser||!recordingRoom)return;
+    recordingPending=true;let stream=null;
     try{
-      recorderStream=await navigator.mediaDevices.getUserMedia({audio:true}); const chunks=[];
-      const recordingRoom=activeRoom?.id; recorder=new MediaRecorder(recorderStream); recorder.ondataavailable=(e)=>{if(e.data.size)chunks.push(e.data);};
-      recorder.onstop=async()=>{const type=recorder.mimeType||"audio/webm";const file=new File([new Blob(chunks,{type})],"voice-note.webm",{type});recorderStream.getTracks().forEach((t)=>t.stop());recorder=null;recorderStream=null;$("rcRecord").textContent="🎙️ आवाज रेकर्ड";await sendVoice(file,recordingRoom);};
-      recorder.start(); $("rcRecord").textContent="⏹️ रेकर्डिङ रोक्नुहोस्"; say("rcChatStatus","आवाज रेकर्ड हुँदैछ…");
-    }catch(error){say("rcChatStatus","माइक अनुमति चाहिन्छ: "+(error?.message||""));}
+      stream=await navigator.mediaDevices.getUserMedia({audio:true});
+      if(session?.user?.id!==recordingUser||activeRoom?.id!==recordingRoom){stream.getTracks().forEach(track=>track.stop());return;}
+      recorderStream=stream;const chunks=[],currentRecorder=new MediaRecorder(stream);recorder=currentRecorder;
+      currentRecorder.ondataavailable=event=>{if(event.data.size)chunks.push(event.data);};
+      currentRecorder.onstop=async()=>{
+        const type=currentRecorder.mimeType||"audio/webm",file=new File([new Blob(chunks,{type})],"voice-note.webm",{type});
+        stream.getTracks().forEach(track=>track.stop());if(recorder===currentRecorder){recorder=null;recorderStream=null;}
+        $("rcRecord").textContent="🎙️ आवाज रेकर्ड";
+        if(session?.user?.id===recordingUser)await sendVoice(file,recordingRoom,recordingUser);
+      };
+      currentRecorder.start();$("rcRecord").textContent="⏹️ रेकर्डिङ रोक्नुहोस्";say("rcChatStatus","आवाज रेकर्ड हुँदैछ…");
+    }catch(error){if(stream)stream.getTracks().forEach(track=>track.stop());recorder=null;recorderStream=null;say("rcChatStatus","माइक अनुमति चाहिन्छ: "+(error?.message||""));}
+    finally{recordingPending=false;}
   };
-  async function sendVoice(file, roomId=activeRoom?.id){
-    if(!roomId||!session?.user||sending)return; if(file.size>25*1024*1024){say("rcChatStatus","आवाज बढीमा २५ MB हुनुपर्छ।");return;} sending=true; $("rcSend").disabled=true; say("rcChatStatus","आवाज पठाइँदै छ…");
+  async function sendVoice(file, roomId=activeRoom?.id, senderId=session?.user?.id){
+    if(!roomId||!senderId||session?.user?.id!==senderId||sending)return; if(file.size>25*1024*1024){say("rcChatStatus","आवाज बढीमा २५ MB हुनुपर्छ।");return;} sending=true; $("rcSend").disabled=true; say("rcChatStatus","आवाज पठाइँदै छ…");
     const path=roomId+"/"+crypto.randomUUID()+".webm";
     try{
       const {error:uploadError}=await client.storage.from("rock-connect-media").upload(path,file,{contentType:file.type.split(";")[0],upsert:false});if(uploadError)throw uploadError;
-      const {error}=await client.from("rock_connect_messages").insert({room_id:roomId,sender_id:session.user.id,body:"",media_path:path,media_type:"audio"});
+      const {error}=await client.from("rock_connect_messages").insert({room_id:roomId,sender_id:senderId,body:"",media_path:path,media_type:"audio"});
       if(error){await client.storage.from("rock-connect-media").remove([path]);throw error;} say("rcChatStatus","आवाज सन्देश पठाइयो।");await loadMessages();
     }catch(error){say("rcChatStatus",error?.message||"आवाज पठाउन सकेन।");}finally{sending=false;$("rcSend").disabled=false;}
   }
@@ -360,7 +372,7 @@
   function ring(){if(!soundContext||soundContext.state!=="running")return;try{const oscillator=soundContext.createOscillator(),gain=soundContext.createGain();oscillator.type="sine";oscillator.frequency.value=660;gain.gain.setValueAtTime(.035,soundContext.currentTime);gain.gain.exponentialRampToValueAtTime(.001,soundContext.currentTime+.25);oscillator.connect(gain);gain.connect(soundContext.destination);oscillator.start();oscillator.stop(soundContext.currentTime+.3);}catch(_){}}
   $("rcCallSound").onclick=async()=>{try{if(soundContext){stopRing();await soundContext.close();soundContext=null;$("rcCallSound").textContent="🔊 Call sound: off";}else{const Audio=window.AudioContext||window.webkitAudioContext;if(!Audio)throw new Error("Sound is unavailable");soundContext=new Audio();await soundContext.resume();ring();$("rcCallSound").textContent="🔔 Call sound: on";}}catch(error){say("rcChatStatus",error.message);}};
   function hideIncoming(){incoming.hidden=true;incomingCall=null;if(incomingTimer)clearTimeout(incomingTimer);incomingTimer=null;stopRing();}
-  function offerCall(row){if(!session?.user||row.initiated_by===session.user.id||row.status!=="ringing"||activeCall)return;const age=Date.now()-Date.parse(row.created_at);if(age>60000||Date.parse(row.expires_at)<Date.now())return;incomingCall=row;$("rcIncomingTitle").textContent=row.mode==="audio"?"📞 Incoming audio call":"📹 Incoming video call";$("rcIncomingName").textContent=peopleNames.get(row.initiated_by)||"ROCK CONNECT member";incoming.hidden=false;ring();stopRing();ringTimer=setInterval(ring,2000);if(incomingTimer)clearTimeout(incomingTimer);incomingTimer=setTimeout(()=>{hideIncoming();loadCallHistory();},Math.max(0,60000-age));}
+  function offerCall(row){if(!session?.user||row.initiated_by===session.user.id||row.status!=="ringing"||activeCall||callRecord||callStarting)return;const age=Date.now()-Date.parse(row.created_at);if(age>60000||Date.parse(row.expires_at)<Date.now())return;incomingCall=row;$("rcIncomingTitle").textContent=row.mode==="audio"?"📞 Incoming audio call":"📹 Incoming video call";$("rcIncomingName").textContent=peopleNames.get(row.initiated_by)||"ROCK CONNECT member";incoming.hidden=false;ring();stopRing();ringTimer=setInterval(ring,2000);if(incomingTimer)clearTimeout(incomingTimer);incomingTimer=setTimeout(()=>{hideIncoming();loadCallHistory();},Math.max(0,60000-age));}
   function watchCalls(){if(!session?.user)return;if(callChannel)client.removeChannel(callChannel);callChannel=client.channel("rock-connect-call-events-"+session.user.id).on("postgres_changes",{event:"INSERT",schema:"public",table:"rock_connect_calls"},event=>{offerCall(event.new);loadCallHistory();}).on("postgres_changes",{event:"UPDATE",schema:"public",table:"rock_connect_calls"},event=>{if(event.new.status==="ended"){if(incomingCall?.id===event.new.id)hideIncoming();if(callRecord?.id===event.new.id)endCall(false);}loadCallHistory();}).on("postgres_changes",{event:"INSERT",schema:"public",table:"rock_connect_members",filter:"user_id=eq."+session.user.id},()=>loadRooms()).subscribe();
     client.from("rock_connect_calls").select("id,room_id,initiated_by,mode,status,created_at,expires_at").eq("status","ringing").neq("initiated_by",session.user.id).gte("created_at",new Date(Date.now()-60000).toISOString()).order("created_at",{ascending:false}).limit(1).then(({data})=>{if(data?.[0])offerCall(data[0]);});
   }
@@ -368,21 +380,21 @@
   setInterval(()=>{if(session?.user&&location.hash==="#connect")loadCallHistory();},30000);
   $("rcDeclineCall").onclick=async()=>{const row=incomingCall;hideIncoming();if(row&&roomsById.get(row.room_id)?.kind==="dm")await client.from("rock_connect_calls").update({status:"ended"}).eq("id",row.id);};
   $("rcAcceptCall").onclick=async()=>{const row=incomingCall;if(!row||!session?.user)return;hideIncoming();try{const {data:rooms,error:roomError}=await client.from("rock_connect_rooms").select("id,title,kind").eq("id",row.room_id).maybeSingle();if(roomError||!rooms)throw new Error("Chat is no longer available");const {data,error}=await client.from("rock_connect_calls").update({status:"accepted"}).eq("id",row.id).in("status",["ringing","accepted"]).gt("expires_at",new Date().toISOString()).select();if(error||!data?.length)throw new Error("This call has ended");roomsById.set(rooms.id,rooms);location.hash="connect";await openRoom(rooms);await joinCall({...row,status:"accepted"});}catch(error){say("rcChatStatus",error.message);}};
-  async function beginCall(mode){if(!activeRoom||!session?.user||activeCall)return;const targetRoom=activeRoom.id;say("rcChatStatus","Starting call… / कल सुरु हुँदैछ…");try{const {data:existing,error:lookupError}=await client.from("rock_connect_calls").select("id,room_id,initiated_by,mode,status,created_at,expires_at").eq("room_id",targetRoom).eq("status","accepted").gt("expires_at",new Date().toISOString()).order("created_at",{ascending:false}).limit(1);if(lookupError)throw lookupError;if(existing?.[0]){await joinCall(existing[0]);return;}const {data,error}=await client.from("rock_connect_calls").insert({room_id:targetRoom,initiated_by:session.user.id,mode}).select().single();if(error)throw error;await joinCall(data);}catch(error){say("rcChatStatus",error.message||"Call service is unavailable");}}
+  async function beginCall(mode){if(!activeRoom||!session?.user||activeCall||callRecord||callStarting)return;const targetRoom=activeRoom.id,caller=session.user.id;callStarting=true;say("rcChatStatus","Starting call… / कल सुरु हुँदैछ…");try{const {data:existing,error:lookupError}=await client.from("rock_connect_calls").select("id,room_id,initiated_by,mode,status,created_at,expires_at").eq("room_id",targetRoom).eq("status","accepted").gt("expires_at",new Date().toISOString()).order("created_at",{ascending:false}).limit(1);if(lookupError)throw lookupError;if(session?.user?.id!==caller)return;if(existing?.[0]){await joinCall(existing[0]);return;}const {data,error}=await client.from("rock_connect_calls").insert({room_id:targetRoom,initiated_by:caller,mode}).select().single();if(error)throw error;if(session?.user?.id!==caller)return;await joinCall(data);}catch(error){say("rcChatStatus",error.message||"Call service is unavailable");}finally{callStarting=false;}}
   $("rcCallButton").onclick=()=>beginCall("video");$("rcAudioCall").onclick=()=>beginCall("audio");$("rcCallClose").classList.add("rc-hangup");$("rcCallClose").onclick=()=>endCall();
   $("rcMic").onclick=async()=>{if(!activeCall)return;try{const on=!activeCall.localParticipant.isMicrophoneEnabled;await activeCall.localParticipant.setMicrophoneEnabled(on);$("rcMic").textContent=on?"🎙️ Mute":"🎙️ Unmute";}catch(error){say("rcCallStatus",error.message);}};
   $("rcCamera").onclick=async()=>{if(!activeCall)return;try{const on=!activeCall.localParticipant.isCameraEnabled;await activeCall.localParticipant.setCameraEnabled(on);$("rcCamera").textContent=on?"📹 Camera off":"📹 Camera on";}catch(error){say("rcCallStatus",error.message);}};
   $("rcScreen").onclick=async()=>{if(!activeCall)return;try{await activeCall.localParticipant.setScreenShareEnabled(!activeCall.localParticipant.isScreenShareEnabled);}catch(error){say("rcCallStatus","Screen share: "+error.message);}};
-  let callGeneration=0;
+  let callGeneration=0, callStarting=false;
   async function joinCall(record){if(activeCall||callRecord)return;const generation=++callGeneration;callRecord=record;$("rcCallPanel").classList.add("open");say("rcCallStatus","Connecting… / जडान हुँदैछ…");const sdk=window.LivekitClient;if(!sdk?.Room){say("rcCallStatus","Call service did not load. Refresh and try again.");await endCall();return;}
     try{const {data,error}=await client.functions.invoke("rock-connect-token",{body:{room_id:record.room_id,call_id:record.id}});if(error||!data?.token||!data?.server_url)throw new Error(data?.error||error?.message||"Call service is unavailable");if(generation!==callGeneration||!session?.user)return;const room=new sdk.Room({adaptiveStream:true,dynacast:true});activeCall=room;const stage=$("rcCallStage");stage.replaceChildren();const attach=(track,person)=>{const el=track.attach();el.dataset.identity=person.identity;el.dataset.track=track.sid||"local";if(person===room.localParticipant)el.muted=true;stage.append(el);};
       room.on(sdk.RoomEvent.TrackSubscribed,(track,_publication,person)=>attach(track,person));room.on(sdk.RoomEvent.TrackUnsubscribed,track=>track.detach().forEach(el=>el.remove()));
       room.on(sdk.RoomEvent.LocalTrackPublished,publication=>{if(publication.track?.kind==="video")attach(publication.track,room.localParticipant);});room.on(sdk.RoomEvent.LocalTrackUnpublished,publication=>{if(publication.track)publication.track.detach().forEach(el=>el.remove());});
       room.on(sdk.RoomEvent.Disconnected,()=>{if(activeCall===room){activeCall=null;callRecord=null;stage.replaceChildren();$("rcCallPanel").classList.remove("open");}});
-      await room.connect(data.server_url,data.token);if(generation!==callGeneration||!session?.user){await room.disconnect();return;}await room.localParticipant.setMicrophoneEnabled(true);await room.localParticipant.setCameraEnabled(record.mode==="video");$("rcCamera").textContent=record.mode==="video"?"📹 Camera off":"📹 Camera on";$("rcMic").textContent="🎙️ Mute";
+      await room.connect(data.server_url,data.token);if(generation!==callGeneration||!session?.user){await room.disconnect();return;}await room.localParticipant.setMicrophoneEnabled(true);if(generation!==callGeneration||!session?.user){await room.disconnect();return;}await room.localParticipant.setCameraEnabled(record.mode==="video");if(generation!==callGeneration||!session?.user){await room.disconnect();return;}$("rcCamera").textContent=record.mode==="video"?"📹 Camera off":"📹 Camera on";$("rcMic").textContent="🎙️ Mute";
       for(const person of room.remoteParticipants.values())for(const publication of person.trackPublications.values())if(publication.track)attach(publication.track,person);
       say("rcCallStatus",record.status==="ringing"?"Calling room members… / सदस्यलाई कल हुँदैछ…":"Connected / जडान भयो।");
-    }catch(error){const message=error.message||"Could not connect";await endCall();say("rcChatStatus",message);}
+    }catch(error){const message=error.message||"Could not connect";if(generation===callGeneration){await endCall();say("rcChatStatus",message);}}
   }
   async function endCall(markEnded=true){callGeneration++;const room=activeCall,record=callRecord;activeCall=null;callRecord=null;if(room)await room.disconnect();$("rcCallStage").replaceChildren();$("rcCallPanel").classList.remove("open");if(markEnded&&record&&session?.user&&(record.initiated_by===session.user.id||roomsById.get(record.room_id)?.kind==="dm")){const {error}=await client.from("rock_connect_calls").update({status:"ended"}).eq("id",record.id);if(error)say("rcChatStatus","Call closed. History will update when connected.");}loadCallHistory();}
 

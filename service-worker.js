@@ -21,7 +21,7 @@ self.addEventListener('fetch', (event) => {
       html = html.replaceAll('rock-community-feed.js', 'rock-community-feed-v2.js?media=messenger-20261029');
       for (const file of ['meeting-room-chat.js', 'meeting-room-guest.js', 'rock-community-feed-v2.js', 'rock-connect.js']) {
         if (!html.includes(file)) {
-          const scriptUrl = new URL(file === 'rock-community-feed-v2.js' ? file + '?media=messenger-20261029' : file === 'rock-connect.js' ? file + '?connect=messenger-20261029' : file, self.registration.scope).href;
+          const scriptUrl = new URL(file === 'rock-community-feed-v2.js' ? file + '?media=messenger-20261029' : file === 'rock-connect.js' ? file + '?connect=call-polish-20261029' : file, self.registration.scope).href;
           const script = '<script src="' + scriptUrl + '" defer><\/script>';
           html = insertBeforeBodyClose(html, script);
         }
