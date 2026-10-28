@@ -540,4 +540,4 @@
 })();
 
 
-;(()=>{if(!document.querySelector('script[src*="rock-connect.js"]')){const s=document.createElement("script");s.src=new URL("rock-connect.js?connect=call-polish-20261029",document.baseURI).href;s.defer=true;document.body.append(s);}})();
+;(()=>{if(!document.querySelector('script[src*="rock-connect.js"]')){const s=document.createElement("script");s.src=new URL("rock-connect.js?connect=bilingual-20261029",document.baseURI).href;s.defer=true;document.body.append(s);}})();

@@ -70,6 +70,17 @@
 
   const app = document.createElement("div");
   app.id = "rockConnectApp";
+  const connectTranslations={"ROCK CONNECT मा लगइन गर्नुहोस्":{"ne":"ROCK CONNECT मा लगइन गर्नुहोस्","en":"Sign in to ROCK CONNECT"},"Sign in to ROCK CONNECT":{"ne":"ROCK CONNECT मा लगइन गर्नुहोस्","en":"Sign in to ROCK CONNECT"},"पोस्ट र च्याट हेर्न खाता चाहिन्छ। फोटो/भिडियो बाँड्न र कल गर्न इमेलबाट खाता खोलेर लगइन गर्नुहोस्।":{"ne":"पोस्ट र च्याट हेर्न खाता चाहिन्छ। फोटो/भिडियो बाँड्न र कल गर्न इमेलबाट खाता खोलेर लगइन गर्नुहोस्।","en":"Sign in to chat, share photos/videos and make calls. Create an account with your email if needed."},"Sign in to chat, share photos/videos and make calls. Create an account with your email if needed.":{"ne":"पोस्ट र च्याट हेर्न खाता चाहिन्छ। फोटो/भिडियो बाँड्न र कल गर्न इमेलबाट खाता खोलेर लगइन गर्नुहोस्।","en":"Sign in to chat, share photos/videos and make calls. Create an account with your email if needed."},"लगइन":{"ne":"लगइन","en":"Sign in"},"Sign in":{"ne":"लगइन","en":"Sign in"},"नयाँ खाता":{"ne":"नयाँ खाता","en":"Create account"},"Create account":{"ne":"नयाँ खाता","en":"Create account"},"खाता खोल्नुहोस्":{"ne":"खाता खोल्नुहोस्","en":"Create account"},"खेलाडीको नाम":{"ne":"खेलाडीको नाम","en":"Player name"},"Player name":{"ne":"खेलाडीको नाम","en":"Player name"},"इमेल ठेगाना":{"ne":"इमेल ठेगाना","en":"Email address"},"Email address":{"ne":"इमेल ठेगाना","en":"Email address"},"पासवर्ड (कम्तीमा ८ अक्षर)":{"ne":"पासवर्ड (कम्तीमा ८ अक्षर)","en":"Password (at least 8 characters)"},"Password (at least 8 characters)":{"ne":"पासवर्ड (कम्तीमा ८ अक्षर)","en":"Password (at least 8 characters)"},"🔔 सूचना खोल्नुहोस्":{"ne":"🔔 सूचना खोल्नुहोस्","en":"🔔 Enable notifications"},"🔔 Enable notifications":{"ne":"🔔 सूचना खोल्नुहोस्","en":"🔔 Enable notifications"},"लगआउट":{"ne":"लगआउट","en":"Sign out"},"Sign out":{"ne":"लगआउट","en":"Sign out"},"च्याट कोठा":{"ne":"च्याट कोठा","en":"Chats"},"Chats":{"ne":"च्याट कोठा","en":"Chats"},"निजी च्याट सुरु गर्नुहोस्":{"ne":"निजी च्याट सुरु गर्नुहोस्","en":"Start a private chat"},"Start a private chat":{"ne":"निजी च्याट सुरु गर्नुहोस्","en":"Start a private chat"},"खेलाडी छान्नुहोस्":{"ne":"खेलाडी छान्नुहोस्","en":"Choose a player"},"Choose a player":{"ne":"खेलाडी छान्नुहोस्","en":"Choose a player"},"निजी च्याट खोल्नुहोस्":{"ne":"निजी च्याट खोल्नुहोस्","en":"Open private chat"},"Open private chat":{"ne":"निजी च्याट खोल्नुहोस्","en":"Open private chat"},"अनलाइन":{"ne":"अनलाइन","en":"Online"},"Online":{"ne":"अनलाइन","en":"Online"},"जडान हुँदैछ…":{"ne":"जडान हुँदैछ…","en":"Connecting…"},"Connecting…":{"ne":"जडान हुँदैछ…","en":"Connecting…"},"Recent calls / कल इतिहास":{"ne":"Recent calls / कल इतिहास","en":"Recent calls"},"Recent calls":{"ne":"Recent calls / कल इतिहास","en":"Recent calls"},"‹ Chats":{"ne":"‹ च्याटहरू","en":"‹ Chats"},"‹ च्याटहरू":{"ne":"‹ च्याटहरू","en":"‹ Chats"},"📞 Audio":{"ne":"📞 अडियो","en":"📞 Audio"},"📞 अडियो":{"ne":"📞 अडियो","en":"📞 Audio"},"📹 Video":{"ne":"📹 भिडियो","en":"📹 Video"},"📹 भिडियो":{"ne":"📹 भिडियो","en":"📹 Video"},"😊 Emoji":{"ne":"😊 इमोजी","en":"😊 Emoji"},"😊 इमोजी":{"ne":"😊 इमोजी","en":"😊 Emoji"},"🎨 Stickers":{"ne":"🎨 स्टिकर","en":"🎨 Stickers"},"🎨 स्टिकर":{"ne":"🎨 स्टिकर","en":"🎨 Stickers"},"🔊 Call sound: off":{"ne":"🔊 कलको आवाज: बन्द","en":"🔊 Call sound: off"},"🔊 कलको आवाज: बन्द":{"ne":"🔊 कलको आवाज: बन्द","en":"🔊 Call sound: off"},"🔔 Call sound: on":{"ne":"🔔 कलको आवाज: खुला","en":"🔔 Call sound: on"},"🔔 कलको आवाज: खुला":{"ne":"🔔 कलको आवाज: खुला","en":"🔔 Call sound: on"},"सन्देश लेख्नुहोस्…":{"ne":"सन्देश लेख्नुहोस्…","en":"Write a message…"},"Write a message…":{"ne":"सन्देश लेख्नुहोस्…","en":"Write a message…"},"सन्देश":{"ne":"सन्देश","en":"Message"},"Message":{"ne":"सन्देश","en":"Message"},"पठाउनुहोस्":{"ne":"पठाउनुहोस्","en":"Send"},"Send":{"ne":"पठाउनुहोस्","en":"Send"},"🎙️ आवाज रेकर्ड":{"ne":"🎙️ आवाज रेकर्ड","en":"🎙️ Record voice"},"🎙️ Record voice":{"ne":"🎙️ आवाज रेकर्ड","en":"🎙️ Record voice"},"ROCK CONNECT कल":{"ne":"ROCK CONNECT कल","en":"ROCK CONNECT call"},"ROCK CONNECT call":{"ne":"ROCK CONNECT कल","en":"ROCK CONNECT call"},"कल बन्द गर्नुहोस्":{"ne":"कल बन्द गर्नुहोस्","en":"End call"},"End call":{"ne":"कल बन्द गर्नुहोस्","en":"End call"},"🎙️ माइक बन्द":{"ne":"🎙️ माइक बन्द","en":"🎙️ Mute"},"🎙️ Mute":{"ne":"🎙️ माइक बन्द","en":"🎙️ Mute"},"📹 क्यामेरा बन्द":{"ne":"📹 क्यामेरा बन्द","en":"📹 Camera off"},"📹 Camera off":{"ne":"📹 क्यामेरा बन्द","en":"📹 Camera off"},"🖥️ Share screen":{"ne":"🖥️ स्क्रिन देखाउनुहोस्","en":"🖥️ Share screen"},"🖥️ स्क्रिन देखाउनुहोस्":{"ne":"🖥️ स्क्रिन देखाउनुहोस्","en":"🖥️ Share screen"},"खाता जाँचिँदै छ…":{"ne":"खाता जाँचिँदै छ…","en":"Checking your account…"},"Checking your account…":{"ne":"खाता जाँचिँदै छ…","en":"Checking your account…"},"इमेलमा आएको सन्देशबाट खाता पुष्टि गर्नुहोस्, त्यसपछि लगइन गर्नुहोस्।":{"ne":"इमेलमा आएको सन्देशबाट खाता पुष्टि गर्नुहोस्, त्यसपछि लगइन गर्नुहोस्।","en":"Confirm your account using the email, then sign in."},"Confirm your account using the email, then sign in.":{"ne":"इमेलमा आएको सन्देशबाट खाता पुष्टि गर्नुहोस्, त्यसपछि लगइन गर्नुहोस्।","en":"Confirm your account using the email, then sign in."},"लगइन सफल भयो।":{"ne":"लगइन सफल भयो।","en":"Signed in successfully."},"Signed in successfully.":{"ne":"लगइन सफल भयो।","en":"Signed in successfully."},"लगइन गर्न सकिएन।":{"ne":"लगइन गर्न सकिएन।","en":"Could not sign in."},"Could not sign in.":{"ne":"लगइन गर्न सकिएन।","en":"Could not sign in."},"यो ब्राउजरले सूचना देखाउन सक्दैन।":{"ne":"यो ब्राउजरले सूचना देखाउन सक्दैन।","en":"This browser cannot show notifications."},"This browser cannot show notifications.":{"ne":"यो ब्राउजरले सूचना देखाउन सक्दैन।","en":"This browser cannot show notifications."},"यो पेज पछाडि हुँदा सन्देशको सूचना आउँछ।":{"ne":"यो पेज पछाडि हुँदा सन्देशको सूचना आउँछ।","en":"Notifications appear while this page is open in the background."},"Notifications appear while this page is open in the background.":{"ne":"यो पेज पछाडि हुँदा सन्देशको सूचना आउँछ।","en":"Notifications appear while this page is open in the background."},"सूचना अनुमति दिइएन।":{"ne":"सूचना अनुमति दिइएन।","en":"Notification permission was not granted."},"Notification permission was not granted.":{"ne":"सूचना अनुमति दिइएन।","en":"Notification permission was not granted."},"खेलाडी सूची खोल्न सकेन। Supabase मा ROCK CONNECT सेटअप जाँच्नुहोस्।":{"ne":"खेलाडी सूची खोल्न सकेन। Supabase मा ROCK CONNECT सेटअप जाँच्नुहोस्।","en":"Could not load players. Check the ROCK CONNECT service."},"Could not load players. Check the ROCK CONNECT service.":{"ne":"खेलाडी सूची खोल्न सकेन। Supabase मा ROCK CONNECT सेटअप जाँच्नुहोस्।","en":"Could not load players. Check the ROCK CONNECT service."},"पहिले खेलाडी छान्नुहोस्।":{"ne":"पहिले खेलाडी छान्नुहोस्।","en":"Choose a player first."},"Choose a player first.":{"ne":"पहिले खेलाडी छान्नुहोस्।","en":"Choose a player first."},"निजी च्याट खोलिँदै छ…":{"ne":"निजी च्याट खोलिँदै छ…","en":"Opening private chat…"},"Opening private chat…":{"ne":"निजी च्याट खोलिँदै छ…","en":"Opening private chat…"},"Supabase मा ROCK CONNECT सेटअप गर्न बाँकी छ।":{"ne":"Supabase मा ROCK CONNECT सेटअप गर्न बाँकी छ।","en":"ROCK CONNECT setup is unavailable."},"ROCK CONNECT setup is unavailable.":{"ne":"Supabase मा ROCK CONNECT सेटअप गर्न बाँकी छ।","en":"ROCK CONNECT setup is unavailable."},"च्याट कोठा भेटिएन।":{"ne":"च्याट कोठा भेटिएन।","en":"No chat rooms found."},"No chat rooms found.":{"ne":"च्याट कोठा भेटिएन।","en":"No chat rooms found."},"निजी: ":{"ne":"निजी: ","en":"Private: "},"Private: ":{"ne":"निजी: ","en":"Private: "}," जना यो कोठामा अनलाइन":{"ne":" जना यो कोठामा अनलाइन","en":" online in this room"}," online in this room":{"ne":" जना यो कोठामा अनलाइन","en":" online in this room"},"जडान भयो":{"ne":"जडान भयो","en":"Connected"},"Connected":{"ne":"जडान भयो","en":"Connected"},"जडान हुन सकेन":{"ne":"जडान हुन सकेन","en":"Could not connect"},"Could not connect":{"ne":"जडान हुन सकेन","en":"Could not connect"},"सन्देश खोल्न सकेन: ":{"ne":"सन्देश खोल्न सकेन: ","en":"Could not load messages: "},"Could not load messages: ":{"ne":"सन्देश खोल्न सकेन: ","en":"Could not load messages: "},"यो च्याट खाली छ। पहिलो सन्देश पठाउनुहोस्।":{"ne":"यो च्याट खाली छ। पहिलो सन्देश पठाउनुहोस्।","en":"This chat is empty. Send the first message."},"This chat is empty. Send the first message.":{"ne":"यो च्याट खाली छ। पहिलो सन्देश पठाउनुहोस्।","en":"This chat is empty. Send the first message."},"जवाफ":{"ne":"जवाफ","en":"Reply"},"Reply":{"ne":"जवाफ","en":"Reply"},"यो सन्देशको जवाफ लेख्नुहोस्।":{"ne":"यो सन्देशको जवाफ लेख्नुहोस्।","en":"Write a reply to this message."},"Write a reply to this message.":{"ne":"यो सन्देशको जवाफ लेख्नुहोस्।","en":"Write a reply to this message."},"पढियो":{"ne":"पढियो","en":"Read"},"Read":{"ne":"पढियो","en":"Read"},"पठाइयो":{"ne":"पठाइयो","en":"Sent"},"Sent":{"ne":"पठाइयो","en":"Sent"},"२५ MB सम्मको फोटो वा भिडियो छान्नुहोस्।":{"ne":"२५ MB सम्मको फोटो वा भिडियो छान्नुहोस्।","en":"Choose a photo or video up to 25 MB."},"Choose a photo or video up to 25 MB.":{"ne":"२५ MB सम्मको फोटो वा भिडियो छान्नुहोस्।","en":"Choose a photo or video up to 25 MB."},"मिडिया राखिँदै छ…":{"ne":"मिडिया राखिँदै छ…","en":"Uploading media…"},"Uploading media…":{"ne":"मिडिया राखिँदै छ…","en":"Uploading media…"},"सन्देश पठाइँदै छ…":{"ne":"सन्देश पठाइँदै छ…","en":"Sending message…"},"Sending message…":{"ne":"सन्देश पठाइँदै छ…","en":"Sending message…"},"सन्देश सुरक्षित भयो।":{"ne":"सन्देश सुरक्षित भयो।","en":"Message sent."},"Message sent.":{"ne":"सन्देश सुरक्षित भयो।","en":"Message sent."},"सन्देश पठाउन सकेन।":{"ne":"सन्देश पठाउन सकेन।","en":"Could not send the message."},"Could not send the message.":{"ne":"सन्देश पठाउन सकेन।","en":"Could not send the message."},"अडियो तयार हुँदैछ…":{"ne":"अडियो तयार हुँदैछ…","en":"Preparing audio…"},"Preparing audio…":{"ne":"अडियो तयार हुँदैछ…","en":"Preparing audio…"},"यो उपकरणमा अडियो रेकर्ड गर्न मिल्दैन।":{"ne":"यो उपकरणमा अडियो रेकर्ड गर्न मिल्दैन।","en":"Voice recording is unavailable on this device."},"Voice recording is unavailable on this device.":{"ne":"यो उपकरणमा अडियो रेकर्ड गर्न मिल्दैन।","en":"Voice recording is unavailable on this device."},"⏹️ रेकर्डिङ रोक्नुहोस्":{"ne":"⏹️ रेकर्डिङ रोक्नुहोस्","en":"⏹️ Stop recording"},"⏹️ Stop recording":{"ne":"⏹️ रेकर्डिङ रोक्नुहोस्","en":"⏹️ Stop recording"},"आवाज रेकर्ड हुँदैछ…":{"ne":"आवाज रेकर्ड हुँदैछ…","en":"Recording voice…"},"Recording voice…":{"ne":"आवाज रेकर्ड हुँदैछ…","en":"Recording voice…"},"माइक अनुमति चाहिन्छ: ":{"ne":"माइक अनुमति चाहिन्छ: ","en":"Microphone permission is required: "},"Microphone permission is required: ":{"ne":"माइक अनुमति चाहिन्छ: ","en":"Microphone permission is required: "},"आवाज बढीमा २५ MB हुनुपर्छ।":{"ne":"आवाज बढीमा २५ MB हुनुपर्छ।","en":"Voice notes must be up to 25 MB."},"Voice notes must be up to 25 MB.":{"ne":"आवाज बढीमा २५ MB हुनुपर्छ।","en":"Voice notes must be up to 25 MB."},"आवाज पठाइँदै छ…":{"ne":"आवाज पठाइँदै छ…","en":"Sending voice note…"},"Sending voice note…":{"ne":"आवाज पठाइँदै छ…","en":"Sending voice note…"},"आवाज सन्देश पठाइयो।":{"ne":"आवाज सन्देश पठाइयो।","en":"Voice note sent."},"Voice note sent.":{"ne":"आवाज सन्देश पठाइयो।","en":"Voice note sent."},"आवाज पठाउन सकेन।":{"ne":"आवाज पठाउन सकेन।","en":"Could not send the voice note."},"Could not send the voice note.":{"ne":"आवाज पठाउन सकेन।","en":"Could not send the voice note."},"फोटो/भिडियो तयार छ। पठाउनुहोस् थिच्नुहोस्।":{"ne":"फोटो/भिडियो तयार छ। पठाउनुहोस् थिच्नुहोस्।","en":"Photo/video ready. Press Send."},"Photo/video ready. Press Send.":{"ne":"फोटो/भिडियो तयार छ। पठाउनुहोस् थिच्नुहोस्।","en":"Photo/video ready. Press Send."},"Attach photo or video (up to 25 MB)":{"ne":"फोटो वा भिडियो जोड्नुहोस् (२५ MB सम्म)","en":"Attach photo or video (up to 25 MB)"},"फोटो वा भिडियो जोड्नुहोस् (२५ MB सम्म)":{"ne":"फोटो वा भिडियो जोड्नुहोस् (२५ MB सम्म)","en":"Attach photo or video (up to 25 MB)"},"Remove attachment":{"ne":"जोडिएको फाइल हटाउनुहोस्","en":"Remove attachment"},"जोडिएको फाइल हटाउनुहोस्":{"ne":"जोडिएको फाइल हटाउनुहोस्","en":"Remove attachment"},"Attachment preview":{"ne":"जोडिएको फाइलको झलक","en":"Attachment preview"},"जोडिएको फाइलको झलक":{"ne":"जोडिएको फाइलको झलक","en":"Attachment preview"},"Back to chats":{"ne":"च्याट सूचीमा फर्कनुहोस्","en":"Back to chats"},"च्याट सूचीमा फर्कनुहोस्":{"ne":"च्याट सूचीमा फर्कनुहोस्","en":"Back to chats"},"Audio call":{"ne":"अडियो कल","en":"Audio call"},"अडियो कल":{"ne":"अडियो कल","en":"Audio call"},"Video call":{"ne":"भिडियो कल","en":"Video call"},"भिडियो कल":{"ne":"भिडियो कल","en":"Video call"},"Incoming call":{"ne":"आउँदै गरेको कल","en":"Incoming call"},"आउँदै गरेको कल":{"ne":"आउँदै गरेको कल","en":"Incoming call"},"Accept / उठाउनुहोस्":{"ne":"Accept / उठाउनुहोस्","en":"Accept"},"Accept":{"ne":"Accept / उठाउनुहोस्","en":"Accept"},"Decline / अस्वीकार":{"ne":"Decline / अस्वीकार","en":"Decline"},"Decline":{"ne":"Decline / अस्वीकार","en":"Decline"},"📞 Incoming audio call":{"ne":"📞 अडियो कल आउँदैछ","en":"📞 Incoming audio call"},"📞 अडियो कल आउँदैछ":{"ne":"📞 अडियो कल आउँदैछ","en":"📞 Incoming audio call"},"📹 Incoming video call":{"ne":"📹 भिडियो कल आउँदैछ","en":"📹 Incoming video call"},"📹 भिडियो कल आउँदैछ":{"ne":"📹 भिडियो कल आउँदैछ","en":"📹 Incoming video call"},"Call history is unavailable.":{"ne":"कल इतिहास उपलब्ध छैन।","en":"Call history is unavailable."},"कल इतिहास उपलब्ध छैन।":{"ne":"कल इतिहास उपलब्ध छैन।","en":"Call history is unavailable."},"Missed / छुटेको":{"ne":"Missed / छुटेको","en":"Missed"},"Missed":{"ne":"Missed / छुटेको","en":"Missed"},"In progress":{"ne":"कल चलिरहेको छ","en":"In progress"},"कल चलिरहेको छ":{"ne":"कल चलिरहेको छ","en":"In progress"},"Ended":{"ne":"कल सकियो","en":"Ended"},"कल सकियो":{"ne":"कल सकियो","en":"Ended"},"Ringing":{"ne":"कल बज्दैछ","en":"Ringing"},"कल बज्दैछ":{"ne":"कल बज्दैछ","en":"Ringing"},"Chat":{"ne":"च्याट","en":"Chat"},"च्याट":{"ne":"च्याट","en":"Chat"},"No recent calls / हाल कुनै कल छैन।":{"ne":"No recent calls / हाल कुनै कल छैन।","en":"No recent calls."},"No recent calls.":{"ne":"No recent calls / हाल कुनै कल छैन।","en":"No recent calls."},"Chat is no longer available":{"ne":"यो च्याट उपलब्ध छैन","en":"Chat is no longer available"},"यो च्याट उपलब्ध छैन":{"ne":"यो च्याट उपलब्ध छैन","en":"Chat is no longer available"},"This call has ended":{"ne":"यो कल सकिएको छ","en":"This call has ended"},"यो कल सकिएको छ":{"ne":"यो कल सकिएको छ","en":"This call has ended"},"Starting call… / कल सुरु हुँदैछ…":{"ne":"Starting call… / कल सुरु हुँदैछ…","en":"Starting call…"},"Starting call…":{"ne":"Starting call… / कल सुरु हुँदैछ…","en":"Starting call…"},"Call service is unavailable":{"ne":"कल सेवा उपलब्ध छैन","en":"Call service is unavailable"},"कल सेवा उपलब्ध छैन":{"ne":"कल सेवा उपलब्ध छैन","en":"Call service is unavailable"},"🎙️ Unmute":{"ne":"🎙️ माइक खोल्नुहोस्","en":"🎙️ Unmute"},"🎙️ माइक खोल्नुहोस्":{"ne":"🎙️ माइक खोल्नुहोस्","en":"🎙️ Unmute"},"📹 Camera on":{"ne":"📹 क्यामेरा खोल्नुहोस्","en":"📹 Camera on"},"📹 क्यामेरा खोल्नुहोस्":{"ne":"📹 क्यामेरा खोल्नुहोस्","en":"📹 Camera on"},"Connecting… / जडान हुँदैछ…":{"ne":"Connecting… / जडान हुँदैछ…","en":"Connecting…"},"Call service did not load. Refresh and try again.":{"ne":"कल सेवा खुलेन। पेज रिफ्रेस गरेर फेरि प्रयास गर्नुहोस्।","en":"Call service did not load. Refresh and try again."},"कल सेवा खुलेन। पेज रिफ्रेस गरेर फेरि प्रयास गर्नुहोस्।":{"ne":"कल सेवा खुलेन। पेज रिफ्रेस गरेर फेरि प्रयास गर्नुहोस्।","en":"Call service did not load. Refresh and try again."},"Calling room members… / सदस्यलाई कल हुँदैछ…":{"ne":"Calling room members… / सदस्यलाई कल हुँदैछ…","en":"Calling room members…"},"Calling room members…":{"ne":"Calling room members… / सदस्यलाई कल हुँदैछ…","en":"Calling room members…"},"Connected / जडान भयो।":{"ne":"Connected / जडान भयो।","en":"Connected."},"Connected.":{"ne":"Connected / जडान भयो।","en":"Connected."},"Call closed. History will update when connected.":{"ne":"कल बन्द भयो। जडान भएपछि इतिहास अपडेट हुनेछ।","en":"Call closed. History will update when connected."},"कल बन्द भयो। जडान भएपछि इतिहास अपडेट हुनेछ।":{"ne":"कल बन्द भयो। जडान भएपछि इतिहास अपडेट हुनेछ।","en":"Call closed. History will update when connected."},"Sound is unavailable":{"ne":"आवाज उपलब्ध छैन","en":"Sound is unavailable"},"आवाज उपलब्ध छैन":{"ne":"आवाज उपलब्ध छैन","en":"Sound is unavailable"},"ROCK CONNECT • Signed in":{"ne":"ROCK CONNECT • लगइन भयो","en":"ROCK CONNECT • Signed in"},"ROCK CONNECT • लगइन भयो":{"ne":"ROCK CONNECT • लगइन भयो","en":"ROCK CONNECT • Signed in"}};
+  let connectLanguage="ne";try{connectLanguage=localStorage.getItem("rockConnectLanguage")==="en"?"en":"ne";}catch(_){}
+  const t=text=>connectTranslations[text]?.[connectLanguage]??text;
+  function localizeControls(root){
+    const walker=document.createTreeWalker(root,NodeFilter.SHOW_TEXT);let node;
+    while((node=walker.nextNode())){const parent=node.parentElement;if(!parent||parent.closest("#rcLanguagePicker,.body,.meta,.rc-sticker,#rcRooms,#rcRoomTitle,#rcIncomingName,#rcAttachment")||parent.closest("#rcPlayerSelect")&&parent.value)continue;
+      if(parent.closest("#rcMessages .rc-message")&&!parent.closest(".rc-actions")&&parent.closest(".rc-status"))continue;
+      const translated=t(node.nodeValue);if(translated!==node.nodeValue)node.nodeValue=translated;
+    }
+    for(const element of root.querySelectorAll("[placeholder],[aria-label],[alt]"))for(const attribute of ["placeholder","aria-label","alt"]){const value=element.getAttribute(attribute);if(value&&connectTranslations[value])element.setAttribute(attribute,t(value));}
+  }
   app.innerHTML =
     '<div class="rc-card" id="rcAuth"><h3>ROCK CONNECT मा लगइन गर्नुहोस्</h3>' +
     '<p>पोस्ट र च्याट हेर्न खाता चाहिन्छ। फोटो/भिडियो बाँड्न र कल गर्न इमेलबाट खाता खोलेर लगइन गर्नुहोस्।</p>' +
@@ -94,6 +105,9 @@
     '<div class="rc-call-stage" id="rcCallStage"></div><div class="rc-actions"><button type="button" id="rcMic">🎙️ माइक बन्द</button><button type="button" id="rcCamera">📹 क्यामेरा बन्द</button><button type="button" class="secondary" id="rcScreen">🖥️ Share screen</button></div><p class="rc-status" id="rcCallStatus"></p></section></div>';
   container.replaceChildren(heading, app);
 
+  const languagePicker=document.createElement("div");languagePicker.id="rcLanguagePicker";languagePicker.className="rc-card rc-actions";languagePicker.setAttribute("role","group");languagePicker.setAttribute("aria-label","CONNECT language / भाषा");
+  for(const [language,label]of [["ne","नेपाली"],["en","English"]]){const button=document.createElement("button");button.type="button";button.textContent=label;button.dataset.language=language;button.onclick=()=>{connectLanguage=language;try{localStorage.setItem("rockConnectLanguage",language);}catch(_){}applyConnectLanguage();if(session?.user){loadMessages();loadCallHistory();}};languagePicker.append(button);}app.prepend(languagePicker);
+  function applyConnectLanguage(){app.lang=connectLanguage;localizeControls(app);const dialog=document.getElementById("rcIncoming");if(dialog){dialog.lang=connectLanguage;localizeControls(dialog);}for(const button of languagePicker.querySelectorAll("button")){button.setAttribute("aria-pressed",String(button.dataset.language===connectLanguage));button.classList.toggle("secondary",button.dataset.language!==connectLanguage);}}
   const meetingHead=document.querySelector("#meeting .head");if(meetingHead){const link=document.createElement("a");link.href="#connect";link.textContent="💬 Chat, photos & calls — ROCK CONNECT";link.style.cssText="display:inline-block;padding:10px 14px;margin-top:10px;border:1px solid #315a75;border-radius:9px;color:#9bd4fa";meetingHead.append(link);}
   const $ = (id) => document.getElementById(id);
   let authMode = "login", session = null, activeRoom = null, activeChannel = null, activeCall = null;
@@ -101,13 +115,13 @@
   let replyTo = null, pendingFile = null, previewUrl = null, sending = false, messageLoadVersion = 0;
   let roomsById = new Map(), peopleNames = new Map(), callChannel = null, callRecord = null, incomingCall = null, incomingTimer = null, ringTimer = null, soundContext = null;
 
-  function say(id, text) { if ($(id)) $(id).textContent = text || ""; }
+  function say(id, text) { if ($(id)) $(id).textContent = t(text || ""); }
   function setAuthMode(mode) {
     authMode = mode;
     const signup = mode === "signup";
     $("rcName").hidden = !signup; $("rcName").required = signup;
     $("rcPassword").autocomplete = signup ? "new-password" : "current-password";
-    $("rcAuthSubmit").textContent = signup ? "खाता खोल्नुहोस्" : "लगइन";
+    $("rcAuthSubmit").textContent = signup ? t("खाता खोल्नुहोस्") : t("लगइन");
   }
   $("rcLoginTab").onclick = () => setAuthMode("login");
   $("rcSignupTab").onclick = () => setAuthMode("signup");
@@ -121,18 +135,18 @@
       endCall(); hideIncoming(); clearAttachment();
       if(recorder?.state === "recording") recorder.stop();
       if(callChannel) client.removeChannel(callChannel); callChannel=null;
-      $("rcMessages").replaceChildren(); $("rcRooms").replaceChildren(); $("rcPlayerSelect").replaceChildren(new Option("खेलाडी छान्नुहोस्", ""));
+      $("rcMessages").replaceChildren(); $("rcRooms").replaceChildren(); $("rcPlayerSelect").replaceChildren(new Option(t("खेलाडी छान्नुहोस्"), ""));
       if (activeChannel) client.removeChannel(activeChannel);
       activeChannel = null;
       return;
     }
-    $("rcAccountName").textContent = "ROCK CONNECT • Signed in";
+    $("rcAccountName").textContent = t("ROCK CONNECT • Signed in");
     loadDirectory(); loadRooms();
   }
 
   $("rcAuthForm").addEventListener("submit", async (event) => {
     event.preventDefault();
-    const button = $("rcAuthSubmit"); button.disabled = true; say("rcAuthStatus", "खाता जाँचिँदै छ…");
+    const button = $("rcAuthSubmit"); button.disabled = true; say("rcAuthStatus", t("खाता जाँचिँदै छ…"));
     try {
       const email = $("rcEmail").value.trim(), password = $("rcPassword").value;
       const displayName = $("rcName").value.trim();
@@ -140,34 +154,34 @@
         ? await client.auth.signUp({ email, password, options: { data: { display_name: displayName } } })
         : await client.auth.signInWithPassword({ email, password });
       if (result.error) throw result.error;
-      if (authMode === "signup" && !result.data.session) say("rcAuthStatus", "इमेलमा आएको सन्देशबाट खाता पुष्टि गर्नुहोस्, त्यसपछि लगइन गर्नुहोस्।");
-      else { say("rcAuthStatus", "लगइन सफल भयो।"); setSignedIn(result.data.session || null); }
-    } catch (error) { say("rcAuthStatus", error?.message || "लगइन गर्न सकिएन।"); }
+      if (authMode === "signup" && !result.data.session) say("rcAuthStatus", t("इमेलमा आएको सन्देशबाट खाता पुष्टि गर्नुहोस्, त्यसपछि लगइन गर्नुहोस्।"));
+      else { say("rcAuthStatus", t("लगइन सफल भयो।")); setSignedIn(result.data.session || null); }
+    } catch (error) { say("rcAuthStatus", error?.message || t("लगइन गर्न सकिएन।")); }
     finally { button.disabled = false; }
   });
 
   $("rcSignOut").onclick = async () => { await client.auth.signOut(); setSignedIn(null); };
   $("rcEnableNotifications").onclick = async () => {
-    if (!("Notification" in window)) { say("rcChatStatus", "यो ब्राउजरले सूचना देखाउन सक्दैन।"); return; }
+    if (!("Notification" in window)) { say("rcChatStatus", t("यो ब्राउजरले सूचना देखाउन सक्दैन।")); return; }
     const permission = await Notification.requestPermission();
-    say("rcChatStatus", permission === "granted" ? "यो पेज पछाडि हुँदा सन्देशको सूचना आउँछ।" : "सूचना अनुमति दिइएन।");
+    say("rcChatStatus", permission === "granted" ? t("यो पेज पछाडि हुँदा सन्देशको सूचना आउँछ।") : t("सूचना अनुमति दिइएन।"));
   };
   $("rcEmojiRow").onclick = (event) => { const emoji = event.target.closest("button")?.textContent; if (emoji) { $("rcMessage").value += emoji; $("rcMessage").focus(); } };
 
   async function loadDirectory() {
     const directoryUser=session?.user?.id;
     const { data, error } = await client.from("rock_connect_profiles").select("user_id,display_name").order("display_name").limit(300);
-    if (error) { say("rcDmStatus", "खेलाडी सूची खोल्न सकेन। Supabase मा ROCK CONNECT सेटअप जाँच्नुहोस्।"); return; }
+    if (error) { say("rcDmStatus", t("खेलाडी सूची खोल्न सकेन। Supabase मा ROCK CONNECT सेटअप जाँच्नुहोस्।")); return; }
     if(!directoryUser||session?.user?.id!==directoryUser)return;
     peopleNames = new Map((data||[]).map(person=>[person.user_id,person.display_name]));
-    const select = $("rcPlayerSelect"); select.replaceChildren(new Option("खेलाडी छान्नुहोस्", ""));
+    const select = $("rcPlayerSelect"); select.replaceChildren(new Option(t("खेलाडी छान्नुहोस्"), ""));
     for (const person of data || []) if (person.user_id !== session?.user?.id) select.add(new Option(person.display_name, person.user_id));
   }
 
   $("rcStartDm").onclick = async () => {
     const other = $("rcPlayerSelect").value;
-    if (!other) { say("rcDmStatus", "पहिले खेलाडी छान्नुहोस्।"); return; }
-    say("rcDmStatus", "निजी च्याट खोलिँदै छ…");
+    if (!other) { say("rcDmStatus", t("पहिले खेलाडी छान्नुहोस्।")); return; }
+    say("rcDmStatus", t("निजी च्याट खोलिँदै छ…"));
     const { data, error } = await client.rpc("rock_connect_create_dm", { p_other_user: other });
     if (error) { say("rcDmStatus", error.message); return; }
     say("rcDmStatus", ""); await loadRooms(String(data));
@@ -176,9 +190,9 @@
   async function loadRooms(openId) {
     if (!session?.user) return;
     const { data: memberships, error: memberError } = await client.from("rock_connect_members").select("room_id").eq("user_id", session.user.id);
-    if (memberError) { say("rcChatStatus", "Supabase मा ROCK CONNECT सेटअप गर्न बाँकी छ।"); return; }
+    if (memberError) { say("rcChatStatus", t("Supabase मा ROCK CONNECT सेटअप गर्न बाँकी छ।")); return; }
     const ids = (memberships || []).map((row) => row.room_id);
-    if (!ids.length) { say("rcChatStatus", "च्याट कोठा भेटिएन।"); return; }
+    if (!ids.length) { say("rcChatStatus", t("च्याट कोठा भेटिएन।")); return; }
     const { data: rooms, error } = await client.from("rock_connect_rooms").select("id,title,kind").in("id", ids);
     if (error) { say("rcChatStatus", error.message); return; }
     const dmIds = (rooms || []).filter((room) => room.kind === "dm").map((room) => room.id);
@@ -191,7 +205,7 @@
       for (const room of rooms || []) {
         if (room.kind === "dm") {
           const other = (members || []).find((m) => m.room_id === room.id && m.user_id !== session.user.id);
-          roomNames.set(room.id, "निजी: " + (names.get(other?.user_id) || "खेलाडी"));
+          roomNames.set(room.id, t("निजी: ") + (names.get(other?.user_id) || "खेलाडी"));
         }
       }
     }
@@ -223,12 +237,12 @@
         loadMessages();
       })
       .on("postgres_changes", { event:"*", schema:"public", table:"rock_connect_reactions" }, loadMessages)
-      .on("presence", { event:"sync" }, () => { $("rcOnline").textContent = Object.keys(activeChannel.presenceState()).length + " जना यो कोठामा अनलाइन"; })
+      .on("presence", { event:"sync" }, () => { $("rcOnline").textContent = Object.keys(activeChannel.presenceState()).length + t(" जना यो कोठामा अनलाइन"); })
       .subscribe(async (state) => {
         if (state === "SUBSCRIBED" && session?.user && activeRoom?.id===room.id) {
           await activeChannel.track({ name:peopleNames.get(session.user.id)||"खेलाडी", online_at:new Date().toISOString() });
-          $("rcRoomStatus").textContent = "जडान भयो";
-        } else if (state === "CHANNEL_ERROR" || state === "TIMED_OUT") $("rcRoomStatus").textContent = "जडान हुन सकेन";
+          $("rcRoomStatus").textContent = t("जडान भयो");
+        } else if (state === "CHANNEL_ERROR" || state === "TIMED_OUT") $("rcRoomStatus").textContent = t("जडान हुन सकेन");
       });
     await loadMessages();
   }
@@ -238,10 +252,10 @@
     const room = activeRoom; const version=++messageLoadVersion;
     const { data, error } = await client.from("rock_connect_messages").select("id,room_id,sender_id,body,media_path,media_type,reply_to,created_at")
       .eq("room_id", room.id).order("created_at",{ascending:false}).limit(100);
-    if (error) { say("rcRoomStatus", "सन्देश खोल्न सकेन: " + error.message); return; }
+    if (error) { say("rcRoomStatus", t("सन्देश खोल्न सकेन: ") + error.message); return; }
     if(activeRoom?.id!==room.id || version!==messageLoadVersion || !session?.user)return;
     const messages = (data || []).reverse(), host = $("rcMessages");
-    if (!messages.length) { host.innerHTML = '<div class="rc-message">यो च्याट खाली छ। पहिलो सन्देश पठाउनुहोस्।</div>'; return; }
+    if (!messages.length) { const empty=document.createElement("div");empty.className="rc-message";empty.textContent=t("यो च्याट खाली छ। पहिलो सन्देश पठाउनुहोस्।");host.replaceChildren(empty); return; }
     const ids = messages.map((m) => m.id);
     const [{data: reactions},{data: receipts},{data: profiles}] = await Promise.all([
       client.from("rock_connect_reactions").select("message_id,user_id,emoji").in("message_id",ids),
@@ -277,12 +291,12 @@
         const b=document.createElement("button"); b.type="button"; b.className="secondary"; b.textContent=emoji+(count?" "+count:"");
         b.onclick=()=>toggleReaction(message.id,emoji); actions.append(b);
       }
-      const reply=document.createElement("button"); reply.type="button"; reply.className="secondary"; reply.textContent="जवाफ";
-      reply.onclick=()=>{ replyTo=message.id; say("rcReplyStatus","यो सन्देशको जवाफ लेख्नुहोस्।"); $("rcMessage").focus(); };
+      const reply=document.createElement("button"); reply.type="button"; reply.className="secondary"; reply.textContent=t("जवाफ");
+      reply.onclick=()=>{ replyTo=message.id; say("rcReplyStatus",t("यो सन्देशको जवाफ लेख्नुहोस्।")); $("rcMessage").focus(); };
       actions.append(reply);
       if (message.sender_id===session.user.id) {
         const read=(receipts||[]).some((r)=>r.message_id===message.id&&r.user_id!==session.user.id);
-        const seen=document.createElement("span"); seen.className="rc-status"; seen.textContent=read?"पढियो":"पठाइयो"; actions.append(seen);
+        const seen=document.createElement("span"); seen.className="rc-status"; seen.textContent=read?t("पढियो"):t("पठाइयो"); actions.append(seen);
       }
       card.append(actions); host.append(card);
     }
@@ -306,8 +320,8 @@
     if (!activeRoom||!session?.user||sending) return;
     const targetRoom=activeRoom.id, sender=session.user.id, targetReply=replyTo;
     const body=overrideBody===undefined?$("rcMessage").value.trim():overrideBody; if(!body&&!file)return;
-    if(file&&!validAttachment(file)) { say("rcChatStatus","२५ MB सम्मको फोटो वा भिडियो छान्नुहोस्।"); return; }
-    sending=true; $("rcSend").disabled=true; say("rcChatStatus",file?"मिडिया राखिँदै छ…":"सन्देश पठाइँदै छ…");
+    if(file&&!validAttachment(file)) { say("rcChatStatus",t("२५ MB सम्मको फोटो वा भिडियो छान्नुहोस्।")); return; }
+    sending=true; $("rcSend").disabled=true; say("rcChatStatus",file?t("मिडिया राखिँदै छ…"):t("सन्देश पठाइँदै छ…"));
     let path=null;
     try {
       let mediaType=null;
@@ -319,16 +333,16 @@
       }
       const {error}=await client.from("rock_connect_messages").insert({room_id:targetRoom,sender_id:sender,body,media_path:path,media_type:mediaType,reply_to:targetReply});
       if(error){if(path)await client.storage.from("rock-connect-media").remove([path]);throw error;}
-      if(overrideBody===undefined && activeRoom?.id===targetRoom){$("rcMessage").value="";clearAttachment();} replyTo=null; say("rcReplyStatus",""); say("rcChatStatus","सन्देश सुरक्षित भयो।"); await loadMessages();
-    } catch(error){say("rcChatStatus",error?.message||"सन्देश पठाउन सकेन।");}
+      if(overrideBody===undefined && activeRoom?.id===targetRoom){$("rcMessage").value="";clearAttachment();} replyTo=null; say("rcReplyStatus",""); say("rcChatStatus",t("सन्देश सुरक्षित भयो।")); await loadMessages();
+    } catch(error){say("rcChatStatus",error?.message||t("सन्देश पठाउन सकेन।"));}
     finally{sending=false;$("rcSend").disabled=false;}
   }
 
   let recordingPending=false;
   $("rcRecord").onclick=async()=>{
-    if(recorder?.state==="recording"){recorder.stop();$("rcRecord").textContent="अडियो तयार हुँदैछ…";return;}
+    if(recorder?.state==="recording"){recorder.stop();$("rcRecord").textContent=t("अडियो तयार हुँदैछ…");return;}
     if(recordingPending||recorder||sending)return;
-    if(!navigator.mediaDevices?.getUserMedia||!window.MediaRecorder){say("rcChatStatus","यो उपकरणमा अडियो रेकर्ड गर्न मिल्दैन।");return;}
+    if(!navigator.mediaDevices?.getUserMedia||!window.MediaRecorder){say("rcChatStatus",t("यो उपकरणमा अडियो रेकर्ड गर्न मिल्दैन।"));return;}
     const recordingUser=session?.user?.id,recordingRoom=activeRoom?.id;if(!recordingUser||!recordingRoom)return;
     recordingPending=true;let stream=null;
     try{
@@ -339,28 +353,28 @@
       currentRecorder.onstop=async()=>{
         const type=currentRecorder.mimeType||"audio/webm",file=new File([new Blob(chunks,{type})],"voice-note.webm",{type});
         stream.getTracks().forEach(track=>track.stop());if(recorder===currentRecorder){recorder=null;recorderStream=null;}
-        $("rcRecord").textContent="🎙️ आवाज रेकर्ड";
+        $("rcRecord").textContent=t("🎙️ आवाज रेकर्ड");
         if(session?.user?.id===recordingUser)await sendVoice(file,recordingRoom,recordingUser);
       };
-      currentRecorder.start();$("rcRecord").textContent="⏹️ रेकर्डिङ रोक्नुहोस्";say("rcChatStatus","आवाज रेकर्ड हुँदैछ…");
-    }catch(error){if(stream)stream.getTracks().forEach(track=>track.stop());recorder=null;recorderStream=null;say("rcChatStatus","माइक अनुमति चाहिन्छ: "+(error?.message||""));}
+      currentRecorder.start();$("rcRecord").textContent=t("⏹️ रेकर्डिङ रोक्नुहोस्");say("rcChatStatus",t("आवाज रेकर्ड हुँदैछ…"));
+    }catch(error){if(stream)stream.getTracks().forEach(track=>track.stop());recorder=null;recorderStream=null;say("rcChatStatus",t("माइक अनुमति चाहिन्छ: ")+(error?.message||""));}
     finally{recordingPending=false;}
   };
   async function sendVoice(file, roomId=activeRoom?.id, senderId=session?.user?.id){
-    if(!roomId||!senderId||session?.user?.id!==senderId||sending)return; if(file.size>25*1024*1024){say("rcChatStatus","आवाज बढीमा २५ MB हुनुपर्छ।");return;} sending=true; $("rcSend").disabled=true; say("rcChatStatus","आवाज पठाइँदै छ…");
+    if(!roomId||!senderId||session?.user?.id!==senderId||sending)return; if(file.size>25*1024*1024){say("rcChatStatus",t("आवाज बढीमा २५ MB हुनुपर्छ।"));return;} sending=true; $("rcSend").disabled=true; say("rcChatStatus",t("आवाज पठाइँदै छ…"));
     const path=roomId+"/"+crypto.randomUUID()+".webm";
     try{
       const {error:uploadError}=await client.storage.from("rock-connect-media").upload(path,file,{contentType:file.type.split(";")[0],upsert:false});if(uploadError)throw uploadError;
       const {error}=await client.from("rock_connect_messages").insert({room_id:roomId,sender_id:senderId,body:"",media_path:path,media_type:"audio"});
-      if(error){await client.storage.from("rock-connect-media").remove([path]);throw error;} say("rcChatStatus","आवाज सन्देश पठाइयो।");await loadMessages();
-    }catch(error){say("rcChatStatus",error?.message||"आवाज पठाउन सकेन।");}finally{sending=false;$("rcSend").disabled=false;}
+      if(error){await client.storage.from("rock-connect-media").remove([path]);throw error;} say("rcChatStatus",t("आवाज सन्देश पठाइयो।"));await loadMessages();
+    }catch(error){say("rcChatStatus",error?.message||t("आवाज पठाउन सकेन।"));}finally{sending=false;$("rcSend").disabled=false;}
   }
 
   const STICKERS=[{id:"gg",emoji:"🎮",label:"GG!"},{id:"victory",emoji:"🏆",label:"VICTORY"},{id:"fire",emoji:"🔥",label:"ON FIRE"},{id:"nice",emoji:"👏",label:"NICE!"},{id:"love",emoji:"💙",label:"ROCK LOVE"},{id:"hello",emoji:"👋",label:"HELLO"},{id:"ready",emoji:"⚡",label:"READY!"},{id:"thanks",emoji:"🙏",label:"THANK YOU"}];
   function stickerNode(sticker){const box=document.createElement("div");box.className="rc-sticker";box.setAttribute("role","img");box.setAttribute("aria-label",sticker.label+" sticker");const icon=document.createElement("span");icon.textContent=sticker.emoji;const label=document.createElement("strong");label.textContent=sticker.label;box.append(icon,label);return box;}
   function validAttachment(file){return file.size>0&&file.size<=25*1024*1024&&new Set(["image/jpeg","image/png","image/webp","image/gif","video/mp4","video/webm","video/quicktime"]).has(file.type);}
   function clearAttachment(){pendingFile=null;if(previewUrl)URL.revokeObjectURL(previewUrl);previewUrl=null;$("rcMedia").value="";$("rcAttachment").replaceChildren();$("rcAttachment").hidden=true;}
-  function previewAttachment(file){clearAttachment();if(!validAttachment(file)){say("rcChatStatus","२५ MB सम्मको फोटो वा भिडियो छान्नुहोस्।");return;}pendingFile=file;previewUrl=URL.createObjectURL(file);const preview=document.createElement(file.type.startsWith("video/")?"video":"img");preview.src=previewUrl;preview.alt="Attachment preview";const info=document.createElement("span");info.textContent=file.name+" · "+(file.size/1024/1024).toFixed(1)+" MB";const cancel=document.createElement("button");cancel.type="button";cancel.className="secondary";cancel.textContent="✕";cancel.setAttribute("aria-label","Remove attachment");cancel.onclick=clearAttachment;$("rcAttachment").append(preview,info,cancel);$("rcAttachment").hidden=false;say("rcChatStatus","फोटो/भिडियो तयार छ। पठाउनुहोस् थिच्नुहोस्।");}
+  function previewAttachment(file){clearAttachment();if(!validAttachment(file)){say("rcChatStatus",t("२५ MB सम्मको फोटो वा भिडियो छान्नुहोस्।"));return;}pendingFile=file;previewUrl=URL.createObjectURL(file);const preview=document.createElement(file.type.startsWith("video/")?"video":"img");preview.src=previewUrl;preview.alt=t("Attachment preview");const info=document.createElement("span");info.textContent=file.name+" · "+(file.size/1024/1024).toFixed(1)+" MB";const cancel=document.createElement("button");cancel.type="button";cancel.className="secondary";cancel.textContent="✕";cancel.setAttribute("aria-label",t("Remove attachment"));cancel.onclick=clearAttachment;$("rcAttachment").append(preview,info,cancel);$("rcAttachment").hidden=false;say("rcChatStatus",t("फोटो/भिडियो तयार छ। पठाउनुहोस् थिच्नुहोस्।"));}
   function togglePicker(id,button){const box=$(id);box.hidden=!box.hidden;$(button).setAttribute("aria-expanded",String(!box.hidden));}
   $("rcEmojiToggle").onclick=()=>togglePicker("rcEmojiPicker","rcEmojiToggle");
   $("rcStickerToggle").onclick=()=>togglePicker("rcStickerPicker","rcStickerToggle");
@@ -370,34 +384,35 @@
   const incoming=document.createElement("section");incoming.id="rcIncoming";incoming.hidden=true;incoming.setAttribute("role","dialog");incoming.setAttribute("aria-modal","false");incoming.setAttribute("aria-labelledby","rcIncomingTitle");incoming.innerHTML='<h3 id="rcIncomingTitle">Incoming call</h3><p id="rcIncomingName"></p><button type="button" id="rcAcceptCall">Accept / उठाउनुहोस्</button><button type="button" class="rc-decline" id="rcDeclineCall">Decline / अस्वीकार</button>';document.body.append(incoming);
   function stopRing(){if(ringTimer)clearInterval(ringTimer);ringTimer=null;}
   function ring(){if(!soundContext||soundContext.state!=="running")return;try{const oscillator=soundContext.createOscillator(),gain=soundContext.createGain();oscillator.type="sine";oscillator.frequency.value=660;gain.gain.setValueAtTime(.035,soundContext.currentTime);gain.gain.exponentialRampToValueAtTime(.001,soundContext.currentTime+.25);oscillator.connect(gain);gain.connect(soundContext.destination);oscillator.start();oscillator.stop(soundContext.currentTime+.3);}catch(_){}}
-  $("rcCallSound").onclick=async()=>{try{if(soundContext){stopRing();await soundContext.close();soundContext=null;$("rcCallSound").textContent="🔊 Call sound: off";}else{const Audio=window.AudioContext||window.webkitAudioContext;if(!Audio)throw new Error("Sound is unavailable");soundContext=new Audio();await soundContext.resume();ring();$("rcCallSound").textContent="🔔 Call sound: on";}}catch(error){say("rcChatStatus",error.message);}};
+  $("rcCallSound").onclick=async()=>{try{if(soundContext){stopRing();await soundContext.close();soundContext=null;$("rcCallSound").textContent=t("🔊 Call sound: off");}else{const Audio=window.AudioContext||window.webkitAudioContext;if(!Audio)throw new Error(t("Sound is unavailable"));soundContext=new Audio();await soundContext.resume();ring();$("rcCallSound").textContent=t("🔔 Call sound: on");}}catch(error){say("rcChatStatus",error.message);}};
   function hideIncoming(){incoming.hidden=true;incomingCall=null;if(incomingTimer)clearTimeout(incomingTimer);incomingTimer=null;stopRing();}
-  function offerCall(row){if(!session?.user||row.initiated_by===session.user.id||row.status!=="ringing"||activeCall||callRecord||callStarting)return;const age=Date.now()-Date.parse(row.created_at);if(age>60000||Date.parse(row.expires_at)<Date.now())return;incomingCall=row;$("rcIncomingTitle").textContent=row.mode==="audio"?"📞 Incoming audio call":"📹 Incoming video call";$("rcIncomingName").textContent=peopleNames.get(row.initiated_by)||"ROCK CONNECT member";incoming.hidden=false;ring();stopRing();ringTimer=setInterval(ring,2000);if(incomingTimer)clearTimeout(incomingTimer);incomingTimer=setTimeout(()=>{hideIncoming();loadCallHistory();},Math.max(0,60000-age));}
+  function offerCall(row){if(!session?.user||row.initiated_by===session.user.id||row.status!=="ringing"||activeCall||callRecord||callStarting)return;const age=Date.now()-Date.parse(row.created_at);if(age>60000||Date.parse(row.expires_at)<Date.now())return;incomingCall=row;$("rcIncomingTitle").textContent=row.mode==="audio"?t("📞 Incoming audio call"):t("📹 Incoming video call");$("rcIncomingName").textContent=peopleNames.get(row.initiated_by)||"ROCK CONNECT member";incoming.hidden=false;ring();stopRing();ringTimer=setInterval(ring,2000);if(incomingTimer)clearTimeout(incomingTimer);incomingTimer=setTimeout(()=>{hideIncoming();loadCallHistory();},Math.max(0,60000-age));}
   function watchCalls(){if(!session?.user)return;if(callChannel)client.removeChannel(callChannel);callChannel=client.channel("rock-connect-call-events-"+session.user.id).on("postgres_changes",{event:"INSERT",schema:"public",table:"rock_connect_calls"},event=>{offerCall(event.new);loadCallHistory();}).on("postgres_changes",{event:"UPDATE",schema:"public",table:"rock_connect_calls"},event=>{if(event.new.status==="ended"){if(incomingCall?.id===event.new.id)hideIncoming();if(callRecord?.id===event.new.id)endCall(false);}loadCallHistory();}).on("postgres_changes",{event:"INSERT",schema:"public",table:"rock_connect_members",filter:"user_id=eq."+session.user.id},()=>loadRooms()).subscribe();
     client.from("rock_connect_calls").select("id,room_id,initiated_by,mode,status,created_at,expires_at").eq("status","ringing").neq("initiated_by",session.user.id).gte("created_at",new Date(Date.now()-60000).toISOString()).order("created_at",{ascending:false}).limit(1).then(({data})=>{if(data?.[0])offerCall(data[0]);});
   }
-  async function loadCallHistory(){if(!session?.user)return;const {data,error}=await client.from("rock_connect_calls").select("id,room_id,initiated_by,mode,status,created_at").order("created_at",{ascending:false}).limit(12);if(error){say("rcCallHistory","Call history is unavailable.");return;}const host=$("rcCallHistory");host.replaceChildren();for(const item of data||[]){const line=document.createElement("p");const missed=item.status==="ringing"&&Date.now()-Date.parse(item.created_at)>60000;line.textContent=(item.mode==="audio"?"📞 ":"📹 ")+(missed?"Missed / छुटेको":item.status==="accepted"?"In progress":item.status==="ended"?"Ended":"Ringing")+" · "+(roomNames.get(item.room_id)||"Chat")+" · "+new Date(item.created_at).toLocaleTimeString();host.append(line);}if(!data?.length)host.textContent="No recent calls / हाल कुनै कल छैन।";}
+  async function loadCallHistory(){if(!session?.user)return;const {data,error}=await client.from("rock_connect_calls").select("id,room_id,initiated_by,mode,status,created_at").order("created_at",{ascending:false}).limit(12);if(error){say("rcCallHistory",t("Call history is unavailable."));return;}const host=$("rcCallHistory");host.replaceChildren();for(const item of data||[]){const line=document.createElement("p");const missed=item.status==="ringing"&&Date.now()-Date.parse(item.created_at)>60000;line.textContent=(item.mode==="audio"?"📞 ":"📹 ")+(missed?t("Missed / छुटेको"):item.status==="accepted"?t("In progress"):item.status==="ended"?t("Ended"):t("Ringing"))+" · "+(roomNames.get(item.room_id)||t("Chat"))+" · "+new Date(item.created_at).toLocaleTimeString();host.append(line);}if(!data?.length)host.textContent=t("No recent calls / हाल कुनै कल छैन।");}
   setInterval(()=>{if(session?.user&&location.hash==="#connect")loadCallHistory();},30000);
   $("rcDeclineCall").onclick=async()=>{const row=incomingCall;hideIncoming();if(row&&roomsById.get(row.room_id)?.kind==="dm")await client.from("rock_connect_calls").update({status:"ended"}).eq("id",row.id);};
-  $("rcAcceptCall").onclick=async()=>{const row=incomingCall;if(!row||!session?.user)return;hideIncoming();try{const {data:rooms,error:roomError}=await client.from("rock_connect_rooms").select("id,title,kind").eq("id",row.room_id).maybeSingle();if(roomError||!rooms)throw new Error("Chat is no longer available");const {data,error}=await client.from("rock_connect_calls").update({status:"accepted"}).eq("id",row.id).in("status",["ringing","accepted"]).gt("expires_at",new Date().toISOString()).select();if(error||!data?.length)throw new Error("This call has ended");roomsById.set(rooms.id,rooms);location.hash="connect";await openRoom(rooms);await joinCall({...row,status:"accepted"});}catch(error){say("rcChatStatus",error.message);}};
-  async function beginCall(mode){if(!activeRoom||!session?.user||activeCall||callRecord||callStarting)return;const targetRoom=activeRoom.id,caller=session.user.id;callStarting=true;say("rcChatStatus","Starting call… / कल सुरु हुँदैछ…");try{const {data:existing,error:lookupError}=await client.from("rock_connect_calls").select("id,room_id,initiated_by,mode,status,created_at,expires_at").eq("room_id",targetRoom).eq("status","accepted").gt("expires_at",new Date().toISOString()).order("created_at",{ascending:false}).limit(1);if(lookupError)throw lookupError;if(session?.user?.id!==caller)return;if(existing?.[0]){await joinCall(existing[0]);return;}const {data,error}=await client.from("rock_connect_calls").insert({room_id:targetRoom,initiated_by:caller,mode}).select().single();if(error)throw error;if(session?.user?.id!==caller)return;await joinCall(data);}catch(error){say("rcChatStatus",error.message||"Call service is unavailable");}finally{callStarting=false;}}
+  $("rcAcceptCall").onclick=async()=>{const row=incomingCall;if(!row||!session?.user)return;hideIncoming();try{const {data:rooms,error:roomError}=await client.from("rock_connect_rooms").select("id,title,kind").eq("id",row.room_id).maybeSingle();if(roomError||!rooms)throw new Error(t("Chat is no longer available"));const {data,error}=await client.from("rock_connect_calls").update({status:"accepted"}).eq("id",row.id).in("status",["ringing","accepted"]).gt("expires_at",new Date().toISOString()).select();if(error||!data?.length)throw new Error(t("This call has ended"));roomsById.set(rooms.id,rooms);location.hash="connect";await openRoom(rooms);await joinCall({...row,status:"accepted"});}catch(error){say("rcChatStatus",error.message);}};
+  async function beginCall(mode){if(!activeRoom||!session?.user||activeCall||callRecord||callStarting)return;const targetRoom=activeRoom.id,caller=session.user.id;callStarting=true;say("rcChatStatus",t("Starting call… / कल सुरु हुँदैछ…"));try{const {data:existing,error:lookupError}=await client.from("rock_connect_calls").select("id,room_id,initiated_by,mode,status,created_at,expires_at").eq("room_id",targetRoom).eq("status","accepted").gt("expires_at",new Date().toISOString()).order("created_at",{ascending:false}).limit(1);if(lookupError)throw lookupError;if(session?.user?.id!==caller)return;if(existing?.[0]){await joinCall(existing[0]);return;}const {data,error}=await client.from("rock_connect_calls").insert({room_id:targetRoom,initiated_by:caller,mode}).select().single();if(error)throw error;if(session?.user?.id!==caller)return;await joinCall(data);}catch(error){say("rcChatStatus",error.message||t("Call service is unavailable"));}finally{callStarting=false;}}
   $("rcCallButton").onclick=()=>beginCall("video");$("rcAudioCall").onclick=()=>beginCall("audio");$("rcCallClose").classList.add("rc-hangup");$("rcCallClose").onclick=()=>endCall();
-  $("rcMic").onclick=async()=>{if(!activeCall)return;try{const on=!activeCall.localParticipant.isMicrophoneEnabled;await activeCall.localParticipant.setMicrophoneEnabled(on);$("rcMic").textContent=on?"🎙️ Mute":"🎙️ Unmute";}catch(error){say("rcCallStatus",error.message);}};
-  $("rcCamera").onclick=async()=>{if(!activeCall)return;try{const on=!activeCall.localParticipant.isCameraEnabled;await activeCall.localParticipant.setCameraEnabled(on);$("rcCamera").textContent=on?"📹 Camera off":"📹 Camera on";}catch(error){say("rcCallStatus",error.message);}};
+  $("rcMic").onclick=async()=>{if(!activeCall)return;try{const on=!activeCall.localParticipant.isMicrophoneEnabled;await activeCall.localParticipant.setMicrophoneEnabled(on);$("rcMic").textContent=on?t("🎙️ Mute"):t("🎙️ Unmute");}catch(error){say("rcCallStatus",error.message);}};
+  $("rcCamera").onclick=async()=>{if(!activeCall)return;try{const on=!activeCall.localParticipant.isCameraEnabled;await activeCall.localParticipant.setCameraEnabled(on);$("rcCamera").textContent=on?t("📹 Camera off"):t("📹 Camera on");}catch(error){say("rcCallStatus",error.message);}};
   $("rcScreen").onclick=async()=>{if(!activeCall)return;try{await activeCall.localParticipant.setScreenShareEnabled(!activeCall.localParticipant.isScreenShareEnabled);}catch(error){say("rcCallStatus","Screen share: "+error.message);}};
   let callGeneration=0, callStarting=false;
-  async function joinCall(record){if(activeCall||callRecord)return;const generation=++callGeneration;callRecord=record;$("rcCallPanel").classList.add("open");say("rcCallStatus","Connecting… / जडान हुँदैछ…");const sdk=window.LivekitClient;if(!sdk?.Room){say("rcCallStatus","Call service did not load. Refresh and try again.");await endCall();return;}
-    try{const {data,error}=await client.functions.invoke("rock-connect-token",{body:{room_id:record.room_id,call_id:record.id}});if(error||!data?.token||!data?.server_url)throw new Error(data?.error||error?.message||"Call service is unavailable");if(generation!==callGeneration||!session?.user)return;const room=new sdk.Room({adaptiveStream:true,dynacast:true});activeCall=room;const stage=$("rcCallStage");stage.replaceChildren();const attach=(track,person)=>{const el=track.attach();el.dataset.identity=person.identity;el.dataset.track=track.sid||"local";if(person===room.localParticipant)el.muted=true;stage.append(el);};
+  async function joinCall(record){if(activeCall||callRecord)return;const generation=++callGeneration;callRecord=record;$("rcCallPanel").classList.add("open");say("rcCallStatus",t("Connecting… / जडान हुँदैछ…"));const sdk=window.LivekitClient;if(!sdk?.Room){say("rcCallStatus",t("Call service did not load. Refresh and try again."));await endCall();return;}
+    try{const {data,error}=await client.functions.invoke("rock-connect-token",{body:{room_id:record.room_id,call_id:record.id}});if(error||!data?.token||!data?.server_url)throw new Error(data?.error||error?.message||t("Call service is unavailable"));if(generation!==callGeneration||!session?.user)return;const room=new sdk.Room({adaptiveStream:true,dynacast:true});activeCall=room;const stage=$("rcCallStage");stage.replaceChildren();const attach=(track,person)=>{const el=track.attach();el.dataset.identity=person.identity;el.dataset.track=track.sid||"local";if(person===room.localParticipant)el.muted=true;stage.append(el);};
       room.on(sdk.RoomEvent.TrackSubscribed,(track,_publication,person)=>attach(track,person));room.on(sdk.RoomEvent.TrackUnsubscribed,track=>track.detach().forEach(el=>el.remove()));
       room.on(sdk.RoomEvent.LocalTrackPublished,publication=>{if(publication.track?.kind==="video")attach(publication.track,room.localParticipant);});room.on(sdk.RoomEvent.LocalTrackUnpublished,publication=>{if(publication.track)publication.track.detach().forEach(el=>el.remove());});
       room.on(sdk.RoomEvent.Disconnected,()=>{if(activeCall===room){activeCall=null;callRecord=null;stage.replaceChildren();$("rcCallPanel").classList.remove("open");}});
-      await room.connect(data.server_url,data.token);if(generation!==callGeneration||!session?.user){await room.disconnect();return;}await room.localParticipant.setMicrophoneEnabled(true);if(generation!==callGeneration||!session?.user){await room.disconnect();return;}await room.localParticipant.setCameraEnabled(record.mode==="video");if(generation!==callGeneration||!session?.user){await room.disconnect();return;}$("rcCamera").textContent=record.mode==="video"?"📹 Camera off":"📹 Camera on";$("rcMic").textContent="🎙️ Mute";
+      await room.connect(data.server_url,data.token);if(generation!==callGeneration||!session?.user){await room.disconnect();return;}await room.localParticipant.setMicrophoneEnabled(true);if(generation!==callGeneration||!session?.user){await room.disconnect();return;}await room.localParticipant.setCameraEnabled(record.mode==="video");if(generation!==callGeneration||!session?.user){await room.disconnect();return;}$("rcCamera").textContent=record.mode==="video"?t("📹 Camera off"):t("📹 Camera on");$("rcMic").textContent=t("🎙️ Mute");
       for(const person of room.remoteParticipants.values())for(const publication of person.trackPublications.values())if(publication.track)attach(publication.track,person);
-      say("rcCallStatus",record.status==="ringing"?"Calling room members… / सदस्यलाई कल हुँदैछ…":"Connected / जडान भयो।");
-    }catch(error){const message=error.message||"Could not connect";if(generation===callGeneration){await endCall();say("rcChatStatus",message);}}
+      say("rcCallStatus",record.status==="ringing"?t("Calling room members… / सदस्यलाई कल हुँदैछ…"):t("Connected / जडान भयो।"));
+    }catch(error){const message=error.message||t("Could not connect");if(generation===callGeneration){await endCall();say("rcChatStatus",message);}}
   }
-  async function endCall(markEnded=true){callGeneration++;const room=activeCall,record=callRecord;activeCall=null;callRecord=null;if(room)await room.disconnect();$("rcCallStage").replaceChildren();$("rcCallPanel").classList.remove("open");if(markEnded&&record&&session?.user&&(record.initiated_by===session.user.id||roomsById.get(record.room_id)?.kind==="dm")){const {error}=await client.from("rock_connect_calls").update({status:"ended"}).eq("id",record.id);if(error)say("rcChatStatus","Call closed. History will update when connected.");}loadCallHistory();}
+  async function endCall(markEnded=true){callGeneration++;const room=activeCall,record=callRecord;activeCall=null;callRecord=null;if(room)await room.disconnect();$("rcCallStage").replaceChildren();$("rcCallPanel").classList.remove("open");if(markEnded&&record&&session?.user&&(record.initiated_by===session.user.id||roomsById.get(record.room_id)?.kind==="dm")){const {error}=await client.from("rock_connect_calls").update({status:"ended"}).eq("id",record.id);if(error)say("rcChatStatus",t("Call closed. History will update when connected."));}loadCallHistory();}
 
+  applyConnectLanguage();
   client.auth.onAuthStateChange((_event,next)=>setSignedIn(next));
   client.auth.getSession().then(({data})=>setSignedIn(data?.session||null));
 })();
