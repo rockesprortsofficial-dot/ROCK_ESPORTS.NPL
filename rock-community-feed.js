@@ -153,7 +153,12 @@
   "पोस्ट राखिँदै छ…": "Publishing your post…",
   "पोस्ट सफलतापूर्वक राखियो।": "Post published successfully.",
   "पोस्ट राख्न सकिएन।": "Unable to publish the post.",
-  "लगइन अहिले उपलब्ध छैन। सार्वजनिक पोस्ट हेर्न सक्नुहुन्छ।": "Sign in is unavailable right now. You can still browse public posts."
+  "लगइन अहिले उपलब्ध छैन। सार्वजनिक पोस्ट हेर्न सक्नुहुन्छ।": "Sign in is unavailable right now. You can still browse public posts.",
+  "फोटो वा भिडियो बढीमा ५०० MB": "Photo or video up to 500 MB",
+  "५०० MB सम्मको समर्थित फोटो वा भिडियो छान्नुहोस्।": "Choose a supported photo or video up to 500 MB.",
+  "मिडिया खोल्न सकिएन। फेरि प्रयास गर्नुहोस्।": "Unable to load media. Please try again.",
+  "अपलोड असफल भयो। फेरि प्रयास गर्नुहोस्।": "Upload failed. Please try again.",
+  "अपलोड": "Uploading"
 };
   let language = "ne";
   try { language = localStorage.getItem("rockCommunityLanguage") === "en" ? "en" : "ne"; } catch (_) {}
@@ -188,7 +193,7 @@
         <form id="rockCommunityPostForm">
           <textarea id="rockCommunityPostText" maxlength="2000" placeholder="तपाईं के बाँड्न चाहनुहुन्छ?"></textarea>
           <input id="rockCommunityMedia" type="file" accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/webm,video/quicktime">
-          <div class="rock-community-meta">फोटो वा भिडियो बढीमा २५ MB</div>
+          <div id="rockCommunityMediaLimit" class="rock-community-meta">फोटो वा भिडियो बढीमा २५ MB</div>
           <button type="submit">पोस्ट गर्नुहोस्</button>
         </form>
         <p id="rockCommunityPostStatus" class="rock-community-status" role="status"></p>
@@ -234,6 +239,7 @@
       button.classList.toggle("secondary", language !== value);
     }
     document.getElementById("rockCommunityAuthSubmit").textContent = t(mode === "signup" ? "खाता खोल्नुहोस्" : "लगइन");
+    document.getElementById("rockCommunityMediaLimit").textContent = t(b2Enabled ? "फोटो वा भिडियो बढीमा ५०० MB" : "फोटो वा भिडियो बढीमा २५ MB");
   }
   function chooseLanguage(next) {
     language = next;
@@ -253,6 +259,41 @@
   const authStatus = document.getElementById("rockCommunityAuthStatus");
   const postStatus = document.getElementById("rockCommunityPostStatus");
   const postHost = document.getElementById("rockCommunityPosts");
+  let b2Enabled = false;
+  let maxMediaBytes = 25 * 1024 * 1024;
+  const mediaLinks = new Map();
+  async function mediaCall(body) {
+    const { data, error } = await client.functions.invoke("rock-community-media", { body });
+    if (error || data?.error) throw new Error(data?.error || "Media service is unavailable. Please try again.");
+    return data;
+  }
+  const mediaConfiguration = (async () => {
+    try {
+      const config = await mediaCall({ action: "config" });
+      if (config.enabled && config.maxBytes === 500000000) { b2Enabled = true; maxMediaBytes = config.maxBytes; }
+    } catch (_) {}
+    applyLanguage();
+  })();
+  async function privateMediaUrl(postId) {
+    const cached = mediaLinks.get(postId);
+    if (cached && cached.expires > Date.now()) return cached.url;
+    const result = await mediaCall({action:"view", postId});
+    const address = new URL(result.url);
+    if (address.protocol !== "https:" || !address.hostname.endsWith(".backblazeb2.com")) throw new Error("Invalid media URL");
+    mediaLinks.set(postId,{url:result.url,expires:Date.now()+45*60*1000});
+    return result.url;
+  }
+  function uploadDirect(prepared, file) {
+    return new Promise((resolve,reject) => {
+      const request = new XMLHttpRequest();
+      request.open("PUT", prepared.url); request.timeout = 60*60*1000;
+      for (const [name,value] of Object.entries(prepared.headers)) request.setRequestHeader(name,value);
+      request.upload.onprogress = event => { if(event.lengthComputable) postStatus.textContent = t("अपलोड") + " · " + Math.round(event.loaded/event.total*100) + "%"; };
+      request.onload = () => request.status >= 200 && request.status < 300 ? resolve() : reject(new Error(t("अपलोड असफल भयो। फेरि प्रयास गर्नुहोस्।")));
+      request.onerror = request.ontimeout = () => reject(new Error(t("अपलोड असफल भयो। फेरि प्रयास गर्नुहोस्।")));
+      request.send(file);
+    });
+  }
   const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" })[c]);
 
   function setMode(next) {
@@ -347,9 +388,22 @@
     meta.append(author, date); card.append(meta);
     if (post.content) { const body = document.createElement("p"); body.textContent = post.content; card.append(body); }
     if (post.media_path) {
-      const { data } = client.storage.from("rock-community-media").getPublicUrl(post.media_path);
-      if (post.media_type === "video") { const video = document.createElement("video"); video.src = data.publicUrl; video.controls = true; video.playsInline = true; video.preload = "metadata"; card.append(video); }
-      else { const image = document.createElement("img"); image.src = data.publicUrl; image.alt = t("खेलाडीले साझा गरेको फोटो"); image.loading = "lazy"; card.append(image); }
+      const isPrivate = post.media_path.startsWith("b2:");
+      const media = document.createElement(post.media_type === "video" ? "video" : "img");
+      if (post.media_type === "video") { media.controls = true; media.playsInline = true; media.preload = "metadata"; }
+      else { media.alt = t("खेलाडीले साझा गरेको फोटो"); media.loading = "lazy"; media.referrerPolicy = "no-referrer"; }
+      card.append(media);
+      if (isPrivate) {
+        privateMediaUrl(post.id).then(address => { media.src = address; }).catch(() => {
+          const note=document.createElement("p");note.textContent=t("मिडिया खोल्न सकिएन। फेरि प्रयास गर्नुहोस्।");media.replaceWith(note);
+        });
+        media.addEventListener("error", () => {
+          if(media.dataset.refreshed)return; media.dataset.refreshed="true"; mediaLinks.delete(post.id);
+          privateMediaUrl(post.id).then(address=>{media.src=address;}).catch(()=>{});
+        });
+      } else {
+        const {data}=client.storage.from("rock-community-media").getPublicUrl(post.media_path); media.src=data.publicUrl;
+      }
     }
     const actions = document.createElement("div"); actions.className = "rock-community-actions";
     const like = document.createElement("button"); like.type = "button"; like.className = isLiked ? "" : "secondary"; like.textContent = `👍 ${t("मन पराएँ")} · ${post.like_count || 0}`;
@@ -394,6 +448,11 @@
 
   async function removePost(post) {
     if (!window.confirm(t("यो पोस्ट हटाउने हो?"))) return;
+    if (post.media_path?.startsWith("b2:")) {
+      try { await mediaCall({action:"remove",postId:post.id}); mediaLinks.delete(post.id); await loadFeed(); }
+      catch(error) { authStatus.textContent=error.message; }
+      return;
+    }
     const { error } = await client.from("rock_community_posts").delete().eq("id", post.id);
     if (error) { authStatus.textContent = error.message; return; }
     if (post.media_path) await client.storage.from("rock-community-media").remove([post.media_path]);
@@ -413,12 +472,23 @@
     if (!session?.user) { postStatus.textContent = t("पोस्ट गर्न लगइन गर्नुहोस्।"); return; }
     const content = document.getElementById("rockCommunityPostText").value.trim();
     const file = document.getElementById("rockCommunityMedia").files?.[0] || null;
-    const submit = event.currentTarget.querySelector("button[type=submit]");
+    const postForm = event.currentTarget;
+    const submit = postForm.querySelector("button[type=submit]");
+    await mediaConfiguration;
     if (!content && !file) { postStatus.textContent = t("लेखाइ वा फोटो/भिडियो राख्नुहोस्।"); return; }
-    if (file && (!/^image\/(jpeg|png|webp|gif)$|^video\/(mp4|webm|quicktime)$/.test(file.type) || file.size > 25 * 1024 * 1024)) { postStatus.textContent = t("समर्थित फोटो वा २५ MB सम्मको भिडियो छान्नुहोस्।"); return; }
+    if (file && (!/^image\/(jpeg|png|webp|gif)$|^video\/(mp4|webm|quicktime)$/.test(file.type) || file.size > maxMediaBytes)) { postStatus.textContent = t(b2Enabled ? "५०० MB सम्मको समर्थित फोटो वा भिडियो छान्नुहोस्।" : "समर्थित फोटो वा २५ MB सम्मको भिडियो छान्नुहोस्।"); return; }
     submit.disabled = true; postStatus.textContent = t("पोस्ट राखिँदै छ…");
     let mediaPath = null, mediaType = null;
+    let pendingB2Session = null;
     try {
+      if (file && b2Enabled) {
+        const prepared=await mediaCall({action:"prepare",size:file.size,type:file.type});
+        pendingB2Session=prepared.session;
+        await uploadDirect(prepared,file);
+        await mediaCall({action:"publish",session:prepared.session,content});
+        pendingB2Session=null;
+        postForm.reset(); postStatus.textContent=t("पोस्ट सफलतापूर्वक राखियो।"); await loadFeed(); return;
+      }
       if (file) {
         const ext = ({"image/jpeg":"jpg","image/png":"png","image/webp":"webp","image/gif":"gif","video/mp4":"mp4","video/webm":"webm","video/quicktime":"mov"})[file.type];
         mediaPath = `${session.user.id}/${crypto.randomUUID()}.${ext}`; mediaType = file.type.startsWith("video/") ? "video" : "image";
@@ -427,8 +497,11 @@
       }
       const { error } = await client.from("rock_community_posts").insert({ author_id: session.user.id, content, media_path: mediaPath, media_type: mediaType });
       if (error) { if (mediaPath) await client.storage.from("rock-community-media").remove([mediaPath]); throw error; }
-      event.currentTarget.reset(); postStatus.textContent = t("पोस्ट सफलतापूर्वक राखियो।"); await loadFeed();
-    } catch (error) { postStatus.textContent = error?.message || t("पोस्ट राख्न सकिएन।"); }
+      postForm.reset(); postStatus.textContent = t("पोस्ट सफलतापूर्वक राखियो।"); await loadFeed();
+    } catch (error) {
+      if(pendingB2Session) { try { await mediaCall({action:"discard",session:pendingB2Session}); } catch(_) {} }
+      postStatus.textContent = error?.message || t("पोस्ट राख्न सकिएन।");
+    }
     finally { submit.disabled = false; }
   });
 
