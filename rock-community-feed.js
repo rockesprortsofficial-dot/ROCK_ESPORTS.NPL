@@ -44,6 +44,7 @@
   // Mobile-only full-width header, with no side gutters between its parts.
   const mobileHeaderStyle = document.createElement("style");
   mobileHeaderStyle.textContent = `
+    .rock-mobile-header-space{display:none}
     @media(max-width:700px){
       body>header.top{width:100%;padding:env(safe-area-inset-top,0px) 0 0!important}
       body>header.top>.container,body>.container:has(>.rock-ticker),body>.container:has(>#rockFestivalBar){width:100%!important;max-width:100%!important;padding:0!important;margin:0!important}
@@ -51,6 +52,8 @@
       body>.container>.rock-ticker{margin:0!important;border-radius:0!important;border-left:0;border-right:0}
       body>.container>.rock-ticker .rock-ticker-word{font-size:clamp(14px,4vw,20px);padding:6px 12px;letter-spacing:1px}
       body>.container>#rockFestivalBar.rock-festival-bar{height:clamp(50px,8svh,64px)!important;margin:0!important;border-radius:0!important;border-left:0;border-right:0}
+      body>[data-rock-fixed-header]{position:fixed!important;left:0!important;right:0!important;width:100%!important;max-width:100%!important;margin:0!important}
+      .rock-mobile-header-space{display:block!important;height:var(--rock-header-height,0px);flex:none}
       body>.nav{width:100%;margin:0!important}
       body>.nav .nav-inner{width:100%!important;min-height:48px!important;padding:5px 36px!important;gap:5px!important}
       #rockCommunityFeed{padding-top:22px;padding-bottom:28px}
@@ -72,6 +75,11 @@
     }
     document.documentElement.style.setProperty("--rock-header-height", offset + "px");
   }
+  // Reserve the fixed mobile header's height without reparenting any existing UI.
+  const mobileHeaderSpace = document.createElement("div");
+  mobileHeaderSpace.className = "rock-mobile-header-space";
+  mobileHeaderSpace.setAttribute("aria-hidden", "true");
+  if (navigation) navigation.after(mobileHeaderSpace);
   const headerObserver = new ResizeObserver(measureHeader);
   headerParts.forEach(part => headerObserver.observe(part));
   measureHeader();
@@ -320,7 +328,7 @@
     account.replaceChildren();
     if (user) {
       const label = document.createElement("span");
-      label.textContent = `${t("लगइन")}: ${user.user_metadata?.display_name || user.email || t("खेलाडी")}`;
+      label.textContent = t("लगइन सफल भयो।");
       const out = document.createElement("button");
       out.type = "button"; out.className = "secondary"; out.textContent = t("लगआउट");
       out.addEventListener("click", async () => { await client.auth.signOut(); authStatus.textContent = t("तपाईं लगआउट हुनुभयो।"); });
