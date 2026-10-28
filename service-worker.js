@@ -18,10 +18,10 @@ self.addEventListener('fetch', (event) => {
         const index = source.toLowerCase().lastIndexOf("</body>");
         return index < 0 ? source + snippet : source.slice(0, index) + snippet + source.slice(index);
       };
-      html = html.replaceAll('rock-community-feed.js', 'rock-community-feed-v2.js');
+      html = html.replaceAll('rock-community-feed.js', 'rock-community-feed-v2.js?media=b843658');
       for (const file of ['meeting-room-chat.js', 'meeting-room-guest.js', 'rock-community-feed-v2.js', 'rock-connect.js']) {
         if (!html.includes(file)) {
-          const scriptUrl = new URL(file, self.registration.scope).href;
+          const scriptUrl = new URL(file === 'rock-community-feed-v2.js' ? file + '?media=b843658' : file, self.registration.scope).href;
           const script = '<script src="' + scriptUrl + '" defer><\/script>';
           html = insertBeforeBodyClose(html, script);
         }
@@ -70,4 +70,5 @@ self.addEventListener('notificationclick', (event) => {
     return clients.openWindow(destination);
   })());
 });
+
 
