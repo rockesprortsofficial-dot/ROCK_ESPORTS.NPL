@@ -57,12 +57,64 @@
   `;
   document.head.append(style);
 
+  const communityTranslations = {
+  "खेलाडीका पोस्ट, फोटो र भिडियो हेर्नुहोस्। पोस्ट गर्न, मन पराउन वा प्रतिक्रिया दिन आफ्नो खाता खोलेर लगइन गर्नुहोस्।": "Browse posts, photos and videos without an account. Sign in to post, like or comment.",
+  "लगइन": "Sign in",
+  "नयाँ खाता खोल्नुहोस्": "Create account",
+  "वेबसाइटमा देखिने खेलाडीको नाम": "Public player name",
+  "इमेल ठेगाना": "Email address",
+  "पासवर्ड (कम्तीमा ८ अक्षर)": "Password (at least 8 characters)",
+  "तपाईं के बाँड्न चाहनुहुन्छ?": "What would you like to share?",
+  "फोटो वा भिडियो बढीमा २५ MB": "Photo or video up to 25 MB",
+  "पोस्ट गर्नुहोस्": "Post",
+  "पोस्टहरू खोलिँदै छन्…": "Loading posts…",
+  "खाता खोल्नुहोस्": "Create account",
+  "खेलाडी": "Player",
+  "लगआउट": "Sign out",
+  "तपाईं लगआउट हुनुभयो।": "You have signed out.",
+  "खाता जाँचिँदै छ…": "Checking your account…",
+  "Supabase बाट आएको इमेल खोलेर खाता पुष्टि गर्नुहोस्, त्यसपछि लगइन गर्नुहोस्।": "Confirm your account using the email from Supabase, then sign in.",
+  "खाता तयार भयो। अब पोस्ट गर्न सक्नुहुन्छ।": "Account ready. You can now post.",
+  "लगइन सफल भयो।": "Signed in successfully.",
+  "खाता खोल्न वा लगइन गर्न सकिएन।": "Unable to create an account or sign in.",
+  "अहिलेसम्म कुनै पोस्ट छैन। पहिलो पोस्ट तपाईंले गर्नुहोस्।": "No posts yet. Be the first to share.",
+  "पोस्टहरू अहिले खोल्न सकिएन। Supabase मा समुदायको सेटअप पूरा भएको छ कि जाँच गर्नुहोस्।": "Unable to load posts right now. Please check the community setup in Supabase.",
+  "खेलाडीले साझा गरेको फोटो": "Photo shared by a player",
+  "मन पराएँ": "Like",
+  "हेराइ": "views",
+  "प्रतिक्रिया": "comments",
+  "रिपोर्ट": "Report",
+  "पोस्ट हटाउनुहोस्": "Delete post",
+  "प्रतिक्रिया लेख्नुहोस्…": "Write a comment…",
+  "पठाउनुहोस्": "Send",
+  "प्रतिक्रिया लेख्न लगइन गर्नुहोस्।": "Sign in to comment.",
+  "मन पराउन पहिले लगइन गर्नुहोस्।": "Sign in to like a post.",
+  "यो पोस्ट किन रिपोर्ट गर्दै हुनुहुन्छ?": "Why are you reporting this post?",
+  "रिपोर्ट पठाइयो। व्यवस्थापकले जाँच गर्नुहुनेछ।": "Report submitted for review.",
+  "यो पोस्ट हटाउने हो?": "Delete this post?",
+  "पोस्ट गर्न लगइन गर्नुहोस्।": "Sign in to post.",
+  "लेखाइ वा फोटो/भिडियो राख्नुहोस्।": "Add text or a photo/video.",
+  "समर्थित फोटो वा २५ MB सम्मको भिडियो छान्नुहोस्।": "Choose a supported photo or video up to 25 MB.",
+  "पोस्ट राखिँदै छ…": "Publishing your post…",
+  "पोस्ट सफलतापूर्वक राखियो।": "Post published successfully.",
+  "पोस्ट राख्न सकिएन।": "Unable to publish the post.",
+  "लगइन अहिले उपलब्ध छैन। सार्वजनिक पोस्ट हेर्न सक्नुहुन्छ।": "Sign in is unavailable right now. You can still browse public posts."
+};
+  let language = "ne";
+  try { language = localStorage.getItem("rockCommunityLanguage") === "en" ? "en" : "ne"; } catch (_) {}
+  function t(text) {
+    if (language !== "en") return text;
+    if (communityTranslations[text]) return communityTranslations[text];
+    return text;
+  }
+
   const section = document.createElement("section");
   section.id = "rockCommunityFeed";
   section.className = "section rock-community-section";
   section.innerHTML = `
     <div class="container">
       <h2>ROCK ESPORTS COMMUNITY</h2>
+      <div class="rock-community-switch" role="group" aria-label="Community language / समुदायको भाषा"><button type="button" id="rockCommunityNepali" lang="ne">नेपाली</button><button type="button" id="rockCommunityEnglish" lang="en">English</button></div>
       <p>खेलाडीका पोस्ट, फोटो र भिडियो हेर्नुहोस्। पोस्ट गर्न, मन पराउन वा प्रतिक्रिया दिन आफ्नो खाता खोलेर लगइन गर्नुहोस्।</p>
       <div class="rock-community-auth">
         <div id="rockCommunityAccount" class="rock-community-account" hidden></div>
@@ -102,7 +154,43 @@
   link.href = "#rockCommunityFeed";
   link.textContent = "👥 COMMUNITY";
   link.setAttribute("aria-label", "ROCK ESPORTS Community");
-  nav.append(link);
+  const contactLink = nav.querySelector('a[href="#contact"]');
+  const tournamentLink = nav.querySelector('a[href="#tournament"]');
+  if (contactLink) contactLink.after(link);
+  else if (tournamentLink) tournamentLink.before(link);
+  else nav.append(link);
+
+  const staticLabels = [];
+  const walker = document.createTreeWalker(section, NodeFilter.SHOW_TEXT);
+  while (walker.nextNode()) {
+    const node = walker.currentNode;
+    if (communityTranslations[node.textContent.trim()]) staticLabels.push({ node, original: node.textContent.trim() });
+  }
+  section.querySelectorAll("[placeholder]").forEach(node => staticLabels.push({node, attribute:"placeholder", original:node.getAttribute("placeholder")}));
+  function applyLanguage() {
+    section.lang = language;
+    for (const item of staticLabels) {
+      if (item.attribute) item.node.setAttribute(item.attribute, t(item.original));
+      else item.node.textContent = t(item.original);
+    }
+    for (const [id, value] of [["rockCommunityNepali", "ne"], ["rockCommunityEnglish", "en"]]) {
+      const button = document.getElementById(id);
+      button.setAttribute("aria-pressed", String(language === value));
+      button.classList.toggle("secondary", language !== value);
+    }
+    document.getElementById("rockCommunityAuthSubmit").textContent = t(mode === "signup" ? "खाता खोल्नुहोस्" : "लगइन");
+  }
+  function chooseLanguage(next) {
+    language = next;
+    try { localStorage.setItem("rockCommunityLanguage", language); } catch (_) {}
+    applyLanguage();
+    authStatus.textContent = "";
+    postStatus.textContent = "";
+    showAccount(session);
+    loadFeed();
+  }
+  document.getElementById("rockCommunityNepali").addEventListener("click", () => chooseLanguage("ne"));
+  document.getElementById("rockCommunityEnglish").addEventListener("click", () => chooseLanguage("en"));
 
   let mode = "login";
   let session = null;
@@ -118,7 +206,7 @@
     document.getElementById("rockCommunityName").hidden = !signup;
     document.getElementById("rockCommunityName").required = signup;
     document.getElementById("rockCommunityPassword").autocomplete = signup ? "new-password" : "current-password";
-    document.getElementById("rockCommunityAuthSubmit").textContent = signup ? "खाता खोल्नुहोस्" : "लगइन";
+    document.getElementById("rockCommunityAuthSubmit").textContent = signup ? t("खाता खोल्नुहोस्") : t("लगइन");
     document.getElementById("rockCommunitySignInTab").classList.toggle("secondary", signup);
     document.getElementById("rockCommunitySignUpTab").classList.toggle("secondary", !signup);
     authStatus.textContent = "";
@@ -136,10 +224,10 @@
     account.replaceChildren();
     if (user) {
       const label = document.createElement("span");
-      label.textContent = `लगइन: ${user.user_metadata?.display_name || user.email || "खेलाडी"}`;
+      label.textContent = `${t("लगइन")}: ${user.user_metadata?.display_name || user.email || t("खेलाडी")}`;
       const out = document.createElement("button");
-      out.type = "button"; out.className = "secondary"; out.textContent = "लगआउट";
-      out.addEventListener("click", async () => { await client.auth.signOut(); authStatus.textContent = "तपाईं लगआउट हुनुभयो।"; });
+      out.type = "button"; out.className = "secondary"; out.textContent = t("लगआउट");
+      out.addEventListener("click", async () => { await client.auth.signOut(); authStatus.textContent = t("तपाईं लगआउट हुनुभयो।"); });
       account.append(label, out);
     }
   }
@@ -159,17 +247,17 @@
     const password = document.getElementById("rockCommunityPassword").value;
     const displayName = document.getElementById("rockCommunityName").value.trim();
     const button = document.getElementById("rockCommunityAuthSubmit");
-    button.disabled = true; authStatus.textContent = "खाता जाँचिँदै छ…";
+    button.disabled = true; authStatus.textContent = t("खाता जाँचिँदै छ…");
     try {
       const result = mode === "signup"
         ? await client.auth.signUp({ email, password, options: { data: { display_name: displayName } } })
         : await client.auth.signInWithPassword({ email, password });
       if (result.error) throw result.error;
-      if (mode === "signup" && !result.data.session) authStatus.textContent = "Supabase बाट आएको इमेल खोलेर खाता पुष्टि गर्नुहोस्, त्यसपछि लगइन गर्नुहोस्।";
-      else authStatus.textContent = mode === "signup" ? "खाता तयार भयो। अब पोस्ट गर्न सक्नुहुन्छ।" : "लगइन सफल भयो।";
+      if (mode === "signup" && !result.data.session) authStatus.textContent = t("Supabase बाट आएको इमेल खोलेर खाता पुष्टि गर्नुहोस्, त्यसपछि लगइन गर्नुहोस्।");
+      else authStatus.textContent = mode === "signup" ? t("खाता तयार भयो। अब पोस्ट गर्न सक्नुहुन्छ।") : t("लगइन सफल भयो।");
       showAccount(result.data.session || null);
       if (result.data.session) await loadFeed();
-    } catch (error) { authStatus.textContent = error?.message || "खाता खोल्न वा लगइन गर्न सकिएन।"; }
+    } catch (error) { authStatus.textContent = error?.message || t("खाता खोल्न वा लगइन गर्न सकिएन।"); }
     finally { button.disabled = false; }
   });
 
@@ -181,7 +269,7 @@
         .select("id,author_id,author_name,content,media_path,media_type,like_count,comment_count,view_count,created_at")
         .eq("status", "published").order("created_at", { ascending: false }).limit(40);
       if (error) throw error;
-      if (!posts?.length) { postHost.innerHTML = '<div class="rock-community-card">अहिलेसम्म कुनै पोस्ट छैन। पहिलो पोस्ट तपाईंले गर्नुहोस्।</div>'; return; }
+      if (!posts?.length) { postHost.innerHTML = `<div class="rock-community-card">${t("अहिलेसम्म कुनै पोस्ट छैन। पहिलो पोस्ट तपाईंले गर्नुहोस्।")}</div>`; return; }
       const ids = posts.map((p) => p.id);
       const [{ data: comments }, { data: likes }] = await Promise.all([
         client.from("rock_community_comments").select("id,post_id,author_id,author_name,content,created_at").in("post_id", ids).order("created_at", { ascending: true }).limit(200),
@@ -191,7 +279,7 @@
       for (const post of posts) postHost.append(buildPost(post, (comments || []).filter((c) => c.post_id === post.id), liked.has(post.id)));
       recordViews(posts);
     } catch (error) {
-      postHost.innerHTML = '<div class="rock-community-card">पोस्टहरू अहिले खोल्न सकिएन। Supabase मा समुदायको सेटअप पूरा भएको छ कि जाँच गर्नुहोस्।</div>';
+      postHost.innerHTML = `<div class="rock-community-card">${t("पोस्टहरू अहिले खोल्न सकिएन। Supabase मा समुदायको सेटअप पूरा भएको छ कि जाँच गर्नुहोस्।")}</div>`;
       console.error("ROCK community feed:", error);
     }
   }
@@ -200,41 +288,41 @@
     const card = document.createElement("article"); card.className = "rock-community-card";
     const meta = document.createElement("div"); meta.className = "rock-community-meta";
     const author = document.createElement("strong"); author.textContent = post.author_name || "ROCK ESPORTS gamer";
-    const date = document.createElement("time"); date.dateTime = post.created_at; date.textContent = new Date(post.created_at).toLocaleString();
+    const date = document.createElement("time"); date.dateTime = post.created_at; date.textContent = new Date(post.created_at).toLocaleString(language === "en" ? "en-US" : "ne-NP");
     meta.append(author, date); card.append(meta);
     if (post.content) { const body = document.createElement("p"); body.textContent = post.content; card.append(body); }
     if (post.media_path) {
       const { data } = client.storage.from("rock-community-media").getPublicUrl(post.media_path);
       if (post.media_type === "video") { const video = document.createElement("video"); video.src = data.publicUrl; video.controls = true; video.playsInline = true; video.preload = "metadata"; card.append(video); }
-      else { const image = document.createElement("img"); image.src = data.publicUrl; image.alt = "खेलाडीले साझा गरेको फोटो"; image.loading = "lazy"; card.append(image); }
+      else { const image = document.createElement("img"); image.src = data.publicUrl; image.alt = t("खेलाडीले साझा गरेको फोटो"); image.loading = "lazy"; card.append(image); }
     }
     const actions = document.createElement("div"); actions.className = "rock-community-actions";
-    const like = document.createElement("button"); like.type = "button"; like.className = isLiked ? "" : "secondary"; like.textContent = `👍 मन पराएँ · ${post.like_count || 0}`;
+    const like = document.createElement("button"); like.type = "button"; like.className = isLiked ? "" : "secondary"; like.textContent = `👍 ${t("मन पराएँ")} · ${post.like_count || 0}`;
     like.addEventListener("click", () => toggleLike(post, like));
-    const stats = document.createElement("span"); stats.className = "rock-community-meta"; stats.textContent = `👁 ${post.view_count || 0} हेराइ · 💬 ${post.comment_count || 0} प्रतिक्रिया`;
+    const stats = document.createElement("span"); stats.className = "rock-community-meta"; stats.textContent = `👁 ${post.view_count || 0} ${t("हेराइ")} · 💬 ${post.comment_count || 0} ${t("प्रतिक्रिया")}`;
     actions.append(like, stats);
     if (session?.user) {
-      const report = document.createElement("button"); report.className = "secondary"; report.textContent = "रिपोर्ट"; report.addEventListener("click", () => reportPost(post.id)); actions.append(report);
+      const report = document.createElement("button"); report.className = "secondary"; report.textContent = t("रिपोर्ट"); report.addEventListener("click", () => reportPost(post.id)); actions.append(report);
       if (session.user.id === post.author_id || session.user.email?.toLowerCase() === "rockesprorts.official@gmail.com") {
-        const remove = document.createElement("button"); remove.className = "secondary"; remove.textContent = "पोस्ट हटाउनुहोस्"; remove.addEventListener("click", () => removePost(post)); actions.append(remove);
+        const remove = document.createElement("button"); remove.className = "secondary"; remove.textContent = t("पोस्ट हटाउनुहोस्"); remove.addEventListener("click", () => removePost(post)); actions.append(remove);
       }
     }
     card.append(actions);
     const discussion = document.createElement("div"); discussion.className = "rock-community-comments";
-    for (const item of comments) { const row = document.createElement("div"); row.className = "rock-community-comment"; const who = document.createElement("strong"); who.textContent = `${item.author_name || "खेलाडी"}: `; const text = document.createElement("span"); text.textContent = item.content; row.append(who, text); discussion.append(row); }
+    for (const item of comments) { const row = document.createElement("div"); row.className = "rock-community-comment"; const who = document.createElement("strong"); who.textContent = `${item.author_name || t("खेलाडी")}: `; const text = document.createElement("span"); text.textContent = item.content; row.append(who, text); discussion.append(row); }
     if (session?.user) {
       const form = document.createElement("form"); form.className = "rock-community-actions";
-      const input = document.createElement("input"); input.maxLength = 500; input.required = true; input.placeholder = "प्रतिक्रिया लेख्नुहोस्…";
-      const send = document.createElement("button"); send.textContent = "पठाउनुहोस्"; form.append(input, send);
+      const input = document.createElement("input"); input.maxLength = 500; input.required = true; input.placeholder = t("प्रतिक्रिया लेख्नुहोस्…");
+      const send = document.createElement("button"); send.textContent = t("पठाउनुहोस्"); form.append(input, send);
       form.addEventListener("submit", async (event) => { event.preventDefault(); send.disabled = true; const { error } = await client.from("rock_community_comments").insert({ post_id: post.id, author_id: session.user.id, content: input.value.trim() }); if (error) authStatus.textContent = error.message; else await loadFeed(); send.disabled = false; });
       discussion.append(form);
-    } else { const tip = document.createElement("p"); tip.textContent = "प्रतिक्रिया लेख्न लगइन गर्नुहोस्।"; discussion.append(tip); }
+    } else { const tip = document.createElement("p"); tip.textContent = t("प्रतिक्रिया लेख्न लगइन गर्नुहोस्।"); discussion.append(tip); }
     card.append(discussion);
     return card;
   }
 
   async function toggleLike(post, button) {
-    if (!session?.user) { authStatus.textContent = "मन पराउन पहिले लगइन गर्नुहोस्।"; return; }
+    if (!session?.user) { authStatus.textContent = t("मन पराउन पहिले लगइन गर्नुहोस्।"); return; }
     button.disabled = true;
     const { data: existing, error: readError } = await client.from("rock_community_likes").select("post_id").eq("post_id", post.id).eq("user_id", session.user.id).maybeSingle();
     if (readError) authStatus.textContent = readError.message;
@@ -244,13 +332,13 @@
   }
 
   async function reportPost(postId) {
-    const reason = window.prompt("यो पोस्ट किन रिपोर्ट गर्दै हुनुहुन्छ?"); if (!reason || !session?.user) return;
+    const reason = window.prompt(t("यो पोस्ट किन रिपोर्ट गर्दै हुनुहुन्छ?")); if (!reason || !session?.user) return;
     const { error } = await client.from("rock_community_reports").insert({ post_id: postId, reporter_id: session.user.id, reason: reason.slice(0, 300) });
-    authStatus.textContent = error ? error.message : "रिपोर्ट पठाइयो। व्यवस्थापकले जाँच गर्नुहुनेछ।";
+    authStatus.textContent = error ? error.message : t("रिपोर्ट पठाइयो। व्यवस्थापकले जाँच गर्नुहुनेछ।");
   }
 
   async function removePost(post) {
-    if (!window.confirm("यो पोस्ट हटाउने हो?")) return;
+    if (!window.confirm(t("यो पोस्ट हटाउने हो?"))) return;
     const { error } = await client.from("rock_community_posts").delete().eq("id", post.id);
     if (error) { authStatus.textContent = error.message; return; }
     if (post.media_path) await client.storage.from("rock-community-media").remove([post.media_path]);
@@ -267,13 +355,13 @@
 
   document.getElementById("rockCommunityPostForm").addEventListener("submit", async (event) => {
     event.preventDefault();
-    if (!session?.user) { postStatus.textContent = "पोस्ट गर्न लगइन गर्नुहोस्।"; return; }
+    if (!session?.user) { postStatus.textContent = t("पोस्ट गर्न लगइन गर्नुहोस्।"); return; }
     const content = document.getElementById("rockCommunityPostText").value.trim();
     const file = document.getElementById("rockCommunityMedia").files?.[0] || null;
     const submit = event.currentTarget.querySelector("button[type=submit]");
-    if (!content && !file) { postStatus.textContent = "लेखाइ वा फोटो/भिडियो राख्नुहोस्।"; return; }
-    if (file && (!/^image\/(jpeg|png|webp|gif)$|^video\/(mp4|webm|quicktime)$/.test(file.type) || file.size > 25 * 1024 * 1024)) { postStatus.textContent = "समर्थित फोटो वा २५ MB सम्मको भिडियो छान्नुहोस्।"; return; }
-    submit.disabled = true; postStatus.textContent = "पोस्ट राखिँदै छ…";
+    if (!content && !file) { postStatus.textContent = t("लेखाइ वा फोटो/भिडियो राख्नुहोस्।"); return; }
+    if (file && (!/^image\/(jpeg|png|webp|gif)$|^video\/(mp4|webm|quicktime)$/.test(file.type) || file.size > 25 * 1024 * 1024)) { postStatus.textContent = t("समर्थित फोटो वा २५ MB सम्मको भिडियो छान्नुहोस्।"); return; }
+    submit.disabled = true; postStatus.textContent = t("पोस्ट राखिँदै छ…");
     let mediaPath = null, mediaType = null;
     try {
       if (file) {
@@ -284,8 +372,8 @@
       }
       const { error } = await client.from("rock_community_posts").insert({ author_id: session.user.id, content, media_path: mediaPath, media_type: mediaType });
       if (error) { if (mediaPath) await client.storage.from("rock-community-media").remove([mediaPath]); throw error; }
-      event.currentTarget.reset(); postStatus.textContent = "पोस्ट सफलतापूर्वक राखियो।"; await loadFeed();
-    } catch (error) { postStatus.textContent = error?.message || "पोस्ट राख्न सकिएन।"; }
+      event.currentTarget.reset(); postStatus.textContent = t("पोस्ट सफलतापूर्वक राखियो।"); await loadFeed();
+    } catch (error) { postStatus.textContent = error?.message || t("पोस्ट राख्न सकिएन।"); }
     finally { submit.disabled = false; }
   });
 
@@ -305,11 +393,12 @@
     });
   }
   window.addEventListener("hashchange", showSelectedTab);
+  applyLanguage();
   showSelectedTab();
   // Guest reading must not wait for authentication to initialize.
   loadFeed();
   currentSession().then(loadFeed).catch(() => {
-    authStatus.textContent = "लगइन अहिले उपलब्ध छैन। सार्वजनिक पोस्ट हेर्न सक्नुहुन्छ।";
+    authStatus.textContent = t("लगइन अहिले उपलब्ध छैन। सार्वजनिक पोस्ट हेर्न सक्नुहुन्छ।");
   });
   window.setInterval(loadFeed, 60000);
 })();
