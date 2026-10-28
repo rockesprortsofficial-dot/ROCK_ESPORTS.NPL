@@ -18,10 +18,10 @@ self.addEventListener('fetch', (event) => {
         const index = source.toLowerCase().lastIndexOf("</body>");
         return index < 0 ? source + snippet : source.slice(0, index) + snippet + source.slice(index);
       };
-      html = html.replaceAll('rock-community-feed.js', 'rock-community-feed-v2.js?media=messenger-20261029');
-      for (const file of ['meeting-room-chat.js', 'meeting-room-guest.js', 'rock-community-feed-v2.js', 'rock-connect.js']) {
+      html = html.replaceAll('rock-community-feed.js', 'rock-community-feed-v2.js?media=meeting100-20261029');
+      for (const file of ['meeting-room-chat.js', 'meeting-room-guest.js', 'rock-community-feed-v2.js', 'rock-connect.js', 'rock-meeting-100.js']) {
         if (!html.includes(file)) {
-          const scriptUrl = new URL(file === 'rock-community-feed-v2.js' ? file + '?media=messenger-20261029' : file === 'rock-connect.js' ? file + '?connect=bilingual-20261029' : file, self.registration.scope).href;
+          const scriptUrl = new URL(file === 'rock-community-feed-v2.js' ? file + '?media=meeting100-20261029' : file === 'rock-connect.js' ? file + '?connect=bilingual-20261029' : file === 'rock-meeting-100.js' ? file + '?meeting=20261029' : file, self.registration.scope).href;
           const script = '<script src="' + scriptUrl + '" defer><\/script>';
           html = insertBeforeBodyClose(html, script);
         }

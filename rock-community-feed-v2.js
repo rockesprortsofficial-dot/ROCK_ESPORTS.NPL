@@ -541,3 +541,5 @@
 
 
 ;(()=>{if(!document.querySelector('script[src*="rock-connect.js"]')){const s=document.createElement("script");s.src=new URL("rock-connect.js?connect=bilingual-20261029",document.baseURI).href;s.defer=true;document.body.append(s);}})();
+
+;(()=>{if(!document.querySelector('script[src*="rock-meeting-100.js"]')){const script=document.createElement("script");script.src=new URL("rock-meeting-100.js?meeting=20261029",document.baseURI).href;script.defer=true;document.body.append(script);}})();
