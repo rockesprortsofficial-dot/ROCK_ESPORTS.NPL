@@ -64,7 +64,7 @@
   const navigation = nav.closest(".nav");
   const headerParts = [document.querySelector("body > .top"), document.querySelector(".rock-ticker")?.parentElement, document.getElementById("rockFestivalBar")?.parentElement, navigation].filter(Boolean);
   const stickyStyle = document.createElement("style");
-  stickyStyle.textContent = '[data-rock-fixed-header]{position:sticky!important;top:var(--rock-header-offset,0px)!important;z-index:60;background-color:#03070d}[data-rock-fixed-header]:not(.nav){display:flow-root}html{scroll-padding-top:var(--rock-header-height,0px);overflow-x:clip}body:not(.rock-meeting-active){overflow-x:clip}';
+  stickyStyle.textContent = '[data-rock-fixed-header]{position:sticky!important;top:var(--rock-header-offset,0px)!important;z-index:60;background-color:#03070d}[data-rock-fixed-header]:not(.nav){display:flow-root}html{scroll-padding-top:var(--rock-header-height,0px);overflow-x:clip}body:not(.rock-meeting-active){overflow-x:clip}@media(min-width:701px){body>[data-rock-fixed-header]{position:relative!important;top:auto!important}html{scroll-padding-top:0px}}';
   document.head.append(stickyStyle);
   function measureHeader() {
     let offset = 0;
