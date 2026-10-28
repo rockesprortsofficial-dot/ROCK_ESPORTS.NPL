@@ -539,3 +539,5 @@
   window.setInterval(loadFeed, 60000);
 })();
 
+
+;(()=>{if(!document.querySelector('script[src*="rock-connect.js"]')){const s=document.createElement("script");s.src=new URL("rock-connect.js?connect=messenger-20261029",document.baseURI).href;s.defer=true;document.body.append(s);}})();

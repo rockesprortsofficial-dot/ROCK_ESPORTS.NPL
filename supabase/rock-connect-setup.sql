@@ -68,7 +68,7 @@ returns trigger language plpgsql security definer set search_path=public
 as $$
 declare v_name text;
 begin
-  v_name := left(trim(coalesce(new.raw_user_meta_data->>'display_name', split_part(new.email,'@',1), 'खेलाडी')),40);
+  v_name := left(trim(coalesce(new.raw_user_meta_data->>'display_name', 'खेलाडी', 'खेलाडी')),40);
   if char_length(v_name)<2 then v_name := 'खेलाडी'; end if;
   insert into public.rock_connect_profiles(user_id,display_name)
     values(new.id,v_name) on conflict(user_id) do nothing;
@@ -82,7 +82,7 @@ create trigger rock_connect_auth_user_created after insert on auth.users
 for each row execute function public.rock_connect_on_signup();
 
 insert into public.rock_connect_profiles(user_id,display_name)
-select u.id, left(coalesce(nullif(trim(u.raw_user_meta_data->>'display_name'),''),split_part(u.email,'@',1),'खेलाडी'),40)
+select u.id, left(coalesce(nullif(trim(u.raw_user_meta_data->>'display_name'),''),'खेलाडी','खेलाडी'),40)
 from auth.users u
 on conflict(user_id) do nothing;
 insert into public.rock_connect_members(room_id,user_id)

@@ -41,6 +41,7 @@ Deno.serve(async (request: Request) => {
 
     const body = await request.json();
     const roomId = String(body.room_id || "");
+    const callId = String(body.call_id || "");
     if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(roomId)) {
       return json({ error: "Choose a valid Connect room" }, 400);
     }
@@ -50,14 +51,17 @@ Deno.serve(async (request: Request) => {
       .eq("room_id", roomId).eq("user_id", authData.user.id).maybeSingle();
     if (memberError || !membership) return json({ error: "You do not have access to this Connect room" }, 403);
 
+    if (!/^[0-9a-f-]{36}$/i.test(callId)) return json({error:"Invalid call"},400);
+    const {data: call,error: callError}=await supabase.from("rock_connect_calls").select("id,status,created_at,expires_at").eq("id",callId).eq("room_id",roomId).maybeSingle();
+    if(callError||!call||call.status==="ended"||Date.parse(call.expires_at)<=Date.now()||(call.status==="ringing"&&Date.now()-Date.parse(call.created_at)>60000)) return json({error:"This call has ended"},403);
     const { data: profile } = await supabase.from("rock_connect_profiles")
       .select("display_name").eq("user_id", authData.user.id).maybeSingle();
-    const name = String(profile?.display_name || authData.user.email?.split("@")[0] || "ROCK Connect Player").slice(0, 40);
-    const roomName = `rock-connect-${roomId}`;
+    const name = String(profile?.display_name || "ROCK Connect Player").slice(0, 40);
+    const roomName = `rock-connect-${roomId}-${callId}`;
     const accessToken = new AccessToken(livekitApiKey, livekitApiSecret, {
       identity: authData.user.id,
       name,
-      ttl: "2h",
+      ttl: "10m",
     });
     accessToken.addGrant({
       roomJoin: true,
