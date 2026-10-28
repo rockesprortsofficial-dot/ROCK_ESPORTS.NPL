@@ -2,6 +2,25 @@
   "use strict";
   const nav = document.querySelector(".nav-inner");
   if (!nav) return;
+  // Keep the existing banner, moving ticker and tabs visible while content scrolls.
+  const navigation = nav.closest(".nav");
+  const headerParts = [document.querySelector("body > .top"), document.querySelector(".rock-ticker")?.parentElement, document.getElementById("rockFestivalBar")?.parentElement, navigation].filter(Boolean);
+  const stickyStyle = document.createElement("style");
+  stickyStyle.textContent = '[data-rock-fixed-header]{position:sticky!important;top:var(--rock-header-offset,0px)!important;z-index:60;background-color:#03070d}[data-rock-fixed-header]:not(.nav){display:flow-root}html{scroll-padding-top:var(--rock-header-height,0px);overflow-x:clip}body:not(.rock-meeting-active){overflow-x:clip}';
+  document.head.append(stickyStyle);
+  function measureHeader() {
+    let offset = 0;
+    for (const part of headerParts) {
+      part.setAttribute("data-rock-fixed-header", "");
+      part.style.setProperty("--rock-header-offset", offset + "px");
+      offset += part.getBoundingClientRect().height;
+    }
+    document.documentElement.style.setProperty("--rock-header-height", offset + "px");
+  }
+  const headerObserver = new ResizeObserver(measureHeader);
+  headerParts.forEach(part => headerObserver.observe(part));
+  measureHeader();
+  window.addEventListener("resize", measureHeader);
   const adminButton = nav.querySelector("#adminNavButton");
   if (adminButton) {
     adminButton.textContent = "🔐";
@@ -274,9 +293,9 @@
   routeIds.add("rockCommunityFeed");
   function showSelectedTab() {
     const raw = decodeURIComponent(location.hash.slice(1));
-    const selected = routeIds.has(raw) ? raw : "home";
+    const selected = routeIds.has(raw) ? raw : "rockCommunityFeed";
     document.querySelectorAll("main>section[id],body>section[id]").forEach((item) => {
-      const visible = item.id === selected || (item.id === "rockCommunityFeed" && selected === "home") || (item.id === "rockRegAnnouncement" && ["tournament", "registration"].includes(selected));
+      const visible = item.id === selected || (item.id === "rockRegAnnouncement" && ["tournament", "registration"].includes(selected));
       item.classList.toggle("rock-tab-hidden", !visible);
     });
     nav.querySelectorAll('a[href^="#"]').forEach((item) => {
