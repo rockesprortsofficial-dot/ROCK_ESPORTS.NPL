@@ -1,5 +1,42 @@
 (() => {
   "use strict";
+
+  // Footer-only artwork and gentle snowfall; retain existing copyright nodes.
+  const siteFooter = document.querySelector("body > footer");
+  if (siteFooter && !siteFooter.querySelector(".rock-snow-footer")) {
+    const footerStyle = document.createElement("style");
+    footerStyle.textContent = `
+      footer.rock-footer-art{padding:0;background:#020d24;border-top:1px solid #168ee8}
+      .rock-snow-footer{position:relative;width:100%;max-width:1800px;margin:0 auto;overflow:hidden;isolation:isolate}
+      .rock-snow-footer>img{display:block;width:100%;height:auto;aspect-ratio:3/1;object-fit:contain}
+      .rock-footer-art> .container{position:absolute;width:1px!important;height:1px;padding:0;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+      .rock-footer-snow{position:absolute;left:34%;right:0;top:0;height:82%;pointer-events:none;overflow:hidden;mask-image:linear-gradient(to bottom,#000 0%,#000 35%,transparent 64%,transparent 85%,#000 100%)}
+      .rock-footer-snow span{position:absolute;top:-12px;left:var(--snow-x);width:var(--snow-size);height:var(--snow-size);border-radius:50%;background:#e8f8ff;opacity:.65;box-shadow:0 0 5px #b7eaff;animation:rockFooterSnowfall var(--snow-duration) linear infinite;animation-delay:var(--snow-delay);animation-play-state:paused}
+      .rock-snow-footer.rock-snow-visible .rock-footer-snow span{animation-play-state:running}
+      @keyframes rockFooterSnowfall{from{transform:translate3d(0,-12px,0)}to{transform:translate3d(24px,var(--snow-travel,450px),0)}}
+      @media(prefers-reduced-motion:reduce){.rock-footer-snow{display:none}}
+    `;
+    document.head.append(footerStyle);
+    const artwork = document.createElement("div");
+    artwork.className = "rock-snow-footer";
+    const banner = document.createElement("img");
+    banner.src = new URL("./rock-footer-snow.webp", document.baseURI).href;
+    banner.alt = "ROCK ESPORTS — Official Esports Organization, snowy Himalayan banner";
+    banner.width = 2172; banner.height = 724; banner.loading = "lazy"; banner.decoding = "async";
+    const snowfall = document.createElement("div");
+    snowfall.className = "rock-footer-snow"; snowfall.setAttribute("aria-hidden", "true");
+    for (let i = 0; i < 32; i++) {
+      const flake = document.createElement("span");
+      flake.style.cssText = "--snow-x:" + ((i * 37) % 100) + "%;--snow-size:" + (1 + i % 3) + "px;--snow-duration:" + (8 + i % 7) + "s;--snow-delay:-" + (i % 13) + "s";
+      snowfall.append(flake);
+    }
+    artwork.append(banner, snowfall);
+    siteFooter.classList.add("rock-footer-art"); siteFooter.prepend(artwork);
+    banner.addEventListener("error", () => { artwork.remove(); siteFooter.classList.remove("rock-footer-art"); });
+    new ResizeObserver(() => artwork.style.setProperty("--snow-travel", (snowfall.clientHeight + 24) + "px")).observe(artwork);
+    new IntersectionObserver(entries => artwork.classList.toggle("rock-snow-visible", entries[0].isIntersecting)).observe(artwork);
+  }
+
   const nav = document.querySelector(".nav-inner");
   if (!nav) return;
   // Keep the existing banner, moving ticker and tabs visible while content scrolls.
