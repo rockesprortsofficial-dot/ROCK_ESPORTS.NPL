@@ -40,6 +40,24 @@
   const nav = document.querySelector(".nav-inner");
   if (!nav) return;
   // Keep the existing banner, moving ticker and tabs visible while content scrolls.
+
+  // Mobile-only full-width header, with no side gutters between its parts.
+  const mobileHeaderStyle = document.createElement("style");
+  mobileHeaderStyle.textContent = `
+    @media(max-width:700px){
+      body>header.top{width:100%;padding:env(safe-area-inset-top,0px) 0 0!important}
+      body>header.top>.container,body>.container:has(>.rock-ticker),body>.container:has(>#rockFestivalBar){width:100%!important;max-width:100%!important;padding:0!important;margin:0!important}
+      body>header.top .banner{border-radius:0!important;aspect-ratio:4.1/1!important;border-left:0;border-right:0}
+      body>.container>.rock-ticker{margin:0!important;border-radius:0!important;border-left:0;border-right:0}
+      body>.container>.rock-ticker .rock-ticker-word{font-size:clamp(14px,4vw,20px);padding:6px 12px;letter-spacing:1px}
+      body>.container>#rockFestivalBar.rock-festival-bar{height:clamp(50px,8svh,64px)!important;margin:0!important;border-radius:0!important;border-left:0;border-right:0}
+      body>.nav{width:100%;margin:0!important}
+      body>.nav .nav-inner{width:100%!important;min-height:48px!important;padding:5px 36px!important;gap:5px!important}
+      #rockCommunityFeed{padding-top:22px;padding-bottom:28px}
+    }
+  `;
+  document.head.append(mobileHeaderStyle);
+
   const navigation = nav.closest(".nav");
   const headerParts = [document.querySelector("body > .top"), document.querySelector(".rock-ticker")?.parentElement, document.getElementById("rockFestivalBar")?.parentElement, navigation].filter(Boolean);
   const stickyStyle = document.createElement("style");
