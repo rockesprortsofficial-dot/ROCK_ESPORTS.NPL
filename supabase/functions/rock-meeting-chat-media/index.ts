@@ -1,140 +1,35 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { TokenVerifier } from "npm:livekit-server-sdk@2.13.3";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-rock-room",
-  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-};
-const BUCKET = "rock-meeting-media";
-const MAX_FILE_BYTES = 25 * 1024 * 1024;
-const ALLOWED_TYPES = new Set([
-  "image/jpeg", "image/png", "image/webp", "image/gif",
-  "video/mp4", "video/webm", "video/quicktime",
-]);
-
-function reply(data: unknown, status = 200) {
-  return new Response(JSON.stringify(data), {
-    status,
-    headers: { ...corsHeaders, "Content-Type": "application/json" },
-  });
-}
-
-Deno.serve(async (req: Request) => {
-  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
-  if (req.method !== "GET" && req.method !== "POST") return reply({ error: "GET or POST only" }, 405);
-
-  try {
-    const apiKey = Deno.env.get("LIVEKIT_API_KEY") || "";
-    const apiSecret = Deno.env.get("LIVEKIT_API_SECRET") || "";
-    const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
-    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
-    if (!apiKey || !apiSecret || !supabaseUrl || !serviceKey) {
-      return reply({ error: "Meeting chat service is not fully configured" }, 500);
-    }
-
-    const bearer = req.headers.get("Authorization")?.replace(/^Bearer\s+/i, "").trim() || "";
-    if (!bearer) return reply({ error: "Please join the meeting first" }, 401);
-
-    const claims = await new TokenVerifier(apiKey, apiSecret).verify(bearer);
-    const video = (claims as { video?: { room?: string; roomJoin?: boolean } }).video;
-    const identity = String((claims as { sub?: string }).sub || "");
-    const senderName = String((claims as { name?: string }).name || identity).slice(0, 100);
-    if (!identity || video?.roomJoin !== true || !video.room) {
-      return reply({ error: "Meeting access could not be verified" }, 401);
-    }
-
-    const url = new URL(req.url);
-    const requestedRoom = req.method === "GET"
-      ? (url.searchParams.get("room") || "")
-      : (req.headers.get("x-rock-room") || "");
-    if (requestedRoom !== video.room) return reply({ error: "This meeting room is not available to your account" }, 403);
-
-    const supabase = createClient(supabaseUrl, serviceKey, {
-      auth: { persistSession: false, autoRefreshToken: false },
-    });
-
-    if (req.method === "GET") {
-      const { data, error } = await supabase
-        .from("rock_public_meeting_messages")
-        .select("id,room_name,sender_id,sender_name,message,media_path,media_type,created_at")
-        .eq("room_name", video.room)
-        .order("created_at", { ascending: false })
-        .limit(100);
-      if (error) throw error;
-      const messages = await Promise.all((data || []).map(async (item) => {
-        let mediaUrl: string | null = null;
-        if (item.media_path) {
-          const { data: signed, error: signedError } = await supabase.storage
-            .from(BUCKET).createSignedUrl(item.media_path, 3600);
-          if (!signedError) mediaUrl = signed?.signedUrl || null;
-        }
-        return { ...item, media_url: mediaUrl };
-      }));
-      return reply({ messages: messages.reverse() });
-    }
-
-    const contentType = req.headers.get("content-type") || "";
-    let message = "";
-    let file: File | null = null;
-    if (contentType.includes("multipart/form-data")) {
-      const form = await req.formData();
-      message = String(form.get("message") || "").trim().slice(0, 2000);
-      const candidate = form.get("media");
-      if (candidate instanceof File && candidate.size > 0) file = candidate;
-    } else {
-      const body = await req.json();
-      message = String(body.message || "").trim().slice(0, 2000);
-    }
-
-    if (!message && !file) return reply({ error: "Write a message or choose a photo/video" }, 400);
-    if (file && (!ALLOWED_TYPES.has(file.type) || file.size > MAX_FILE_BYTES)) {
-      return reply({ error: "Choose a supported photo or video up to 25 MB" }, 400);
-    }
-
-    let mediaPath: string | null = null;
-    let mediaType: string | null = null;
-    if (file) {
-      const ext = ({
-        "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp", "image/gif": "gif",
-        "video/mp4": "mp4", "video/webm": "webm", "video/quicktime": "mov",
-      } as Record<string, string>)[file.type];
-      mediaPath = `${video.room}/${crypto.randomUUID()}.${ext}`;
-      mediaType = file.type.startsWith("video/") ? "video" : "image";
-      const { error: uploadError } = await supabase.storage
-        .from(BUCKET)
-        .upload(mediaPath, file, { contentType: file.type, upsert: false });
-      if (uploadError) throw uploadError;
-    }
-
-    const { data: inserted, error: insertError } = await supabase
-      .from("rock_public_meeting_messages")
-      .insert({
-        room_name: video.room,
-        sender_id: identity,
-        sender_name: senderName,
-        message,
-        media_path: mediaPath,
-        media_type: mediaType,
-      })
-      .select("id,room_name,sender_id,sender_name,message,media_path,media_type,created_at")
-      .single();
-    if (insertError) {
-      if (mediaPath) await supabase.storage.from(BUCKET).remove([mediaPath]);
-      throw insertError;
-    }
-
-    let mediaUrl: string | null = null;
-    if (mediaPath) {
-      const { data: signed } = await supabase.storage.from(BUCKET).createSignedUrl(mediaPath, 3600);
-      mediaUrl = signed?.signedUrl || null;
-    }
-    return reply({ message: { ...inserted, media_url: mediaUrl } }, 201);
-  } catch (error) {
-    const message = error instanceof Error ? error.message : "Unknown error";
-    if (/token|jwt|signature|expired/i.test(message)) return reply({ error: "Meeting access expired. Please rejoin." }, 401);
-    console.error("Meeting chat/media error:", error);
-    return reply({ error: "Chat or media could not be saved. Please try again." }, 500);
+const cors={"Access-Control-Allow-Origin":"*","Access-Control-Allow-Headers":"authorization, apikey, content-type, x-rock-room","Access-Control-Allow-Methods":"GET, POST, OPTIONS"};
+const bucket="rock-meeting-media";
+const allowed=new Set(["image/jpeg","image/png","image/webp","image/gif","video/mp4","video/webm","video/quicktime"]);
+const reply=(d:unknown,s=200)=>new Response(JSON.stringify(d),{status:s,headers:{...cors,"Content-Type":"application/json"}});
+Deno.serve(async(req:Request)=>{
+ if(req.method==="OPTIONS")return new Response("ok",{headers:cors});
+ if(req.method!=="GET"&&req.method!=="POST")return reply({error:"GET or POST only"},405);
+ try{
+  const key=Deno.env.get("LIVEKIT_API_KEY")||"", secret=Deno.env.get("LIVEKIT_API_SECRET")||"", url=Deno.env.get("SUPABASE_URL")||"", service=Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")||"";
+  if(!key||!secret||!url||!service)return reply({error:"Service is not configured"},500);
+  const jwt=req.headers.get("authorization")?.replace(/^Bearer\s+/i,"").trim()||""; if(!jwt)return reply({error:"Join the meeting first"},401);
+  let claims: {sub?:string;name?:string;metadata?:string;video?:{room?:string;roomJoin?:boolean}};
+  try { claims=await new TokenVerifier(key,secret).verify(jwt); } catch (_) { return reply({error:"Meeting access expired. Please rejoin."},401); }
+  const room=claims.video?.room||"", identity=claims.sub||"", name=(claims.name||identity).slice(0,100);
+  if(!identity||!room||claims.video?.roomJoin!==true)return reply({error:"Invalid meeting access"},401);
+  if(room.startsWith("rock-private-")){let metadata: {rock_private_member?:boolean}={};try{metadata=JSON.parse(claims.metadata||"{}");}catch(_){}if(metadata.rock_private_member!==true||identity.startsWith("guest-"))return reply({error:"Approved ROCK ESPORTS members only"},403);}
+  const requested=req.method==="GET"?new URL(req.url).searchParams.get("room"):req.headers.get("x-rock-room"); if(requested!==room)return reply({error:"Wrong room"},403);
+  const db=createClient(url,service,{auth:{persistSession:false,autoRefreshToken:false}});
+  if(req.method==="GET"){
+   const {data,error}=await db.from("rock_public_meeting_messages").select("id,room_name,sender_id,sender_name,message,media_path,media_type,created_at").eq("room_name",room).order("created_at",{ascending:false}).limit(100); if(error)throw error;
+   const messages=await Promise.all((data||[]).map(async m=>{let media_url=null;if(m.media_path){const {data:s}=await db.storage.from(bucket).createSignedUrl(m.media_path,3600);media_url=s?.signedUrl||null;}return {...m,media_url};})); return reply({messages:messages.reverse()});
   }
+  let message="",file:File|null=null;
+  if((req.headers.get("content-type")||"").includes("multipart/form-data")){const f=await req.formData();message=String(f.get("message")||"").trim().slice(0,2000);const x=f.get("media");if(x instanceof File&&x.size)file=x;}else{const b=await req.json();message=String(b.message||"").trim().slice(0,2000);}
+  if(!message&&!file)return reply({error:"Add a message or a photo/video"},400);
+  if(file&&(!allowed.has(file.type)||file.size>25*1024*1024))return reply({error:"Photo/video must be supported type and at most 25 MB"},400);
+  let media_path:string|null=null,media_type:string|null=null;
+  if(file){const ext:Record<string,string>={"image/jpeg":"jpg","image/png":"png","image/webp":"webp","image/gif":"gif","video/mp4":"mp4","video/webm":"webm","video/quicktime":"mov"};media_path=room+"/"+crypto.randomUUID()+"."+ext[file.type];media_type=file.type.startsWith("video/")?"video":"image";const {error}=await db.storage.from(bucket).upload(media_path,file,{contentType:file.type});if(error)throw error;}
+  const {data,error}=await db.from("rock_public_meeting_messages").insert({room_name:room,sender_id:identity,sender_name:name,message,media_path,media_type}).select("id,room_name,sender_id,sender_name,message,media_path,media_type,created_at").single();if(error){if(media_path)await db.storage.from(bucket).remove([media_path]);throw error;}
+  let media_url=null;if(media_path){const {data:s}=await db.storage.from(bucket).createSignedUrl(media_path,3600);media_url=s?.signedUrl||null;}return reply({message:{...data,media_url}},201);
+ }catch(e){console.error("Meeting chat/media error",e);return reply({error:"Chat or media could not be saved"},500);}
 });
