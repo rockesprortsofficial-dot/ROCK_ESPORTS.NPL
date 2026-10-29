@@ -731,13 +731,13 @@ header.top .banner img#siteBanner{width:100%!important;object-fit:cover!importan
 
 
 <section id="rock-meeting-room" class="section"><div class="container">
-<div class="head"><div><h2><span>ROCK ESPORTS</span> MEETING ROOM</h2><p>Private chat, media sharing and video meetings for authorized members — with a future-ready structure for other esports teams.</p></div><span class="module-tag">PRIVATE • 28 ROCK ESPORTS ACCOUNTS</span></div>
-<div id="rockLiveKitPanel" style="margin:18px 0;padding:18px;border:1px solid #2675a8;border-radius:16px;background:#06182a;color:#edf7ff"><h3>🔴 ROCK ESPORTS LIVE VIDEO MEETING</h3><p>Authorized members only. Enter the same room name to meet together.</p><div id="rlLogin" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px"><label>Full name<input id="rlName" placeholder="Registered full name"></label><label>4-digit code<input id="rlCode" type="password" inputmode="numeric" maxlength="4"></label><label>Meeting password<input id="rlPass" type="password"></label><label>Room name<input id="rlRoom" value="rock-esports-main"></label></div><button id="rlJoin" type="button">🔐 Login & Join Video Meeting</button><div style="margin-top:12px;padding:12px;border:1px solid #2675a8;border-radius:12px;background:#081f34"><button id="rockEnablePushBtn" type="button" style="width:100%;padding:12px;border:0;border-radius:9px;background:#1477b8;color:#fff;font-weight:800;cursor:pointer">🔔 ENABLE ROCK ESPORTS MOBILE NOTIFICATIONS</button><p id="rockPushStatus" role="status" style="margin:8px 0 0;color:#b6cee2;font-size:13px">Use your existing Meeting Room name, 4-digit code and password to enable notifications on this device.</p></div><p id="rlStatus" role="status">Enter your registered member details.</p><div id="rlCall" hidden><h4 id="rlTitle"></h4><p id="rlCount"></p><div id="rlVideos" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px"></div><div class="rl-controls" aria-label="Meeting controls"><button id="rlMic" type="button" title="Mute microphone" aria-label="Mute microphone">🎙️</button><button id="rlCam" type="button" title="Turn camera off" aria-label="Turn camera off">📹</button><button id="rlBg" type="button" title="Toggle virtual background" aria-label="Toggle virtual background" aria-pressed="true">🖼️</button><button id="rlFull" type="button" title="Full screen" aria-label="Full screen">⛶</button><button id="rlShare" type="button" title="Share screen" aria-label="Share screen">▣</button><button id="rlLeave" type="button" title="Leave meeting" aria-label="Leave meeting">☎<span style="display:block;font-size:9px;line-height:10px">Leave</span></button></div></div></div>
-<div class="setup-warning"><strong>Meeting Room status:</strong> LiveKit video calls are wired to the Supabase <code>livekit-token</code> Edge Function. Member login and room access depend on that function and its secrets being configured and deployed. Private chat and media sharing are not connected by this video meeting panel.</div>
+<div class="head"><div><h2><span>ROCK ESPORTS</span> MEETING ROOM</h2><p>स्वीकृत सदस्यको निजी समूह च्याट, फोटो र audio/video call • Private group chat and calls for approved members.</p></div><span class="module-tag">PRIVATE • 28 ROCK ESPORTS ACCOUNTS</span></div>
+<div id="rockLiveKitPanel" style="margin:18px 0;padding:18px;border:1px solid #2675a8;border-radius:16px;background:#06182a;color:#edf7ff"><h3>💬 ROCK ESPORTS MEMBER MESSENGER</h3><p>स्वीकृत सदस्य मात्र। लगइन गर्दा camera/mic खुल्दैन • Approved members only. Camera and microphone stay off when you sign in.</p><div id="rlLogin" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px"><label>पूरा नाम / Full name<input id="rlName" placeholder="Registered full name"></label><label>४ अंकको code / 4-digit code<input id="rlCode" type="password" inputmode="numeric" maxlength="4"></label><label>Password / पासवर्ड<input id="rlPass" type="password"></label><label>Room / कोठा<input id="rlRoom" value="rock-esports-main"></label></div><button id="rlJoin" type="button">🔐 सदस्य च्याट खोल्नुहोस् / Open member chat</button><div style="margin-top:12px;padding:12px;border:1px solid #2675a8;border-radius:12px;background:#081f34"><button id="rockEnablePushBtn" type="button" style="width:100%;padding:12px;border:0;border-radius:9px;background:#1477b8;color:#fff;font-weight:800;cursor:pointer">🔔 ENABLE ROCK ESPORTS MOBILE NOTIFICATIONS</button><p id="rockPushStatus" role="status" style="margin:8px 0 0;color:#b6cee2;font-size:13px">Use your existing Meeting Room name, 4-digit code and password to enable notifications on this device.</p></div><p id="rlStatus" role="status">आफ्नो स्वीकृत नाम, code र password लेख्नुहोस् / Enter your approved member details.</p><div id="rlCall" hidden><h4 id="rlTitle"></h4><p id="rlCount"></p><div id="rlVideos" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px"></div><div class="rl-controls" aria-label="Meeting controls"><button id="rlMic" type="button" title="Mute microphone" aria-label="Mute microphone">🎙️</button><button id="rlCam" type="button" title="Turn camera off" aria-label="Turn camera off">📹</button><button id="rlBg" type="button" title="Toggle virtual background" aria-label="Toggle virtual background" aria-pressed="true">🖼️</button><button id="rlFull" type="button" title="Full screen" aria-label="Full screen">⛶</button><button id="rlShare" type="button" title="Share screen" aria-label="Share screen">▣</button><button id="rlLeave" type="button" title="Leave meeting" aria-label="Leave meeting">☎<span style="display:block;font-size:9px;line-height:10px">Leave</span></button></div></div></div>
+<div class="setup-warning"><strong>Private member group / निजी सदस्य समूह:</strong> एउटै room का स्वीकृत सदस्यले सन्देश र फोटो देख्छन्। Audio/video सुरु गर्न call बटन थिच्नुहोस्। / Approved members in the same room can see its messages and photos. Press a call button to enable audio/video.</div>
 <div class="module-grid">
 <article class="card module-card"><div class="module-icon">🔐</div><h3>Private Member Login</h3><p>Owner-managed accounts for 8 Management and 20 Members. Exact saved name, 4-digit code and shared password; no Gmail OTP.</p><div class="feature-list"><div>Case- and space-sensitive name</div><div>5 failed attempts = 20-minute lock</div><div>Owner can activate or disable accounts</div></div></article>
-<article class="card module-card"><div class="module-icon">💬</div><h3>Chat & Media</h3><p>Private one-to-one and group conversations for approved members.</p><div class="feature-list"><div>Text, replies, reactions, emoji and stickers</div><div>Photo sharing</div><div>1–2 minute video sharing</div><div>Message and media notifications</div></div></article>
-<article class="card module-card"><div class="module-icon">📹</div><h3>Video Calls & Meetings</h3><p>LiveKit-powered calls and meetings, subject to device and network capability.</p><div class="feature-list"><div>One-to-one and group video calls</div><div>1080p target where supported</div><div>Screen sharing</div><div>ROCK ESPORTS branded background</div></div></article>
+<article class="card module-card"><div class="module-icon">💬</div><h3>Chat & Media</h3><p>स्वीकृत सदस्यको एउटै room भित्र समूह च्याट / Group chat for approved members in the same room.</p><div class="feature-list"><div>Text, emoji and ROCK stickers</div><div>Photo sharing</div><div>Photo/video files up to 25 MB</div><div>Messages refresh while connected</div></div></article>
+<article class="card module-card"><div class="module-icon">📹</div><h3>Video Calls & Meetings</h3><p>LiveKit-powered calls and meetings, subject to device and network capability.</p><div class="feature-list"><div>Audio/video with members in the same room</div><div>1080p target where supported</div><div>Screen sharing</div><div>ROCK ESPORTS branded background</div></div></article>
 <article class="card module-card"><div class="module-icon">👑</div><h3>Owner & Team Admin</h3><p>Owner controls member access and room permissions. Future team admins manage only their own organization.</p><div class="feature-list"><div>Create and manage member accounts</div><div>Admit/remove participants</div><div>Lock/unlock meeting room</div><div>Team-isolated administration</div></div></article>
 </div>
 <style>
@@ -754,7 +754,7 @@ header.top .banner img#siteBanner{width:100%!important;object-fit:cover!importan
 </div>
 
 <div class="setup-ok" style="margin-top:15px"><strong>Future multi-team app:</strong> Other esports organizations can register their own team name and logo, invite members and assign administrators. Each team's accounts, chats, files and meetings must remain isolated from every other team.</div>
-<div class="setup-warning" style="margin-top:12px"><strong>Security:</strong> Login checks and lockout must run on the server, not only in browser code. API secrets stay on the backend. LiveKit, database policies and file storage still need configuration.</div>
+<div class="setup-warning" style="margin-top:12px"><strong>Security:</strong> Login checks and lockout must run on the server, not only in browser code. API secrets stay on the backend. Approved-member rooms are separated from guest meetings.</div>
 </div></section>
 
 </main>
@@ -1410,15 +1410,17 @@ startDrawScheduleWatcher();
    room.on(LivekitClient.RoomEvent.ParticipantConnected,(participant)=>{participant.trackPublications.forEach(async pub=>{try{await pub.setSubscribed(true)}catch(e){}});count()});
    room.on(LivekitClient.RoomEvent.ParticipantDisconnected,count);
    room.on(LivekitClient.RoomEvent.Disconnected,()=>{document.body.classList.remove("rock-meeting-active");room=null;activeTrack=null;mic=false;cam=false;bgOn=true;setBgButton();$("rlCall").hidden=true;$("rlLogin").hidden=false;$("rlVideos").replaceChildren();exitFullScreen();say("Disconnected")});
+   room.on(LivekitClient.RoomEvent.LocalTrackPublished,pub=>{if(pub.track)add(pub.track,room.localParticipant)});
+   room.on(LivekitClient.RoomEvent.LocalTrackUnpublished,pub=>{if(pub.track){pub.track.detach().forEach(node=>node.remove());$("lk"+pub.track.sid)?.remove()}});
    await room.connect(d.server_url,d.token);
     document.body.classList.add("rock-meeting-active");
    $("rlLogin").hidden=true;$("rlCall").hidden=false;$("rlTitle").textContent="ROCK ESPORTS • "+room_name;$("rlVideos").replaceChildren();
    room.remoteParticipants.forEach(p=>p.trackPublications.forEach(async pub=>{try{await pub.setSubscribed(true)}catch(e){console.warn("Could not subscribe to existing track",e)}if(pub.track)add(pub.track,p)}));count();
-   try{await room.localParticipant.setMicrophoneEnabled(true);mic=true;$("rlMic").textContent="🎙️";$("rlMic").title="Mute microphone"}catch(e){say("Connected, but microphone could not start: "+e.message,true)}
-   try{await room.localParticipant.setCameraEnabled(true);cam=true;$("rlCam").textContent="📹";$("rlCam").title="Turn camera off"}catch(e){cam=false;say("Connected, but camera could not start: "+e.message,true)}
-   room.localParticipant.videoTrackPublications.forEach(x=>{if(x.track)add(x.track,room.localParticipant)});
-   bgOn=true;setBgButton();
-   if(cam){try{await applyMeetingBackground();say("Connected. ROCK ESPORTS meeting background is ON.")}catch(e){say("Connected; camera is on, but virtual background is unavailable: "+e.message,true)}}
+   mic=false;cam=false;bgOn=false;setBgButton();
+   $("rlMic").textContent="🔇";$("rlCam").textContent="🚫";
+   $("rlCall").classList.remove("rl-controls-hidden");
+   window.dispatchEvent(new CustomEvent("rock-private-meeting-ready",{detail:{room,token:d.token}}));
+   say("Member chat connected. Camera and microphone are off. / सदस्य च्याट खुल्यो। क्यामेरा र माइक बन्द छन्।");
    $("rlCode").value="";$("rlPass").value="";
   }catch(e){if(room){try{await room.disconnect()}catch(_){}room=null}say(e.message||String(e),true)}
   finally{$("rlJoin").disabled=false}
@@ -1447,7 +1449,7 @@ startDrawScheduleWatcher();
    callArea.classList.add("rl-controls-hidden");
    let lastTap=0;
    callArea.addEventListener("click",ev=>{
-    if(ev.target.closest(".rl-controls"))return;
+    if(ev.target.closest(".rl-controls,#rockMeetingChatPanel"))return;
     const now=Date.now();if(now-lastTap<280)return;lastTap=now;
     callArea.classList.toggle("rl-controls-hidden");
    });
@@ -1753,6 +1755,7 @@ Promise.all(preload).then(()=>{ready=true;show(0);stage.setAttribute('aria-label
 })();
 </script>
 
+<script src="./meeting-room-chat.js?private=20261029" defer></script>
 <script src="./rock-community-feed.js" defer></script>
 <script>if ("serviceWorker" in navigator) { navigator.serviceWorker.register("./service-worker.js", {scope:"./"}).catch(function(){}); }</script>
 </body>
