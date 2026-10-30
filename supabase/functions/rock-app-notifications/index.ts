@@ -21,6 +21,19 @@ Deno.serve(async(req:Request)=>{
   const checked=async(q:any)=>{const r=await q;if(r.error)throw r.error;return r.data;};
   const jwt=req.headers.get('Authorization')?.replace(/^Bearer\s+/i,'').trim()||'';
   async function member(){try{const key=Deno.env.get('LIVEKIT_API_KEY')||'',secret=Deno.env.get('LIVEKIT_API_SECRET')||'';if(!key||!secret||!jwt)return null;const claims=await new TokenVerifier(key,secret).verify(jwt);let metadata:any={};try{metadata=JSON.parse(String(claims.metadata||'{}'));}catch(_){}if(!String(claims.video?.room||'').startsWith('rock-private-')||claims.video?.roomJoin!==true||metadata.rock_private_member!==true||!uuid(claims.sub))return null;if(metadata.device_session_id){const valid=await checked(db.rpc('rock_member_session_valid',{p_id:metadata.device_session_id,p_member:claims.sub}));if(!valid)return null;}return await checked(db.from('rock_meeting_members').select('id,real_name').eq('id',claims.sub).eq('team_slug','rock-esports').eq('is_active',true).maybeSingle());}catch(_){return null;}}
+
+  // A member may test only the installation they control; this never broadcasts or creates a notice/call.
+  if(action==='test_device'){
+   const m=await member();if(!m)return json({error:'Approved Meeting Room login required'},401);
+   if(!/^[0-9a-f]{64}$/.test(b.device_token||'')||!uuid(b.test_id)||!pushEndpoint(b.endpoint))return json({error:'Invalid device test'},400);
+   const d=await checked(db.from('rock_app_devices').select('endpoint,p256dh,auth').eq('manage_hash',await hash(b.device_token)).eq('member_id',m.id).eq('member_opt_in',true).eq('endpoint',b.endpoint).maybeSingle());
+   if(!d||!pushEndpoint(d.endpoint))return json({error:'Enable private notifications on this device first'},403);
+   if(!publicKey||!privateKey||!subject)return json({error:'Push configuration unavailable'},503);
+   webpush.setVapidDetails(subject,publicKey,privateKey);
+   try{await webpush.sendNotification({endpoint:d.endpoint,keys:{p256dh:d.p256dh,auth:d.auth}},JSON.stringify({title:'ROCK ESPORTS • Device test / परीक्षण',body:'Notification test only — no actual call. / यो परीक्षण मात्र हो; वास्तविक call होइन।',data:{kind:'device-test',audience:'members',section:'rock-meeting-room',test_id:b.test_id}}),{TTL:60,urgency:'high',timeout:5000});}
+   catch(e){if([404,410].includes((e as {statusCode?:number}).statusCode||0))return json({error:'Subscription expired. Reset notifications on this device.'},410);return json({error:'Push provider did not accept the test. Try again.'},502);}
+   return json({accepted:true,test_id:b.test_id,targets:1,delivery_confirmed:false});
+  }
   if(action==='private_inbox'){const m=await member();if(!m)return json({error:'Sign in with your approved Meeting Room details'},401);const notices=await checked(db.from('rock_app_notices').select('id,title,message,section,created_at').eq('audience','members').order('created_at',{ascending:false}).limit(50));return json({notices,member_name:m.real_name});}
   if(['register','preferences','status'].includes(action)){
    const endpoint=String(b.endpoint||b.subscription?.endpoint||''),deviceToken=String(b.device_token||'');if(!pushEndpoint(endpoint)||!/^[0-9a-f]{64}$/.test(deviceToken))return json({error:'Invalid device registration'},400);
