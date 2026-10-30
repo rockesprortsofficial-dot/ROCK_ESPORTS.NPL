@@ -1,13 +1,26 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { TokenVerifier, AccessToken } from "npm:livekit-server-sdk@2.13.3";
+import webpush from 'npm:web-push@3.6.7';
 const cors={"Access-Control-Allow-Origin":"*","Access-Control-Allow-Headers":"authorization, apikey, content-type, x-rock-room","Access-Control-Allow-Methods":"GET, POST, OPTIONS"};
 const bucket="rock-meeting-media";
 const allowed=new Set(["image/jpeg","image/png","image/webp","image/gif","video/mp4","video/webm","video/quicktime"]);
 const reply=(d:unknown,s=200)=>new Response(JSON.stringify(d),{status:s,headers:{...cors,"Content-Type":"application/json"}});
+
+async function notifyInvitedDevices(db:any,call:any,callerName:string){
+ try{
+ const publicKey=Deno.env.get('VAPID_PUBLIC_KEY')||'',privateKey=Deno.env.get('VAPID_PRIVATE_KEY')||'',subject=Deno.env.get('VAPID_SUBJECT')||'';if(!publicKey||!privateKey||!subject)return;
+ const targetsResult=await db.rpc('rock_call_push_targets',{p_call:call.id});if(targetsResult.error)throw targetsResult.error;const targets=targetsResult.data||[];webpush.setVapidDetails(subject,publicKey,privateKey);
+ const endpointOK=(value:string)=>{try{const u=new URL(value);return u.protocol==='https:'&&!u.username&&!u.password&&(!u.port||u.port==='443')&&(u.hostname==='fcm.googleapis.com'||u.hostname==='android.googleapis.com'||u.hostname==='updates.push.services.mozilla.com'||u.hostname.endsWith('.push.services.mozilla.com')||u.hostname==='web.push.apple.com'||u.hostname.endsWith('.push.apple.com')||u.hostname.endsWith('.notify.windows.com'));}catch(_){return false;}};
+ const expires=Math.min(Date.parse(call.expires_at),Date.parse(call.created_at)+60000),payload=JSON.stringify({title:'ROCK ESPORTS • Incoming call / कल आउँदैछ',body:callerName.slice(0,100)+(call.mode==='video'?' • Video call / भिडियो कल':' • Audio call / अडियो कल'),data:{kind:'call',audience:'members',call_id:call.id,section:'rock-meeting-room',expires_at:new Date(expires).toISOString()}});
+ let offset=0;await Promise.all(Array.from({length:Math.min(8,targets.length)},async()=>{while(offset<targets.length){const target=targets[offset++];if(!endpointOK(target.endpoint)||Date.now()>=expires)continue;const claim=await db.rpc('rock_call_claim_push',{p_call:call.id,p_endpoint_hash:target.endpoint_hash});if(claim.error||claim.data!==true)continue;let state='failed';try{await webpush.sendNotification({endpoint:target.endpoint,keys:{p256dh:target.p256dh,auth:target.auth}},payload,{TTL:Math.max(1,Math.floor((expires-Date.now())/1000)),urgency:'high',timeout:5000});state='sent';}catch(e){if([404,410].includes((e as {statusCode?:number}).statusCode||0)){await db.from('rock_app_devices').delete().eq('endpoint',target.endpoint);}}await db.from('rock_call_push_deliveries').update({state}).eq('call_id',call.id).eq('endpoint_hash',target.endpoint_hash);}}));
+ }catch(e){console.error('Incoming call push failed',e instanceof Error?e.name:'Error');}
+}
+
 async function privateMessenger(req:Request,claims:{sub?:string;metadata?:string},db:any,key:string,secret:string){
  const me=String(claims.sub||'');const uuid=(x:unknown)=>typeof x==='string'&&/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(x);
  const {data:actor,error:actorError}=await db.from('rock_meeting_members').select('id,real_name').eq('id',me).eq('team_slug','rock-esports').eq('is_active',true).maybeSingle();if(actorError||!actor)return reply({error:'Active approved members only'},403);
+ let deviceMeta:any={};try{deviceMeta=JSON.parse(claims.metadata||'{}');}catch(_){}if(deviceMeta.device_session_id){const valid=await db.rpc('rock_member_session_valid',{p_id:deviceMeta.device_session_id,p_member:me});if(valid.error||valid.data!==true)return reply({error:'Device session revoked. Sign in again.'},401);}
  const form=(req.headers.get('content-type')||'').includes('multipart/form-data')?await req.formData():null;
  const b=form?Object.fromEntries(form.entries()):await req.json().catch(()=>({}));const action=String(b.action||'');const fail=(message:string,status=400)=>reply({error:message},status);
  const checked=async(query:any)=>{const r=await query;if(r.error)throw r.error;return r.data;};
@@ -54,7 +67,7 @@ async function privateMessenger(req:Request,claims:{sub?:string;metadata?:string
   if(!['audio','video'].includes(b.mode))return fail('Invalid call mode');await checked(db.from('rock_pm_calls').update({status:'ended'}).eq('room_id',roomId).neq('status','ended').lt('expires_at',new Date().toISOString()));
   const existing=await checked(db.from('rock_pm_calls').select('*').eq('room_id',roomId).neq('status','ended').maybeSingle());if(existing)return reply({call:existing});
   const {data:call,error}=await db.from('rock_pm_calls').insert({room_id:roomId,caller_id:me,mode:b.mode}).select('*').single();if(error)return fail('A call already started. Try joining it.',409);
-  const participants=await checked(db.from('rock_pm_members').select('member_id').eq('room_id',roomId).neq('member_id',me));const {error:inviteError}=await db.from('rock_pm_call_invites').insert(participants.map((p:any)=>({call_id:call.id,member_id:p.member_id})));if(inviteError){await db.from('rock_pm_calls').update({status:'ended'}).eq('id',call.id);throw inviteError;}return reply({call});
+  const participants=await checked(db.from('rock_pm_members').select('member_id').eq('room_id',roomId).neq('member_id',me));const {error:inviteError}=await db.from('rock_pm_call_invites').insert(participants.map((p:any)=>({call_id:call.id,member_id:p.member_id})));if(inviteError){await db.from('rock_pm_calls').update({status:'ended'}).eq('id',call.id);throw inviteError;}EdgeRuntime.waitUntil(notifyInvitedDevices(db,call,actor.real_name));return reply({call});
  }
  const call=b._call;
  if(action==='call_decline'){await checked(db.from('rock_pm_call_invites').update({state:'declined'}).eq('call_id',call.id).eq('member_id',me));const waiting=await checked(db.from('rock_pm_call_invites').select('member_id').eq('call_id',call.id).neq('state','declined'));if(!waiting.length&&call.status==='ringing')await checked(db.from('rock_pm_calls').update({status:'ended'}).eq('id',call.id));return reply({ok:true});}
