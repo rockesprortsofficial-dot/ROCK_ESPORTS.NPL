@@ -1,13 +1,11 @@
-self.addEventListener('install', (event) => {
-  event.waitUntil(self.skipWaiting());
-});
-
-self.addEventListener('activate', (event) => {
-  event.waitUntil(self.clients.claim());
-});
-
+const ROCK_APP_CACHE='rock-esports-pwa-shell-v1';
+const ROCK_APP_SHELL=['offline.html','manifest.webmanifest','assets/icons/rock-192.png','assets/icons/rock-512.png','assets/icons/rock-180.png','assets/icons/rock-maskable-512.png'];
+self.addEventListener('install',event=>{event.waitUntil((async()=>{try{const cache=await caches.open(ROCK_APP_CACHE);await cache.addAll(ROCK_APP_SHELL.map(file=>new URL(file,self.registration.scope).href));}catch(_){}await self.skipWaiting();})());});
+self.addEventListener('activate',event=>{event.waitUntil((async()=>{for(const key of await caches.keys())if(key.startsWith('rock-esports-pwa-shell-')&&key!==ROCK_APP_CACHE)await caches.delete(key);await self.clients.claim();})());});
 self.addEventListener('fetch', (event) => {
-  if (event.request.mode !== 'navigate' || new URL(event.request.url).origin !== self.location.origin) return;
+  const requested=new URL(event.request.url);const shell=new Set(ROCK_APP_SHELL.map(file=>new URL(file,self.registration.scope).href));const clean=new URL(requested);clean.search='';
+  if(event.request.method==='GET'&&shell.has(clean.href)){event.respondWith(fetch(event.request).catch(async()=>await caches.match(clean.href)||Response.error()));return;}
+  if (event.request.mode !== 'navigate' || requested.origin !== self.location.origin) return;
   event.respondWith((async () => {
     try {
       const response = await fetch(event.request);
@@ -36,38 +34,20 @@ self.addEventListener('fetch', (event) => {
       headers.delete('transfer-encoding');
       return new Response(html, { status: response.status, statusText: response.statusText, headers });
     } catch (_) {
-      return fetch(event.request);
+      const offline=await caches.match(new URL('offline.html',self.registration.scope).href);return offline||new Response('<h1>ROCK ESPORTS</h1><p>Offline. Connect to the internet and retry.</p>',{headers:{'Content-Type':'text/html; charset=utf-8'}});
     }
   })());
 });
 
-self.addEventListener('push', (event) => {
-  let payload = {};
-  try { payload = event.data ? event.data.json() : {}; } catch (_) {}
-  const section = String(payload?.data?.section || 'notifications');
-  const allowed = new Set(['home','about','management','members','statements','contact','tournament','registration','group-division','tdm-group-division','live-draw','connect','jersey-preview','meeting','rock-meeting-room','notifications']);
-  const target = allowed.has(section) ? section : 'notifications';
-  const destination = new URL('./#' + target, self.registration.scope).href;
-  event.waitUntil(self.registration.showNotification(String(payload.title || 'ROCK ESPORTS'), {
-    body: String(payload.body || 'A new update is available.'),
-    data: { url: destination },
-    tag: 'rock-esports-' + target,
-    renotify: true
-  }));
+// Only the small public App shell is cached. Backend/auth/media requests pass through uncached.
+self.addEventListener('push',event=>{
+ let payload={};try{payload=event.data?event.data.json():{};}catch(_){}
+ const allowed=new Set(['home','about','management','members','statements','contact','tournament','registration','group-division','tdm-group-division','live-draw','connect','jersey-preview','meeting','rock-meeting-room','notifications']);
+ const audience=payload?.data?.audience==='members'?'members':'public';const section=audience==='members'?'rock-meeting-room':allowed.has(payload?.data?.section)?payload.data.section:'notifications';
+ const notice=String(payload?.data?.notice_id||'');const id=/^[0-9a-f-]{36}$/i.test(notice)?notice:'';
+ event.waitUntil(self.registration.showNotification(String(payload.title||'ROCK ESPORTS').slice(0,120),{body:String(payload.body||'A new update is available.').slice(0,1200),icon:new URL('assets/icons/rock-192.png',self.registration.scope).href,tag:'rock-app-'+audience+'-'+(id||section),renotify:true,data:{audience,section,notice_id:id}}));
 });
-
-self.addEventListener('notificationclick', (event) => {
-  event.notification.close();
-  const destination = event.notification.data?.url || new URL('./#notifications', self.registration.scope).href;
-  event.waitUntil((async () => {
-    const windows = await clients.matchAll({ type: 'window', includeUncontrolled: true });
-    for (const client of windows) {
-      if (new URL(client.url).origin === self.location.origin) {
-        await client.navigate(destination);
-        return client.focus();
-      }
-    }
-    return clients.openWindow(destination);
-  })());
+self.addEventListener('notificationclick',event=>{
+ event.notification.close();const data=event.notification.data||{};const destination=new URL('./',self.registration.scope);destination.hash=data.audience==='members'?'rock-meeting-room':data.section||'notifications';if(data.audience==='members'&&data.notice_id)destination.searchParams.set('notice',data.notice_id);
+ event.waitUntil((async()=>{const windows=await clients.matchAll({type:'window',includeUncontrolled:true});for(const client of windows){const current=new URL(client.url),scope=new URL(self.registration.scope);if(current.origin===scope.origin&&current.pathname.startsWith(scope.pathname)){await client.focus();client.postMessage({type:'ROCK_NOTICE_OPEN',...data});return;}}return clients.openWindow(destination.href);})());
 });
-

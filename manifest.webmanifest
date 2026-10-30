@@ -1,0 +1,23 @@
+{
+  "id": "./",
+  "name": "ROCK ESPORTS",
+  "short_name": "ROCK ESPORTS",
+  "description": "ROCK ESPORTS — tournaments, community and approved-member meetings / प्रतियोगिता, कम्युनिटी र सदस्य बैठक",
+  "start_url": "./?app=1#home",
+  "scope": "./",
+  "display": "standalone",
+  "display_override": ["standalone"],
+  "background_color": "#06182a",
+  "theme_color": "#06182a",
+  "lang": "ne",
+  "icons": [
+    {"src":"./assets/icons/rock-192.png","sizes":"192x192","type":"image/png","purpose":"any"},
+    {"src":"./assets/icons/rock-512.png","sizes":"512x512","type":"image/png","purpose":"any"},
+    {"src":"./assets/icons/rock-maskable-512.png","sizes":"512x512","type":"image/png","purpose":"maskable"}
+  ],
+  "shortcuts": [
+    {"name":"Community / कम्युनिटी","url":"./#rockCommunityFeed"},
+    {"name":"Member Messenger / सदस्य Messenger","url":"./#rock-meeting-room"},
+    {"name":"Notifications / सूचना","url":"./#notifications"}
+  ]
+}
