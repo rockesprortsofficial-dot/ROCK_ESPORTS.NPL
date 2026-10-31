@@ -2,6 +2,13 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import {createClient} from 'https://esm.sh/@supabase/supabase-js@2';
 import {TokenVerifier} from 'npm:livekit-server-sdk@2.13.3';
 import webpush from 'npm:web-push@3.6.7';
+import {createECDH} from 'node:crypto';
+import {Buffer} from 'node:buffer';
+function pushConfig(){let stage="private-key-format";
+const clean=(value:string)=>{let s=value.trim();try{const parsed=JSON.parse(s);if(typeof parsed==='string')s=parsed;else if(parsed&&typeof parsed.privateKey==='string')s=parsed.privateKey;}catch(_){}return s.replace(/^[\s"']+|[\s"',]+$/g,'');};
+try{const raw=clean(Deno.env.get('VAPID_PRIVATE_KEY')||'');if(!/^[A-Za-z0-9_-]{43}=?$/.test(raw))throw Error('Invalid signing key');stage='private-key-bytes';const bytes=Buffer.from(raw,'base64url');if(bytes.length!==32)throw Error('Invalid signing key');stage='public-key-derivation';const ec=createECDH('prime256v1');ec.setPrivateKey(bytes);let subject=clean(Deno.env.get('VAPID_SUBJECT')||'');try{if(!['mailto:','https:'].includes(new URL(subject).protocol))throw Error();}catch(_){subject='mailto:rockesprorts.official@gmail.com';}return {publicKey:ec.getPublicKey().toString('base64url'),privateKey:bytes.toString('base64url'),subject,configured:true};}catch(_){return {publicKey:'',privateKey:'',subject:'',configured:false,configuration_error:stage};}
+}
+
 const cors={'Access-Control-Allow-Origin':'*','Access-Control-Allow-Headers':'authorization, x-client-info, apikey, content-type','Access-Control-Allow-Methods':'POST, OPTIONS'};
 const ownerEmail='rockesprorts.official@gmail.com';
 const sections=new Set(['home','about','management','members','statements','contact','tournament','registration','group-division','tdm-group-division','live-draw','connect','jersey-preview','meeting','rock-meeting-room','notifications']);
@@ -15,8 +22,8 @@ Deno.serve(async(req:Request)=>{
  try{
   const b=await req.json(),action=String(b.action||'');const url=Deno.env.get('SUPABASE_URL')||'',anon=Deno.env.get('SUPABASE_ANON_KEY')||'',service=Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')||'';
   if(!url||!anon||!service)return json({error:'Notification service is not configured'},503);
-  const publicKey=Deno.env.get('VAPID_PUBLIC_KEY')||'',privateKey=Deno.env.get('VAPID_PRIVATE_KEY')||'',subject=Deno.env.get('VAPID_SUBJECT')||'';
-  if(action==='config')return json({public_key:publicKey,configured:!!(publicKey&&privateKey&&subject)});
+  const {publicKey,privateKey,subject,configured,configuration_error}=pushConfig();
+  if(action==='config')return json({public_key:publicKey,configured,configuration_error:configuration_error||null,error:configured?null:'Push signing configuration is invalid. Owner setup is required.'});
   const db=createClient(url,service,{auth:{persistSession:false,autoRefreshToken:false}});
   const checked=async(q:any)=>{const r=await q;if(r.error)throw r.error;return r.data;};
   const jwt=req.headers.get('Authorization')?.replace(/^Bearer\s+/i,'').trim()||'';
