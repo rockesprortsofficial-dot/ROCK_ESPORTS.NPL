@@ -345,6 +345,40 @@
     mediaLinks.set(postId,{url:result.url,expires:Date.now()+45*60*1000});
     return result.url;
   }
+  function attachPostMedia(post, media) {
+    const isPrivate = post.media_path.startsWith("b2:");
+    const retry = document.createElement("button");
+    retry.type = "button"; retry.className = "secondary"; retry.hidden = true;
+    retry.textContent = t("मिडिया खोल्न सकिएन। फेरि प्रयास गर्नुहोस्।");
+    media.after(retry);
+    let loading = false;
+    const failed = () => {
+      loading = false; media.hidden = true; retry.hidden = false; retry.disabled = false;
+    };
+    const loaded = () => {
+      loading = false; media.hidden = false; retry.hidden = true; retry.disabled = false;
+      if (post.media_type === "video") syncPlayback();
+    };
+    async function load(refresh = false) {
+      if (loading) return;
+      loading = true; retry.disabled = true;
+      try {
+        // Refresh only on a user retry; a storage cap must not cause a request loop.
+        if (refresh && isPrivate) mediaLinks.delete(post.id);
+        const address = isPrivate ? await privateMediaUrl(post.id)
+          : client.storage.from("rock-community-media").getPublicUrl(post.media_path).data.publicUrl;
+        // A feed refresh may have removed this card while the link was being signed.
+        if (!media.isConnected) { loading = false; return; }
+        media.hidden = false; media.src = address;
+        if (post.media_type === "video") media.load();
+      } catch (_) { if (media.isConnected) failed(); else loading = false; }
+    }
+    media.addEventListener("error", failed);
+    media.addEventListener(post.media_type === "video" ? "loadeddata" : "load", loaded);
+    retry.addEventListener("click", () => load(true));
+    // buildPost returns a detached card; begin after loadFeed has appended it.
+    window.setTimeout(() => { if (media.isConnected) load(); }, 0);
+  }
   function uploadDirect(prepared, file) {
     return new Promise((resolve,reject) => {
       const request = new XMLHttpRequest();
@@ -493,22 +527,11 @@
     meta.append(author, date); card.append(meta);
     if (post.content) { const body = document.createElement("p"); body.textContent = post.content; card.append(body); }
     if (post.media_path) {
-      const isPrivate = post.media_path.startsWith("b2:");
       const media = document.createElement(post.media_type === "video" ? "video" : "img");
       if (post.media_type === "video") { media.controls = true; media.playsInline = true; media.muted = true; media.defaultMuted = true; media.loop = true; media.setAttribute("muted", ""); media.setAttribute("playsinline", ""); media.preload = "metadata"; media.addEventListener("loadeddata", syncPlayback); }
       else { media.alt = t("खेलाडीले साझा गरेको फोटो"); media.loading = "lazy"; media.referrerPolicy = "no-referrer"; }
       card.append(media);
-      if (isPrivate) {
-        privateMediaUrl(post.id).then(address => { media.src = address; }).catch(() => {
-          const note=document.createElement("p");note.textContent=t("मिडिया खोल्न सकिएन। फेरि प्रयास गर्नुहोस्।");media.replaceWith(note);
-        });
-        media.addEventListener("error", () => {
-          if(media.dataset.refreshed)return; media.dataset.refreshed="true"; mediaLinks.delete(post.id);
-          privateMediaUrl(post.id).then(address=>{media.src=address;}).catch(()=>{});
-        });
-      } else {
-        const {data}=client.storage.from("rock-community-media").getPublicUrl(post.media_path); media.src=data.publicUrl;
-      }
+      attachPostMedia(post, media);
     }
     const actions = document.createElement("div"); actions.className = "rock-community-actions";
     const like = document.createElement("button"); like.type = "button"; like.className = isLiked ? "" : "secondary"; like.textContent = `👍 ${t("मन पराएँ")} · ${post.like_count || 0}`;
