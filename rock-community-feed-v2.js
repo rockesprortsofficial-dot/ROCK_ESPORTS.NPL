@@ -202,6 +202,9 @@
         <form id="rockCommunityPostForm">
           <textarea id="rockCommunityPostText" maxlength="2000" placeholder="तपाईं के बाँड्न चाहनुहुन्छ?"></textarea>
           <input id="rockCommunityMedia" type="file" accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/webm,video/quicktime">
+          <label for="rockCommunityRutube">RUTUBE video link / भिडियो लिंक</label>
+          <input id="rockCommunityRutube" type="url" maxlength="300" placeholder="https://rutube.ru/video/…">
+          <small>ठूलो भिडियो: पहिले RUTUBE मा upload र publish गरेर सार्वजनिक लिंक यहाँ राख्नुहोस्। फाइल वा लिंकमध्ये एउटा मात्र छान्नुहोस्। / For large videos, upload and publish on RUTUBE first, then paste its public link. Choose a file or a link.</small>
           <div id="rockCommunityMediaLimit" class="rock-community-meta">फोटो वा भिडियो बढीमा २५ MB</div>
           <button type="submit">पोस्ट गर्नुहोस्</button>
         </form>
@@ -537,6 +540,30 @@
     }
   }
 
+  function parseRutubeLink(value) {
+    try {
+      const url = new URL(value);
+      if (url.protocol !== "https:" || !["rutube.ru", "www.rutube.ru"].includes(url.hostname) || url.port || url.username || url.password || url.searchParams.has("p")) return null;
+      return url.pathname.match(/^\/(?:video|play\/embed)\/([a-f0-9]{32})\/?$/i)?.[1].toLowerCase() || null;
+    } catch (_) { return null; }
+  }
+  function buildRutubeMedia(id) {
+    const frame = document.createElement("iframe");
+    frame.title = "RUTUBE video"; frame.loading = "lazy";
+    frame.src = `https://rutube.ru/play/embed/${id}`;
+    frame.allow = "fullscreen; picture-in-picture"; frame.allowFullscreen = true;
+    frame.referrerPolicy = "strict-origin-when-cross-origin";
+    frame.style.cssText = "display:block;width:100%;aspect-ratio:16/9;min-height:220px;border:0;flex-shrink:0;margin:8px 0";
+    return frame;
+  }
+  function pauseRutubePlayers() {
+    postHost.querySelectorAll('iframe[title="RUTUBE video"]').forEach(frame => {
+      frame.contentWindow?.postMessage(JSON.stringify({type:"player:pause",data:{}}), "https://rutube.ru");
+    });
+  }
+  document.addEventListener("visibilitychange", () => { if (document.hidden) pauseRutubePlayers(); });
+  window.addEventListener("pagehide", pauseRutubePlayers);
+
   function buildPost(post, comments, isLiked) {
     const card = document.createElement("article"); card.className = "rock-community-card"; card.dataset.postId = post.id;
     const meta = document.createElement("div"); meta.className = "rock-community-meta";
@@ -544,7 +571,11 @@
     const date = document.createElement("time"); date.dateTime = post.created_at; date.textContent = new Date(post.created_at).toLocaleString(language === "en" ? "en-US" : "ne-NP");
     meta.append(author, date); card.append(meta);
     if (post.content) { const body = document.createElement("p"); body.textContent = post.content; card.append(body); }
-    if (post.media_path) {
+    if (/^rutube:[a-f0-9]{32}$/.test(post.media_path || "")) {
+      card.append(buildRutubeMedia(post.media_path.slice(7)));
+      const link = document.createElement("a"); link.href = `https://rutube.ru/video/${post.media_path.slice(7)}/`;
+      link.target = "_blank"; link.rel = "noopener noreferrer"; link.textContent = "RUTUBE मा खोल्नुहोस् / Open on RUTUBE"; card.append(link);
+    } else if (post.media_path && !post.media_path.startsWith("rutube:")) {
       const media = document.createElement(post.media_type === "video" ? "video" : "img");
       if (post.media_type === "video") { media.controls = true; media.playsInline = true; media.muted = true; media.defaultMuted = true; media.loop = false; media.setAttribute("muted", ""); media.setAttribute("playsinline", ""); media.preload = "none"; media.addEventListener("loadeddata", syncPlayback); }
       else { media.alt = t("खेलाडीले साझा गरेको फोटो"); media.loading = "lazy"; media.referrerPolicy = "no-referrer"; }
@@ -602,7 +633,7 @@
     }
     const { error } = await client.from("rock_community_posts").delete().eq("id", post.id);
     if (error) { authStatus.textContent = error.message; return; }
-    if (post.media_path) await client.storage.from("rock-community-media").remove([post.media_path]);
+    if (post.media_path && !post.media_path.startsWith("rutube:")) await client.storage.from("rock-community-media").remove([post.media_path]);
     await loadFeed();
   }
 
@@ -619,13 +650,17 @@
     if (!session?.user) { postStatus.textContent = t("पोस्ट गर्न लगइन गर्नुहोस्।"); return; }
     const content = document.getElementById("rockCommunityPostText").value.trim();
     const file = document.getElementById("rockCommunityMedia").files?.[0] || null;
+    const rutubeLink = document.getElementById("rockCommunityRutube").value.trim();
+    const rutubeId = rutubeLink ? parseRutubeLink(rutubeLink) : null;
+    if (rutubeLink && !rutubeId) { postStatus.textContent = "सार्वजनिक RUTUBE भिडियोको सही HTTPS लिंक राख्नुहोस्। / Enter a public RUTUBE video URL."; return; }
+    if (file && rutubeId) { postStatus.textContent = "फाइल वा RUTUBE लिंकमध्ये एउटा मात्र छान्नुहोस्। / Choose a file or a RUTUBE link."; return; }
     const postForm = event.currentTarget;
     const submit = postForm.querySelector("button[type=submit]");
     await mediaConfiguration;
-    if (!content && !file) { postStatus.textContent = t("लेखाइ वा फोटो/भिडियो राख्नुहोस्।"); return; }
+    if (!content && !file && !rutubeId) { postStatus.textContent = t("लेखाइ वा फोटो/भिडियो राख्नुहोस्।"); return; }
     if (file && (!/^image\/(jpeg|png|webp|gif)$|^video\/(mp4|webm|quicktime)$/.test(file.type) || file.size < 1 || file.size > (file.type.startsWith("image/") ? maxImageBytes : maxMediaBytes))) { postStatus.textContent = t(mediaProvider === "imagekit" ? "फोटो बढीमा २५ MB वा भिडियो बढीमा १०० MB" : b2Enabled ? "५०० MB सम्मको समर्थित फोटो वा भिडियो छान्नुहोस्।" : "समर्थित फोटो वा २५ MB सम्मको भिडियो छान्नुहोस्।"); return; }
     submit.disabled = true; postStatus.textContent = t("पोस्ट राखिँदै छ…");
-    let mediaPath = null, mediaType = null;
+    let mediaPath = rutubeId ? `rutube:${rutubeId}` : null, mediaType = rutubeId ? "video" : null;
     let pendingB2Session = null;
     try {
       if (file && mediaProvider === "imagekit") {
@@ -649,7 +684,7 @@
         if (error) throw error;
       }
       const { error } = await client.from("rock_community_posts").insert({ author_id: session.user.id, content, media_path: mediaPath, media_type: mediaType });
-      if (error) { if (mediaPath) await client.storage.from("rock-community-media").remove([mediaPath]); throw error; }
+      if (error) { if (file && mediaPath) await client.storage.from("rock-community-media").remove([mediaPath]); throw error; }
       postForm.reset(); postStatus.textContent = t("पोस्ट सफलतापूर्वक राखियो।"); await loadFeed();
     } catch (error) {
       if(pendingB2Session) { try { await mediaCall({action:"discard",session:pendingB2Session}, "b2"); } catch(_) {} }
@@ -665,6 +700,7 @@
     try { raw = decodeURIComponent(location.hash.slice(1)); } catch (_) {}
     const selected = routeIds.has(raw) ? raw : "rockCommunityFeed";
     const communityActive = selected === "rockCommunityFeed";
+    if (!communityActive) pauseRutubePlayers();
     const wasCommunity = document.body.classList.contains("rock-community-active");
     document.body.classList.toggle("rock-community-active", communityActive);
     if (communityActive && !wasCommunity) window.scrollTo(0, 0);

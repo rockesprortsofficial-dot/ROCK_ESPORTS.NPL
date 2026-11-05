@@ -1,0 +1,40 @@
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const vm = require('node:vm');
+const source = fs.readFileSync('rock-community-feed.js', 'utf8');
+assert.equal(source, fs.readFileSync('rock-community-feed-v2.js', 'utf8'));
+const id = '7716bd3e665725c3c008ae7ab4ff02e2';
+const helpers = source.slice(source.indexOf('  function parseRutubeLink('), source.indexOf('  function buildPost('));
+const events = {};
+const messages = [];
+const context = vm.createContext({URL, document:{hidden:false, createElement:()=>({style:{}}), addEventListener:(name, fn)=>events[name]=fn}, window:{addEventListener:(name, fn)=>events[name]=fn}, postHost:{querySelectorAll:()=>[{contentWindow:{postMessage:(...args)=>messages.push(args)}}]}});
+vm.runInContext(helpers+';globalThis.parse=parseRutubeLink;globalThis.build=buildRutubeMedia;',context);
+for (const value of [`https://rutube.ru/video/${id}/`, `https://www.rutube.ru/play/embed/${id}?t=2`]) assert.equal(context.parse(value),id);
+for (const value of [`http://rutube.ru/video/${id}`,`https://rutube.ru.evil.test/video/${id}`,`https://evil.test/?url=https://rutube.ru/video/${id}`,`https://rutube.ru@evil.test/video/${id}`,`https://user:pass@rutube.ru/video/${id}`,`https://rutube.ru:444/video/${id}`,`https://rutube.ru/video/${id}/?p=private`, `https://rutube.ru/video/private/${id}`, 'javascript:alert(1)', '<iframe src=x>', 'https://rutube.ru/video/nope']) assert.equal(context.parse(value),null,value);
+const frame=context.build(id);
+assert.equal(frame.src,`https://rutube.ru/play/embed/${id}`);
+assert.equal(frame.loading,'lazy'); assert.ok(!frame.allow.includes('autoplay'));
+context.document.hidden=true; events.visibilitychange();
+assert.equal(JSON.parse(messages[0][0]).type,'player:pause'); assert.equal(messages[0][1],'https://rutube.ru');
+const submitCode=source.slice(source.indexOf('  document.getElementById("rockCommunityPostForm").addEventListener'),source.indexOf('  const routeIds'));
+async function submit({link=`https://rutube.ru/video/${id}`,file=null,fail=false}={}) {
+  let handler, row, resets=0, refreshes=0, storageCalls=0;
+  const button={disabled:false}, status={};
+  const form={querySelector:()=>button,reset:()=>resets++};
+  const fields={rockCommunityPostForm:{addEventListener:(_,fn)=>handler=fn},rockCommunityPostText:{value:''},rockCommunityMedia:{files:file?[file]:[]},rockCommunityRutube:{value:link}};
+  const ctx=vm.createContext({document:{getElementById:name=>fields[name]},session:{user:{id:'owner'}},parseRutubeLink:context.parse,postStatus:status,t:x=>x,mediaConfiguration:Promise.resolve(),client:{from:()=>({insert:async value=>{row=value;return {error:fail?new Error('denied'):null};}}),storage:{from:()=>{storageCalls++;throw Error('Unexpected storage operation');}}},loadFeed:async()=>refreshes++});
+  vm.runInContext(submitCode,ctx); await handler({preventDefault(){},currentTarget:form});
+  return {row,resets,refreshes,storageCalls,status,button};
+}
+(async()=>{
+  const ok=await submit(); assert.equal(ok.row.media_path,`rutube:${id}`); assert.equal(ok.row.media_type,'video'); assert.equal(ok.row.author_id,'owner'); assert.equal(ok.resets,1); assert.equal(ok.refreshes,1); assert.equal(ok.storageCalls,0); assert.equal(ok.button.disabled,false);
+  const bad=await submit({link:'https://evil.test/video/'+id}); assert.equal(bad.row,undefined);
+  const mixed=await submit({file:{size:1}}); assert.equal(mixed.row,undefined);
+  const denied=await submit({fail:true}); assert.equal(denied.resets,0); assert.equal(denied.storageCalls,0); assert.equal(denied.button.disabled,false);
+  const remove=source.slice(source.indexOf('  async function removePost('),source.indexOf('  async function recordViews('));
+  let deleted=false,storage=false;
+  const ctx=vm.createContext({window:{confirm:()=>true},t:x=>x,client:{from:()=>({delete:()=>({eq:async()=>{deleted=true;return {};}})}),storage:{from:()=>{storage=true;throw Error('Unexpected storage delete');}}},loadFeed:async()=>{},authStatus:{}});
+  vm.runInContext(remove+';globalThis.remove=removePost;',ctx); await ctx.remove({id:'post',media_path:`rutube:${id}`});
+  assert.equal(deleted,true); assert.equal(storage,false);
+  console.log('PASS: trusted URLs, hostile/private URLs rejected, safe iframe, pause on hide, link-only publish, mixed input rejected, failed publish preserved, post deletion leaves RUTUBE untouched.');
+})().catch(error=>{console.error(error);process.exitCode=1;});
