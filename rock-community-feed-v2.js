@@ -201,11 +201,19 @@
       <div id="rockCommunityComposer" class="rock-community-compose" hidden>
         <form id="rockCommunityPostForm">
           <textarea id="rockCommunityPostText" maxlength="2000" placeholder="तपाईं के बाँड्न चाहनुहुन्छ?"></textarea>
-          <input id="rockCommunityMedia" type="file" accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/webm,video/quicktime">
-          <label for="rockCommunityRutube">RUTUBE video link / भिडियो लिंक</label>
-          <input id="rockCommunityRutube" type="url" maxlength="300" placeholder="https://rutube.ru/video/…">
-          <small>ठूलो भिडियो: पहिले RUTUBE मा upload र publish गरेर सार्वजनिक लिंक यहाँ राख्नुहोस्। फाइल वा लिंकमध्ये एउटा मात्र छान्नुहोस्। / For large videos, upload and publish on RUTUBE first, then paste its public link. Choose a file or a link.</small>
-          <div id="rockCommunityMediaLimit" class="rock-community-meta">फोटो वा भिडियो बढीमा २५ MB</div>
+          <fieldset class="rock-community-upload-option">
+            <legend>RUTUBE · ठूलो भिडियो / Large video</legend>
+            <p>५०० MB को भिडियो पनि राख्न मिल्छ। पहिले RUTUBE Studio मा फाइल अपलोड गर्नुहोस्। प्रकाशित भएपछि सार्वजनिक लिंक यहाँ राख्नुहोस्। / For a 500 MB video, upload in RUTUBE Studio, then paste the published public link here.</p>
+            <a href="https://studio.rutube.ru/uploader/" target="_blank" rel="noopener noreferrer">RUTUBE Studio खोल्नुहोस् / Open RUTUBE Studio ↗</a>
+            <label for="rockCommunityRutube">RUTUBE video link / भिडियो लिंक</label>
+            <input id="rockCommunityRutube" type="url" maxlength="300" placeholder="https://rutube.ru/video/…">
+          </fieldset>
+          <fieldset class="rock-community-upload-option">
+            <legend>सीधै फाइल / Direct file upload</legend>
+            <input id="rockCommunityMedia" type="file" aria-describedby="rockCommunityMediaLimit" accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/webm,video/quicktime">
+            <div id="rockCommunityMediaLimit" class="rock-community-meta">फोटो वा भिडियो बढीमा २५ MB</div>
+          </fieldset>
+          <small>एउटा पोस्टमा फाइल वा RUTUBE लिंकमध्ये एउटा छान्नुहोस्। / Choose one file or one RUTUBE link per post.</small>
           <button type="submit">पोस्ट गर्नुहोस्</button>
         </form>
         <p id="rockCommunityPostStatus" class="rock-community-status" role="status"></p>
@@ -248,6 +256,9 @@
     #rockCommunityFeed .rock-community-comments{flex-shrink:0;max-height:30%;overflow:auto}
     #rockCommunityFeed .rock-community-card>details>summary{cursor:pointer;padding:8px}
     #rockCommunityFeed dialog{box-sizing:border-box;width:min(94vw,520px);max-height:85dvh;overflow:auto;background:#071626;color:#edf7ff;border:1px solid #315a75;border-radius:14px;padding:14px}
+    #rockCommunityFeed .rock-community-upload-option{display:grid;gap:8px;min-width:0;margin:0;padding:10px;border:1px solid #315a75;border-radius:8px}
+    #rockCommunityFeed .rock-community-upload-option p{margin:0}
+    #rockCommunityFeed .rock-community-upload-option a{color:#9fdaff;text-decoration:underline}
     #rockCommunityFeed dialog::backdrop{background:#000b}
     #rockCommunityFeed dialog .rock-community-auth,#rockCommunityFeed dialog .rock-community-compose{margin:8px 0}
     @media(max-width:600px){#rockCommunityFeed .rock-feed-toolbar h2{display:none}#rockCommunityFeed .rock-community-meta{font-size:11px}}
