@@ -218,6 +218,60 @@
   const feedContainer = section.querySelector(".container");
   feedContainer.insertBefore(document.getElementById("rockCommunityPosts"), section.querySelector(".rock-community-auth"));
 
+  // Keep the site shell and toolbar outside the only scrolling region.
+  const immersiveStyle = document.createElement("style");
+  immersiveStyle.textContent = `
+    body.rock-community-active{overflow:hidden!important;height:100dvh}
+    body.rock-community-active>footer{display:none}
+    body.rock-community-active>header.top{padding-top:0!important}
+    body.rock-community-active>header.top .banner{height:clamp(54px,12dvh,90px)!important;aspect-ratio:auto!important}
+    body.rock-community-active>header.top .banner img{object-fit:cover}
+    body.rock-community-active .rock-ticker{margin:0!important}
+    body.rock-community-active .rock-ticker-word{font-size:13px!important;padding:4px 8px!important}
+    body.rock-community-active #rockFestivalBar.rock-festival-bar{height:38px!important;margin:0!important}
+    body.rock-community-active .nav-inner{min-height:42px!important;padding-top:4px!important;padding-bottom:4px!important}
+    body.rock-community-active>[data-rock-fixed-header]{position:fixed!important;top:var(--rock-header-offset)!important;left:0;right:0;width:100%;margin:0!important}
+    body.rock-community-active #rockCommunityFeed{position:fixed;inset:var(--rock-header-height,0px) 0 0;padding:0!important;z-index:40;background:#03070d;overflow:hidden}
+    #rockCommunityFeed>.container{width:100%;max-width:100%;height:100%;padding:0;display:flex;flex-direction:column;min-height:0}
+    #rockCommunityFeed h2{font-size:15px;margin:0}
+    #rockCommunityFeed .rock-feed-toolbar{display:flex;align-items:center;justify-content:center;gap:8px;flex-wrap:wrap;flex:none;padding:8px max(8px,env(safe-area-inset-right)) 8px max(8px,env(safe-area-inset-left));border-bottom:1px solid #214762;background:#071626}
+    #rockCommunityFeed .rock-feed-toolbar .rock-community-switch{margin:0}
+    #rockCommunityFeed .rock-feed-toolbar button{padding:7px 9px}
+    #rockCommunityPosts{flex:1;min-height:0;overflow-y:auto;overscroll-behavior-y:contain;scroll-snap-type:y mandatory;scrollbar-width:thin;touch-action:pan-y;padding-bottom:env(safe-area-inset-bottom)}
+    #rockCommunityFeed #rockCommunityPosts>.rock-community-card{box-sizing:border-box;position:relative;width:min(100%,620px);height:100%;min-height:100%;margin:0 auto;padding:12px;border-radius:0;scroll-snap-align:start;scroll-snap-stop:always;display:flex;flex-direction:column;overflow-y:auto;overflow-wrap:anywhere}
+    #rockCommunityFeed .rock-community-card>video,#rockCommunityFeed .rock-community-card>img{width:100%;min-height:0;height:0;flex:1;max-height:none;object-fit:contain;margin:8px 0;background:#000}
+    #rockCommunityFeed .rock-community-card>p{max-height:20%;overflow:auto;margin:6px 0}
+    #rockCommunityFeed .rock-community-comments{flex-shrink:0;max-height:30%;overflow:auto}
+    #rockCommunityFeed .rock-community-card>details>summary{cursor:pointer;padding:8px}
+    #rockCommunityFeed dialog{box-sizing:border-box;width:min(94vw,520px);max-height:85dvh;overflow:auto;background:#071626;color:#edf7ff;border:1px solid #315a75;border-radius:14px;padding:14px}
+    #rockCommunityFeed dialog::backdrop{background:#000b}
+    #rockCommunityFeed dialog .rock-community-auth,#rockCommunityFeed dialog .rock-community-compose{margin:8px 0}
+    @media(max-width:600px){#rockCommunityFeed .rock-feed-toolbar h2{display:none}#rockCommunityFeed .rock-community-meta{font-size:11px}}
+  `;
+  document.head.append(immersiveStyle);
+  const toolbar = document.createElement("div");
+  toolbar.className = "rock-feed-toolbar";
+  toolbar.append(feedContainer.querySelector("h2"), feedContainer.querySelector(".rock-community-switch"));
+  feedContainer.querySelector(":scope > p")?.remove();
+  const accountDialog = document.createElement("dialog");
+  accountDialog.setAttribute("aria-label", "Community account / समुदाय खाता");
+  const closeDialog = document.createElement("button");
+  closeDialog.type = "button"; closeDialog.textContent = "✕ Close / बन्द";
+  closeDialog.addEventListener("click", () => accountDialog.close());
+  accountDialog.append(closeDialog, feedContainer.querySelector(".rock-community-auth"), document.getElementById("rockCommunityComposer"));
+  function openAccount(upload = false) {
+    if (!accountDialog.open) accountDialog.showModal();
+    if (upload && session?.user) document.getElementById("rockCommunityPostText").focus();
+  }
+  const accountControl = document.createElement("button");
+  accountControl.type = "button"; accountControl.textContent = "लगइन / Sign in";
+  accountControl.addEventListener("click", () => openAccount());
+  const uploadControl = document.createElement("button");
+  uploadControl.type = "button"; uploadControl.textContent = "+ Upload / अपलोड";
+  uploadControl.addEventListener("click", () => openAccount(true));
+  toolbar.append(accountControl, uploadControl);
+  feedContainer.prepend(toolbar); feedContainer.append(accountDialog);
+
   const link = document.createElement("a");
   link.href = "#rockCommunityFeed";
   link.textContent = "👥 COMMUNITY";
@@ -320,6 +374,7 @@
 
   function showAccount(current) {
     session = current;
+    accountControl.textContent = current?.user ? "खाता / Account" : "लगइन / Sign in";
     const user = current?.user;
     document.getElementById("rockCommunityAuthForm").hidden = !!user;
     document.getElementById("rockCommunityComposer").hidden = !user;
@@ -365,31 +420,73 @@
     finally { button.disabled = false; }
   });
 
+  let feedRequest = 0;
+  let feedSignature = "";
+  let activeVideo = null;
+  function syncPlayback() {
+    const visible = document.body.classList.contains("rock-community-active") && !document.hidden && !accountDialog.open;
+    const bounds = postHost.getBoundingClientRect();
+    let candidate = null, best = 0;
+    for (const card of postHost.querySelectorAll("article")) {
+      const rect = card.getBoundingClientRect();
+      const ratio = Math.max(0, Math.min(bounds.bottom, rect.bottom) - Math.max(bounds.top, rect.top)) / Math.max(1, rect.height);
+      if (ratio > best && ratio >= 0.6) { best = ratio; candidate = card.querySelector("video"); }
+    }
+    if (!visible) candidate = null;
+    for (const video of postHost.querySelectorAll("video")) if (video !== candidate) video.pause();
+    if (candidate && candidate !== activeVideo) {
+      activeVideo = candidate;
+      candidate.play().catch(() => { if (activeVideo === candidate) activeVideo = null; });
+    } else activeVideo = candidate;
+  }
+  const playbackObserver = new IntersectionObserver(syncPlayback, {root: postHost, threshold: [0, 0.6, 1]});
+  postHost.tabIndex = 0; postHost.setAttribute("aria-label", "Community posts / समुदाय पोस्ट");
+  postHost.addEventListener("scroll", syncPlayback, {passive:true});
+  document.addEventListener("visibilitychange", syncPlayback);
+  new MutationObserver(syncPlayback).observe(accountDialog, {attributes:true, attributeFilter:["open"]});
+  window.addEventListener("pageshow", syncPlayback);
+  window.addEventListener("resize", syncPlayback);
+  window.addEventListener("pagehide", () => postHost.querySelectorAll("video").forEach(video => video.pause()));
   async function loadFeed() {
     if (!postHost.isConnected) return;
-    postHost.textContent = "";
+    const request = ++feedRequest;
     try {
       const { data: posts, error } = await client.from("rock_community_posts")
         .select("id,author_id,author_name,content,media_path,media_type,like_count,comment_count,view_count,created_at")
         .eq("status", "published").order("created_at", { ascending: false }).limit(40);
       if (error) throw error;
+      if (request !== feedRequest) return;
       if (!posts?.length) { postHost.innerHTML = `<div class="rock-community-card">${t("अहिलेसम्म कुनै पोस्ट छैन। पहिलो पोस्ट तपाईंले गर्नुहोस्।")}</div>`; return; }
       const ids = posts.map((p) => p.id);
       const [{ data: comments }, { data: likes }] = await Promise.all([
         client.from("rock_community_comments").select("id,post_id,author_id,author_name,content,created_at").in("post_id", ids).order("created_at", { ascending: true }).limit(200),
         session?.user ? client.from("rock_community_likes").select("post_id").eq("user_id", session.user.id).in("post_id", ids) : Promise.resolve({ data: [] }),
       ]);
+      if (request !== feedRequest) return;
+      const signature = JSON.stringify([posts, comments, likes, language, session?.user?.id]);
+      if (signature === feedSignature) return;
+      const oldCard = [...postHost.querySelectorAll("article")].find(card => card.offsetTop + card.offsetHeight > postHost.scrollTop + 10);
+      const oldId = oldCard?.dataset.postId;
+      postHost.querySelectorAll("video").forEach(video => video.pause());
+      activeVideo = null; playbackObserver.disconnect(); postHost.replaceChildren();
+      feedSignature = signature;
       const liked = new Set((likes || []).map((item) => item.post_id));
       for (const post of posts) postHost.append(buildPost(post, (comments || []).filter((c) => c.post_id === post.id), liked.has(post.id)));
+      for (const card of postHost.querySelectorAll("article")) playbackObserver.observe(card);
+      const restored = [...postHost.querySelectorAll("article")].find(card => card.dataset.postId === oldId);
+      if (restored) postHost.scrollTop = restored.offsetTop - postHost.firstElementChild.offsetTop;
+      syncPlayback();
       recordViews(posts);
     } catch (error) {
+      if (request !== feedRequest || postHost.querySelector("article")) return;
+      feedSignature = "";
       postHost.innerHTML = `<div class="rock-community-card">${t("पोस्टहरू अहिले खोल्न सकिएन। Supabase मा समुदायको सेटअप पूरा भएको छ कि जाँच गर्नुहोस्।")}</div>`;
       console.error("ROCK community feed:", error);
     }
   }
 
   function buildPost(post, comments, isLiked) {
-    const card = document.createElement("article"); card.className = "rock-community-card";
+    const card = document.createElement("article"); card.className = "rock-community-card"; card.dataset.postId = post.id;
     const meta = document.createElement("div"); meta.className = "rock-community-meta";
     const author = document.createElement("strong"); author.textContent = post.author_name || "ROCK ESPORTS gamer";
     const date = document.createElement("time"); date.dateTime = post.created_at; date.textContent = new Date(post.created_at).toLocaleString(language === "en" ? "en-US" : "ne-NP");
@@ -398,7 +495,7 @@
     if (post.media_path) {
       const isPrivate = post.media_path.startsWith("b2:");
       const media = document.createElement(post.media_type === "video" ? "video" : "img");
-      if (post.media_type === "video") { media.controls = true; media.playsInline = true; media.preload = "metadata"; }
+      if (post.media_type === "video") { media.controls = true; media.playsInline = true; media.muted = true; media.defaultMuted = true; media.loop = true; media.setAttribute("muted", ""); media.setAttribute("playsinline", ""); media.preload = "metadata"; media.addEventListener("loadeddata", syncPlayback); }
       else { media.alt = t("खेलाडीले साझा गरेको फोटो"); media.loading = "lazy"; media.referrerPolicy = "no-referrer"; }
       card.append(media);
       if (isPrivate) {
@@ -425,7 +522,8 @@
       }
     }
     card.append(actions);
-    const discussion = document.createElement("div"); discussion.className = "rock-community-comments";
+    const discussion = document.createElement("details"); discussion.className = "rock-community-comments";
+    const summary = document.createElement("summary"); summary.textContent = "💬 " + t("प्रतिक्रिया") + " · " + (post.comment_count || 0); discussion.append(summary);
     for (const item of comments) { const row = document.createElement("div"); row.className = "rock-community-comment"; const who = document.createElement("strong"); who.textContent = `${item.author_name || t("खेलाडी")}: `; const text = document.createElement("span"); text.textContent = item.content; row.append(who, text); discussion.append(row); }
     if (session?.user) {
       const form = document.createElement("form"); form.className = "rock-community-actions";
@@ -439,7 +537,7 @@
   }
 
   async function toggleLike(post, button) {
-    if (!session?.user) { authStatus.textContent = t("मन पराउन पहिले लगइन गर्नुहोस्।"); return; }
+    if (!session?.user) { authStatus.textContent = t("मन पराउन पहिले लगइन गर्नुहोस्।"); openAccount(); return; }
     button.disabled = true;
     const { data: existing, error: readError } = await client.from("rock_community_likes").select("post_id").eq("post_id", post.id).eq("user_id", session.user.id).maybeSingle();
     if (readError) authStatus.textContent = readError.message;
@@ -516,8 +614,16 @@
   const routeIds = new Set([...nav.querySelectorAll('a[href^="#"]')].map((a) => a.hash.slice(1)).filter((id) => document.getElementById(id)));
   routeIds.add("rockCommunityFeed");
   function showSelectedTab() {
-    const raw = decodeURIComponent(location.hash.slice(1));
+    let raw = "";
+    try { raw = decodeURIComponent(location.hash.slice(1)); } catch (_) {}
     const selected = routeIds.has(raw) ? raw : "rockCommunityFeed";
+    const communityActive = selected === "rockCommunityFeed";
+    const wasCommunity = document.body.classList.contains("rock-community-active");
+    document.body.classList.toggle("rock-community-active", communityActive);
+    if (communityActive && !wasCommunity) window.scrollTo(0, 0);
+    if (!communityActive && accountDialog.open) accountDialog.close();
+    measureHeader();
+    syncPlayback();
     document.querySelectorAll("main>section[id],body>section[id]").forEach((item) => {
       const visible = item.id === selected || (item.id === "rockRegAnnouncement" && ["tournament", "registration"].includes(selected));
       item.classList.toggle("rock-tab-hidden", !visible);

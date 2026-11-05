@@ -3,7 +3,7 @@
   "name": "ROCK ESPORTS",
   "short_name": "ROCK ESPORTS",
   "description": "ROCK ESPORTS — tournaments, community and approved-member meetings / प्रतियोगिता, कम्युनिटी र सदस्य बैठक",
-  "start_url": "./?app=1#home",
+  "start_url": "./?app=1#rockCommunityFeed",
   "scope": "./",
   "display": "standalone",
   "display_override": ["standalone"],
