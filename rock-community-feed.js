@@ -163,6 +163,9 @@
   "पोस्ट राख्न सकिएन।": "Unable to publish the post.",
   "लगइन अहिले उपलब्ध छैन। सार्वजनिक पोस्ट हेर्न सक्नुहुन्छ।": "Sign in is unavailable right now. You can still browse public posts.",
   "फोटो वा भिडियो बढीमा ५०० MB": "Photo or video up to 500 MB",
+  "फोटो बढीमा २५ MB वा भिडियो बढीमा ५०० MB": "Photo up to 25 MB or video up to 500 MB",
+  "भिडियो तयार हुँदैछ…": "Preparing your video…",
+  "भिडियो अझै तयार हुँदैछ। यही फाइल राखेर फेरि पोस्ट थिच्नुहोस्।": "The video is still processing. Keep the same file selected and press Post again.",
   "फोटो बढीमा २५ MB वा भिडियो बढीमा १०० MB": "Photo up to 25 MB or video up to 100 MB",
   "५०० MB सम्मको समर्थित फोटो वा भिडियो छान्नुहोस्।": "Choose a supported photo or video up to 500 MB.",
   "मिडिया खोल्न सकिएन। फेरि प्रयास गर्नुहोस्।": "Unable to load media. Please try again.",
@@ -316,7 +319,9 @@
       button.classList.toggle("secondary", language !== value);
     }
     document.getElementById("rockCommunityAuthSubmit").textContent = t(mode === "signup" ? "खाता खोल्नुहोस्" : "लगइन");
-    document.getElementById("rockCommunityMediaLimit").textContent = t(mediaProvider === "imagekit" ? "फोटो बढीमा २५ MB वा भिडियो बढीमा १०० MB" : b2Enabled ? "फोटो वा भिडियो बढीमा ५०० MB" : "फोटो वा भिडियो बढीमा २५ MB");
+    document.getElementById("rockCommunityMediaLimit").textContent = muxEnabled
+      ? t("फोटो बढीमा २५ MB वा भिडियो बढीमा ५०० MB")
+      : t(mediaProvider === "imagekit" ? "फोटो बढीमा २५ MB वा भिडियो बढीमा १०० MB" : b2Enabled ? "फोटो वा भिडियो बढीमा ५०० MB" : "फोटो वा भिडियो बढीमा २५ MB");
   }
   function chooseLanguage(next) {
     language = next;
@@ -336,6 +341,8 @@
   const authStatus = document.getElementById("rockCommunityAuthStatus");
   const postStatus = document.getElementById("rockCommunityPostStatus");
   const postHost = document.getElementById("rockCommunityPosts");
+  let muxEnabled = false;
+  let pendingMux = null;
   let b2Enabled = false;
   let mediaProvider = "b2";
   let maxImageBytes = 25 * 1024 * 1024;
@@ -404,6 +411,40 @@
     // buildPost returns a detached card; begin after loadFeed has appended it.
     window.setTimeout(() => { if (media.isConnected) load(); }, 0);
   }
+  async function muxCall(body) {
+    const {data, error} = await client.functions.invoke("rock-community-mux", {body});
+    if (error) {
+      let detail;
+      try { detail = (await error.context?.json())?.error; } catch (_) {}
+      throw new Error(detail || "Mux video service is unavailable. Please try again.");
+    }
+    return data;
+  }
+
+  const muxConfiguration = muxCall({action:"config"}).then(config => {
+    muxEnabled = config?.enabled === true && config.maxVideoBytes === 500000000;
+    if (muxEnabled) applyLanguage();
+  }).catch(() => {});
+
+  async function publishMux(file, content, userId) {
+    if (pendingMux?.file !== file || pendingMux?.userId !== userId) {
+      const prepared = await muxCall({action:"prepare",size:file.size,type:file.type});
+      if (!/^[A-Za-z0-9]{1,128}$/.test(prepared.uploadId || "") || new URL(prepared.url).protocol !== "https:") {
+        throw new Error("Invalid Mux upload response.");
+      }
+      await uploadDirect(prepared, file);
+      pendingMux = {file, userId, uploadId:prepared.uploadId};
+    }
+    postStatus.textContent = t("भिडियो तयार हुँदैछ…");
+    for (let attempt = 0; attempt < 24; attempt++) {
+      const result = await muxCall({action:"publish",uploadId:pendingMux.uploadId,content});
+      if (result?.postId) { pendingMux = null; return; }
+      if (!result?.pending) throw new Error("Mux could not publish the video.");
+      await new Promise(resolve => setTimeout(resolve, 5000));
+    }
+    throw new Error(t("भिडियो अझै तयार हुँदैछ। यही फाइल राखेर फेरि पोस्ट थिच्नुहोस्।"));
+  }
+
   function uploadDirect(prepared, file) {
     return new Promise((resolve,reject) => {
       const request = new XMLHttpRequest();
@@ -582,7 +623,17 @@
     const date = document.createElement("time"); date.dateTime = post.created_at; date.textContent = new Date(post.created_at).toLocaleString(language === "en" ? "en-US" : "ne-NP");
     meta.append(author, date); card.append(meta);
     if (post.content) { const body = document.createElement("p"); body.textContent = post.content; card.append(body); }
-    if (/^rutube:[a-f0-9]{32}$/.test(post.media_path || "")) {
+    const muxVideo = /^mux:[a-zA-Z0-9]{1,128}:([a-zA-Z0-9]{1,128})$/.exec(post.media_path || "");
+    if (muxVideo) {
+      const frame = document.createElement("iframe");
+      frame.title = "Community video";
+      frame.loading = "lazy";
+      frame.src = "https://player.mux.com/" + muxVideo[1];
+      frame.allow = "fullscreen; picture-in-picture";
+      frame.allowFullscreen = true;
+      frame.style.cssText = "display:block;width:100%;aspect-ratio:16/9;min-height:220px;border:0;flex-shrink:0;margin:8px 0";
+      card.append(frame);
+    } else if (/^rutube:[a-f0-9]{32}$/.test(post.media_path || "")) {
       card.append(buildRutubeMedia(post.media_path.slice(7)));
       const link = document.createElement("a"); link.href = `https://rutube.ru/video/${post.media_path.slice(7)}/`;
       link.target = "_blank"; link.rel = "noopener noreferrer"; link.textContent = "RUTUBE मा खोल्नुहोस् / Open on RUTUBE"; card.append(link);
@@ -637,6 +688,11 @@
 
   async function removePost(post) {
     if (!window.confirm(t("यो पोस्ट हटाउने हो?"))) return;
+    if (post.media_path?.startsWith("mux:")) {
+      try { await muxCall({action:"remove",postId:post.id}); await loadFeed(); }
+      catch (error) { authStatus.textContent = error.message; }
+      return;
+    }
     if (post.media_path?.startsWith("b2:") || post.media_path?.startsWith("ik:")) {
       try { await mediaCall({action:"remove",postId:post.id}, post.media_path.startsWith("ik:") ? "imagekit" : "b2"); mediaLinks.delete(post.id); await loadFeed(); }
       catch(error) { authStatus.textContent=error.message; }
@@ -668,12 +724,18 @@
     const postForm = event.currentTarget;
     const submit = postForm.querySelector("button[type=submit]");
     await mediaConfiguration;
+    if (file) await muxConfiguration;
+    const useMux = !!(file && muxEnabled && file.type.startsWith("video/") && file.size > maxMediaBytes);
     if (!content && !file && !rutubeId) { postStatus.textContent = t("लेखाइ वा फोटो/भिडियो राख्नुहोस्।"); return; }
-    if (file && (!/^image\/(jpeg|png|webp|gif)$|^video\/(mp4|webm|quicktime)$/.test(file.type) || file.size < 1 || file.size > (file.type.startsWith("image/") ? maxImageBytes : maxMediaBytes))) { postStatus.textContent = t(mediaProvider === "imagekit" ? "फोटो बढीमा २५ MB वा भिडियो बढीमा १०० MB" : b2Enabled ? "५०० MB सम्मको समर्थित फोटो वा भिडियो छान्नुहोस्।" : "समर्थित फोटो वा २५ MB सम्मको भिडियो छान्नुहोस्।"); return; }
+    if (file && (!/^image\/(jpeg|png|webp|gif)$|^video\/(mp4|webm|quicktime)$/.test(file.type) || file.size < 1 || file.size > (file.type.startsWith("image/") ? maxImageBytes : useMux ? 500000000 : maxMediaBytes))) { postStatus.textContent = t(muxEnabled ? "फोटो बढीमा २५ MB वा भिडियो बढीमा ५०० MB" : mediaProvider === "imagekit" ? "फोटो बढीमा २५ MB वा भिडियो बढीमा १०० MB" : b2Enabled ? "५०० MB सम्मको समर्थित फोटो वा भिडियो छान्नुहोस्।" : "समर्थित फोटो वा २५ MB सम्मको भिडियो छान्नुहोस्।"); return; }
     submit.disabled = true; postStatus.textContent = t("पोस्ट राखिँदै छ…");
     let mediaPath = rutubeId ? `rutube:${rutubeId}` : null, mediaType = rutubeId ? "video" : null;
     let pendingB2Session = null;
     try {
+      if (useMux) {
+        await publishMux(file, content, session.user.id);
+        postForm.reset(); postStatus.textContent = t("पोस्ट सफलतापूर्वक राखियो।"); await loadFeed(); return;
+      }
       if (file && mediaProvider === "imagekit") {
         const prepared=await mediaCall({action:"prepare",size:file.size,type:file.type}, "imagekit");
         const uploaded=await uploadDirect(prepared,file);
