@@ -1,3 +1,5 @@
+/* TDM extension: does not change App/notifications behavior. */
+(()=>{const s=document.createElement("script");s.src=new URL("rock-tdm.js?tdm=20261105a",document.baseURI).href;s.async=false;document.head.appendChild(s);})();
 (()=>{'use strict';if(window.__rockPwaApp)return;window.__rockPwaApp=true;
 const API='https://pokdcjqvyjddbixqaktj.supabase.co/functions/v1/rock-app-notifications',KEY='sb_publishable_jK4Pnt8Ou9lZOmQ2AEB60w_YFytJcbp',base=new URL('./',document.baseURI),L=(a,b)=>a+' / '+b;
 let deviceQueue=Promise.resolve();const queueDevice=job=>(deviceQueue=deviceQueue.catch(()=>{}).then(job));let config=null,registration=null,subscription=null,memberSession=null,memberLinked=false,installEvent=null,deviceBusy=false,publication=null,pendingNotice=new URL(location.href).searchParams.get('notice'),ownerBusy=false,subscriptionConflict=false,pendingDeviceTest=null,receivedDeviceTest=null;
