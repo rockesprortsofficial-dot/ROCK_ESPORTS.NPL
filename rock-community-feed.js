@@ -163,6 +163,7 @@
   "पोस्ट राख्न सकिएन।": "Unable to publish the post.",
   "लगइन अहिले उपलब्ध छैन। सार्वजनिक पोस्ट हेर्न सक्नुहुन्छ।": "Sign in is unavailable right now. You can still browse public posts.",
   "फोटो वा भिडियो बढीमा ५०० MB": "Photo or video up to 500 MB",
+  "फोटो बढीमा २५ MB वा भिडियो बढीमा १०० MB": "Photo up to 25 MB or video up to 100 MB",
   "५०० MB सम्मको समर्थित फोटो वा भिडियो छान्नुहोस्।": "Choose a supported photo or video up to 500 MB.",
   "मिडिया खोल्न सकिएन। फेरि प्रयास गर्नुहोस्।": "Unable to load media. Please try again.",
   "अपलोड असफल भयो। फेरि प्रयास गर्नुहोस्।": "Upload failed. Please try again.",
@@ -301,7 +302,7 @@
       button.classList.toggle("secondary", language !== value);
     }
     document.getElementById("rockCommunityAuthSubmit").textContent = t(mode === "signup" ? "खाता खोल्नुहोस्" : "लगइन");
-    document.getElementById("rockCommunityMediaLimit").textContent = t(b2Enabled ? "फोटो वा भिडियो बढीमा ५०० MB" : "फोटो वा भिडियो बढीमा २५ MB");
+    document.getElementById("rockCommunityMediaLimit").textContent = t(mediaProvider === "imagekit" ? "फोटो बढीमा २५ MB वा भिडियो बढीमा १०० MB" : b2Enabled ? "फोटो वा भिडियो बढीमा ५०० MB" : "फोटो वा भिडियो बढीमा २५ MB");
   }
   function chooseLanguage(next) {
     language = next;
@@ -322,31 +323,41 @@
   const postStatus = document.getElementById("rockCommunityPostStatus");
   const postHost = document.getElementById("rockCommunityPosts");
   let b2Enabled = false;
+  let mediaProvider = "b2";
+  let maxImageBytes = 25 * 1024 * 1024;
   let maxMediaBytes = 25 * 1024 * 1024;
   const mediaLinks = new Map();
-  async function mediaCall(body) {
-    const { data, error } = await client.functions.invoke("rock-community-media", { body });
+  async function mediaCall(body, provider = mediaProvider) {
+    const { data, error } = await client.functions.invoke(provider === "imagekit" ? "rock-community-imagekit" : "rock-community-media", { body });
     if (error || data?.error) throw new Error(data?.error || "Media service is unavailable. Please try again.");
     return data;
   }
   const mediaConfiguration = (async () => {
     try {
-      const config = await mediaCall({ action: "config" });
-      if (config.enabled && config.maxBytes === 500000000) { b2Enabled = true; maxMediaBytes = config.maxBytes; }
+      const config = await mediaCall({ action: "config" }, "imagekit");
+      if (config.enabled && config.provider === "imagekit" && config.maxImageBytes === 25000000 && config.maxVideoBytes === 100000000) {
+        mediaProvider = "imagekit"; maxImageBytes = config.maxImageBytes; maxMediaBytes = config.maxVideoBytes;
+        applyLanguage(); return;
+      }
+    } catch (_) {} // An undeployed or disabled ImageKit provider preserves the legacy upload flow.
+    try {
+      const config = await mediaCall({ action: "config" }, "b2");
+      if (config.enabled && config.maxBytes === 500000000) { b2Enabled = true; maxImageBytes = config.maxBytes; maxMediaBytes = config.maxBytes; }
     } catch (_) {}
     applyLanguage();
   })();
-  async function privateMediaUrl(postId) {
+  async function privateMediaUrl(postId, provider = "b2") {
     const cached = mediaLinks.get(postId);
     if (cached && cached.expires > Date.now()) return cached.url;
-    const result = await mediaCall({action:"view", postId});
+    const result = await mediaCall({action:"view", postId}, provider);
     const address = new URL(result.url);
-    if (address.protocol !== "https:" || !address.hostname.endsWith(".backblazeb2.com")) throw new Error("Invalid media URL");
+    if (address.protocol !== "https:" || (provider === "imagekit" ? address.hostname !== "ik.imagekit.io" : !address.hostname.endsWith(".backblazeb2.com"))) throw new Error("Invalid media URL");
     mediaLinks.set(postId,{url:result.url,expires:Date.now()+45*60*1000});
     return result.url;
   }
   function attachPostMedia(post, media) {
-    const isPrivate = post.media_path.startsWith("b2:");
+    const provider = post.media_path.startsWith("ik:") ? "imagekit" : "b2";
+    const isPrivate = post.media_path.startsWith("b2:") || post.media_path.startsWith("ik:");
     const retry = document.createElement("button");
     retry.type = "button"; retry.className = "secondary"; retry.hidden = true;
     retry.textContent = t("मिडिया खोल्न सकिएन। फेरि प्रयास गर्नुहोस्।");
@@ -365,7 +376,7 @@
       try {
         // Refresh only on a user retry; a storage cap must not cause a request loop.
         if (refresh && isPrivate) mediaLinks.delete(post.id);
-        const address = isPrivate ? await privateMediaUrl(post.id)
+        const address = isPrivate ? await privateMediaUrl(post.id, provider)
           : client.storage.from("rock-community-media").getPublicUrl(post.media_path).data.publicUrl;
         // A feed refresh may have removed this card while the link was being signed.
         if (!media.isConnected) { loading = false; return; }
@@ -382,12 +393,23 @@
   function uploadDirect(prepared, file) {
     return new Promise((resolve,reject) => {
       const request = new XMLHttpRequest();
-      request.open("PUT", prepared.url); request.timeout = 60*60*1000;
-      for (const [name,value] of Object.entries(prepared.headers)) request.setRequestHeader(name,value);
+      const multipart = !!prepared.fields;
+      if (multipart && prepared.url !== "https://upload.imagekit.io/api/v2/files/upload") { reject(new Error("Invalid upload URL")); return; }
+      request.open(multipart ? "POST" : "PUT", prepared.url); request.timeout = 60*60*1000;
+      for (const [name,value] of Object.entries(prepared.headers || {})) request.setRequestHeader(name,value);
       request.upload.onprogress = event => { if(event.lengthComputable) postStatus.textContent = t("अपलोड") + " · " + Math.round(event.loaded/event.total*100) + "%"; };
-      request.onload = () => request.status >= 200 && request.status < 300 ? resolve() : reject(new Error(t("अपलोड असफल भयो। फेरि प्रयास गर्नुहोस्।")));
+      request.onload = () => {
+        if (request.status < 200 || request.status >= 300) { reject(new Error(t("अपलोड असफल भयो। फेरि प्रयास गर्नुहोस्।"))); return; }
+        if (!multipart) { resolve(); return; }
+        try { const result = JSON.parse(request.responseText); if (!/^[a-f0-9]{24}$/i.test(result.fileId || "")) throw new Error(); resolve(result); }
+        catch (_) { reject(new Error(t("अपलोड असफल भयो। फेरि प्रयास गर्नुहोस्।"))); }
+      };
       request.onerror = request.ontimeout = () => reject(new Error(t("अपलोड असफल भयो। फेरि प्रयास गर्नुहोस्।")));
-      request.send(file);
+      if (multipart) {
+        const form = new FormData();
+        for (const [name,value] of Object.entries(prepared.fields)) form.append(name,value);
+        form.append("file",file); request.send(form);
+      } else request.send(file);
     });
   }
   const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" })[c]);
@@ -573,8 +595,8 @@
 
   async function removePost(post) {
     if (!window.confirm(t("यो पोस्ट हटाउने हो?"))) return;
-    if (post.media_path?.startsWith("b2:")) {
-      try { await mediaCall({action:"remove",postId:post.id}); mediaLinks.delete(post.id); await loadFeed(); }
+    if (post.media_path?.startsWith("b2:") || post.media_path?.startsWith("ik:")) {
+      try { await mediaCall({action:"remove",postId:post.id}, post.media_path.startsWith("ik:") ? "imagekit" : "b2"); mediaLinks.delete(post.id); await loadFeed(); }
       catch(error) { authStatus.textContent=error.message; }
       return;
     }
@@ -601,11 +623,17 @@
     const submit = postForm.querySelector("button[type=submit]");
     await mediaConfiguration;
     if (!content && !file) { postStatus.textContent = t("लेखाइ वा फोटो/भिडियो राख्नुहोस्।"); return; }
-    if (file && (!/^image\/(jpeg|png|webp|gif)$|^video\/(mp4|webm|quicktime)$/.test(file.type) || file.size > maxMediaBytes)) { postStatus.textContent = t(b2Enabled ? "५०० MB सम्मको समर्थित फोटो वा भिडियो छान्नुहोस्।" : "समर्थित फोटो वा २५ MB सम्मको भिडियो छान्नुहोस्।"); return; }
+    if (file && (!/^image\/(jpeg|png|webp|gif)$|^video\/(mp4|webm|quicktime)$/.test(file.type) || file.size < 1 || file.size > (file.type.startsWith("image/") ? maxImageBytes : maxMediaBytes))) { postStatus.textContent = t(mediaProvider === "imagekit" ? "फोटो बढीमा २५ MB वा भिडियो बढीमा १०० MB" : b2Enabled ? "५०० MB सम्मको समर्थित फोटो वा भिडियो छान्नुहोस्।" : "समर्थित फोटो वा २५ MB सम्मको भिडियो छान्नुहोस्।"); return; }
     submit.disabled = true; postStatus.textContent = t("पोस्ट राखिँदै छ…");
     let mediaPath = null, mediaType = null;
     let pendingB2Session = null;
     try {
+      if (file && mediaProvider === "imagekit") {
+        const prepared=await mediaCall({action:"prepare",size:file.size,type:file.type}, "imagekit");
+        const uploaded=await uploadDirect(prepared,file);
+        await mediaCall({action:"publish",session:prepared.session,fileId:uploaded.fileId,content}, "imagekit");
+        postForm.reset(); postStatus.textContent=t("पोस्ट सफलतापूर्वक राखियो।"); await loadFeed(); return;
+      }
       if (file && b2Enabled) {
         const prepared=await mediaCall({action:"prepare",size:file.size,type:file.type});
         pendingB2Session=prepared.session;
@@ -624,7 +652,7 @@
       if (error) { if (mediaPath) await client.storage.from("rock-community-media").remove([mediaPath]); throw error; }
       postForm.reset(); postStatus.textContent = t("पोस्ट सफलतापूर्वक राखियो।"); await loadFeed();
     } catch (error) {
-      if(pendingB2Session) { try { await mediaCall({action:"discard",session:pendingB2Session}); } catch(_) {} }
+      if(pendingB2Session) { try { await mediaCall({action:"discard",session:pendingB2Session}, "b2"); } catch(_) {} }
       postStatus.textContent = error?.message || t("पोस्ट राख्न सकिएन।");
     }
     finally { submit.disabled = false; }
