@@ -456,7 +456,6 @@
 
   let feedRequest = 0;
   let feedSignature = "";
-  let activeVideo = null;
   function syncPlayback() {
     const visible = document.body.classList.contains("rock-community-active") && !document.hidden && !accountDialog.open;
     const bounds = postHost.getBoundingClientRect();
@@ -468,10 +467,7 @@
     }
     if (!visible) candidate = null;
     for (const video of postHost.querySelectorAll("video")) if (video !== candidate) video.pause();
-    if (candidate && candidate !== activeVideo) {
-      activeVideo = candidate;
-      candidate.play().catch(() => { if (activeVideo === candidate) activeVideo = null; });
-    } else activeVideo = candidate;
+    // Free download allowance is shared by all visitors: play only on user input.
   }
   const playbackObserver = new IntersectionObserver(syncPlayback, {root: postHost, threshold: [0, 0.6, 1]});
   postHost.tabIndex = 0; postHost.setAttribute("aria-label", "Community posts / समुदाय पोस्ट");
@@ -502,7 +498,7 @@
       const oldCard = [...postHost.querySelectorAll("article")].find(card => card.offsetTop + card.offsetHeight > postHost.scrollTop + 10);
       const oldId = oldCard?.dataset.postId;
       postHost.querySelectorAll("video").forEach(video => video.pause());
-      activeVideo = null; playbackObserver.disconnect(); postHost.replaceChildren();
+      playbackObserver.disconnect(); postHost.replaceChildren();
       feedSignature = signature;
       const liked = new Set((likes || []).map((item) => item.post_id));
       for (const post of posts) postHost.append(buildPost(post, (comments || []).filter((c) => c.post_id === post.id), liked.has(post.id)));
@@ -528,7 +524,7 @@
     if (post.content) { const body = document.createElement("p"); body.textContent = post.content; card.append(body); }
     if (post.media_path) {
       const media = document.createElement(post.media_type === "video" ? "video" : "img");
-      if (post.media_type === "video") { media.controls = true; media.playsInline = true; media.muted = true; media.defaultMuted = true; media.loop = true; media.setAttribute("muted", ""); media.setAttribute("playsinline", ""); media.preload = "metadata"; media.addEventListener("loadeddata", syncPlayback); }
+      if (post.media_type === "video") { media.controls = true; media.playsInline = true; media.muted = true; media.defaultMuted = true; media.loop = false; media.setAttribute("muted", ""); media.setAttribute("playsinline", ""); media.preload = "none"; media.addEventListener("loadeddata", syncPlayback); }
       else { media.alt = t("खेलाडीले साझा गरेको फोटो"); media.loading = "lazy"; media.referrerPolicy = "no-referrer"; }
       card.append(media);
       attachPostMedia(post, media);

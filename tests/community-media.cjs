@@ -3,6 +3,23 @@ const fs = require('node:fs');
 const vm = require('node:vm');
 const source = fs.readFileSync('rock-community-feed.js', 'utf8');
 assert.equal(source, fs.readFileSync('rock-community-feed-v2.js', 'utf8'));
+// Scrolling into view must never start a download through autoplay.
+const playback = source.slice(source.indexOf('  function syncPlayback('), source.indexOf('  const playbackObserver'));
+const visibleVideo = {plays:0, pauses:0, play(){this.plays++;}, pause(){this.pauses++;}};
+const offscreenVideo = {plays:0, pauses:0, play(){this.plays++;}, pause(){this.pauses++;}};
+const body = {classList:{contains:()=>true}};
+const page = {body, hidden:false};
+const dialog = {open:false};
+const host = {
+  getBoundingClientRect:()=>({top:0,bottom:500}),
+  querySelectorAll:selector=>selector === 'article' ? [{getBoundingClientRect:()=>({top:0,bottom:500,height:500}),querySelector:()=>visibleVideo}] : [visibleVideo,offscreenVideo],
+};
+const playbackContext = vm.createContext({document:page, accountDialog:dialog, postHost:host});
+vm.runInContext(playback+';globalThis.sync = syncPlayback;', playbackContext);
+playbackContext.sync();
+assert.equal(visibleVideo.plays,0); assert.equal(visibleVideo.pauses,0); assert.equal(offscreenVideo.pauses,1);
+page.hidden=true; playbackContext.sync(); assert.equal(visibleVideo.pauses,1);
+assert.ok(source.includes('media.preload = "none"')); assert.ok(source.includes('media.loop = false'));
 const helper = source.slice(source.indexOf('  function attachPostMedia('), source.indexOf('  function uploadDirect('));
 const flush = () => new Promise(resolve => setImmediate(resolve));
 function setup(type = 'image', path = 'b2:example') {
