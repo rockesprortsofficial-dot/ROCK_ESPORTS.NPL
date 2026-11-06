@@ -72,7 +72,7 @@ button.onclick=async()=>{if(ownerBusy)return;const status=$('rockNotificationAdm
 const pwaReady=(async()=>{try{config=await request('config');}catch(e){say(e.message);}try{if('serviceWorker' in navigator){registration=await navigator.serviceWorker.register(new URL('service-worker.js',base).href,{scope:base.pathname,updateViaCache:'none'});await navigator.serviceWorker.ready;subscription=await registration.pushManager?.getSubscription();if(subscription&&store.get('rockAppUnlinkPending','false')==='true'){try{await request('preferences',{endpoint:subscription.endpoint,device_token:deviceToken,member_opt_in:false});store.set('rockAppUnlinkPending','false');}catch(_){}}await deviceStatus();if(memberSession&&subscription&&window.Notification&&Notification.permission==='granted')await registerDevice();}}catch(e){say(e.message);}syncControls();if(!window.PushManager||!window.Notification)say(L('सूचनाका लागि समर्थित browser वा iPhone Home Screen App प्रयोग गर्नुहोस्।','For notifications use a supported browser or iPhone Home Screen App.'));else if(!config?.configured)say(L('Push setup अझै उपलब्ध छैन।','Push configuration is unavailable.'));if(new URL(location.href).searchParams.get('install')==='1'){open();$('rockAppInstructions').hidden=false;}if(pendingNotice){location.hash='#rock-meeting-room';open();loadPrivate();}})();
 if($('connect')&&!document.querySelector('script[src*="rock-connect.js"]')){
  const script=document.createElement('script');
- script.src=new URL('rock-connect.js?connect=messenger-v3',base).href;
+ script.src=new URL('rock-connect.js?connect=messenger-v4',base).href;
  document.head.append(script);
 }
 })();

@@ -150,6 +150,8 @@
     #rockConnectApp .rc-call[data-mode=video] .rc-call-stage video{height:100%;max-height:none;min-height:0;object-fit:cover;border-radius:0}
     #rockConnectApp .rc-call[data-mode=video] .rc-call-stage video[data-local]{position:absolute;z-index:1;top:58px;right:16px;width:clamp(84px,18vw,175px);height:auto;aspect-ratio:3/4;border-radius:12px;border:1px solid #ffffff69}
     #rockConnectApp .rc-call-stage video[data-mirror]{transform:scaleX(-1)}
+    #rockConnectApp #rcPreviewDirection{display:none;position:absolute;z-index:2;top:58px;left:16px}
+    #rockConnectApp .rc-call:has(video[data-local-camera]) #rcPreviewDirection{display:block}
     #rockConnectApp .rc-call[data-mode=video]:has(video:not([data-local])) .rc-call-person{visibility:hidden}
     #rockConnectApp .rc-call-person{display:grid;justify-items:center;gap:12px;z-index:1}
     #rockConnectApp .rc-call-buttons{position:absolute;bottom:max(28px,env(safe-area-inset-bottom))}
@@ -207,7 +209,7 @@
     '<textarea id="rcMessage" rows="1" maxlength="2000" placeholder="सन्देश लेख्नुहोस्…" aria-label="सन्देश"></textarea><button type="button" class="rc-icon secondary" id="rcEmojiToggle" aria-label="Emoji" aria-expanded="false">☺</button><button id="rcSend" class="rc-icon" type="submit" aria-label="Send message / सन्देश पठाउनुहोस्">➤</button></form>' +
     '<div class="rc-actions rc-compose-footer"><button type="button" class="secondary" id="rcStickerToggle" aria-expanded="false">🎨 Stickers</button><button type="button" class="secondary" id="rcRecord">🎙️ आवाज रेकर्ड</button><button type="button" class="secondary" id="rcCallSound">🔊 Call sound: off</button><span class="rc-status" id="rcChatStatus" role="status"></span></div></main></div>' +
     '<section class="rc-call" id="rcCallPanel" role="dialog" aria-labelledby="rcCallName"><div class="rc-call-brand">ROCK ESPORTS</div><div class="rc-call-person"><span class="rc-avatar" id="rcCallAvatar" aria-hidden="true"></span><h3 id="rcCallName"></h3></div><time id="rcCallTimer" hidden>00:00</time>' +
-    '<div class="rc-call-stage" id="rcCallStage"></div><div class="rc-call-buttons"><button type="button" id="rcMic" aria-label="Mute microphone" title="Mute microphone">🎙</button><button type="button" id="rcCamera" aria-label="Toggle camera" title="Toggle camera">📹</button><button type="button" id="rcFlipCamera" aria-label="Switch camera" title="Switch camera">↻</button><button type="button" id="rcScreen" aria-label="Share screen" title="Share screen">▣</button><button type="button" class="rc-hangup" id="rcCallClose" aria-label="End call" title="End call">☎</button></div><p class="rc-status" id="rcCallStatus" role="status"></p></section></div>';
+    '<div class="rc-call-stage" id="rcCallStage"></div><button type="button" class="secondary" id="rcPreviewDirection" aria-pressed="false">⇆ दायाँ–बायाँ / Flip self-view</button><div class="rc-call-buttons"><button type="button" id="rcMic" aria-label="Mute microphone" title="Mute microphone">🎙</button><button type="button" id="rcCamera" aria-label="Toggle camera" title="Toggle camera">📹</button><button type="button" id="rcFlipCamera" aria-label="Switch camera" title="Switch camera">↻</button><button type="button" id="rcScreen" aria-label="Share screen" title="Share screen">▣</button><button type="button" class="rc-hangup" id="rcCallClose" aria-label="End call" title="End call">☎</button></div><p class="rc-status" id="rcCallStatus" role="status"></p></section></div>';
   container.replaceChildren(heading, app);
 
   const languagePicker=document.createElement("div");languagePicker.id="rcLanguagePicker";languagePicker.className="rc-card rc-actions";languagePicker.setAttribute("role","group");languagePicker.setAttribute("aria-label","CONNECT language / भाषा");
@@ -871,10 +873,26 @@
   }
   $("rcMic").onclick=async()=>{if(!activeCall)return;try{const on=!activeCall.localParticipant.isMicrophoneEnabled;await activeCall.localParticipant.setMicrophoneEnabled(on);setCallControl("rcMic",on,on?t("🎙️ Mute"):t("🎙️ Unmute"));}catch(error){say("rcCallStatus",error.message);}};
   $("rcCamera").onclick=async()=>{if(!activeCall)return;try{const on=!activeCall.localParticipant.isCameraEnabled;await activeCall.localParticipant.setCameraEnabled(on);setCallControl("rcCamera",on,on?t("📹 Camera off"):t("📹 Camera on"));}catch(error){say("rcCallStatus",error.message);}};
-  function updateCameraPreview(video,track) {
-    const facing = track?.mediaStreamTrack?.getSettings().facingMode;
-    video?.toggleAttribute("data-mirror",Boolean(track && facing !== "environment"));
+  const previewDirectionKey = "rockConnectPreviewDirection";
+  let previewDirection;
+  try { previewDirection = localStorage.getItem(previewDirectionKey); } catch (_) {}
+  function setPreviewDirection(video,mirrored) {
+    video.toggleAttribute("data-mirror",mirrored);
+    $("rcPreviewDirection").setAttribute("aria-pressed",String(mirrored));
   }
+  function updateCameraPreview(video,track) {
+    if (!video || !track) return;
+    const facing = track?.mediaStreamTrack?.getSettings().facingMode;
+    setPreviewDirection(video,previewDirection === "mirror" || (previewDirection !== "natural" && facing !== "environment"));
+  }
+  $("rcPreviewDirection").onclick = () => {
+    const video = $("rcCallStage").querySelector("video[data-local-camera]");
+    if (!video) return;
+    const mirrored = !video.hasAttribute("data-mirror");
+    previewDirection = mirrored ? "mirror" : "natural";
+    try { localStorage.setItem(previewDirectionKey,previewDirection); } catch (_) {}
+    setPreviewDirection(video,mirrored);
+  };
   $("rcFlipCamera").onclick = async () => {
     const room = activeCall;
     if (!room?.localParticipant.isCameraEnabled) {
