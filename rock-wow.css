@@ -1,37 +1,37 @@
 #wow-tournament{background:radial-gradient(ellipse at top right,#102345,#030b15 65%);scroll-margin-top:24px}
-#wow-tournament *{box-sizing:border-box}
-#wow-tournament .wow-brand{display:flex;align-items:center;gap:18px;margin-bottom:24px}
-#wow-tournament .wow-brand>img{width:92px;height:92px;object-fit:contain;border-radius:16px;background:#fff}
-#wow-tournament h2{font-size:clamp(24px,5vw,42px);margin:4px 0;color:#fff}
-#wow-tournament h3{color:#8bd5ff;margin:12px 0}
-#wow-tournament p{color:#a9bed5;line-height:1.6}
-#wow-tournament .wow-bar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:14px 0}
-#wow-tournament button,#wow-tournament select,#wow-tournament input{font:inherit;border-radius:9px;padding:10px 13px;border:1px solid #315373;color:#e7f4ff;background:#0a1d32;max-width:100%}
-#wow-tournament button{cursor:pointer;font-weight:750}
-#wow-tournament button:hover{border-color:#5dc7ff;background:#123d62}
-#wow-tournament button:disabled{opacity:.5;cursor:wait}
-#wow-tournament button[aria-pressed=true]{background:#0876b3;border-color:#7bd5ff}
-#wow-tournament .wow-panel{border:1px solid #224768;background:#071524;border-radius:15px;padding:20px;margin:16px 0}
-#wow-tournament .wow-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,260px),1fr));gap:14px}
-#wow-tournament .wow-team{padding:12px;border:1px solid #224768;border-radius:10px;margin:10px 0;overflow-wrap:anywhere}
-#wow-tournament .wow-person{display:flex;align-items:center;gap:10px;margin:8px 0}
-#wow-tournament .wow-person img{width:44px;height:44px;border-radius:9px;object-fit:cover}
-#wow-tournament .wow-person small{display:block;color:#9fb5cd}
-#wow-tournament .wow-player{font-size:13px;padding-left:12px}
-#wow-tournament .wow-player img{width:32px;height:32px}
-#wow-tournament .wow-bracket{display:flex;gap:16px;overflow:auto;align-items:start;padding-bottom:12px}
-#wow-tournament .wow-round{flex:0 0 260px}
-#wow-tournament .wow-match{border:1px solid #315373;border-radius:11px;padding:12px;margin:12px 0;background:#091d30}
-#wow-tournament .wow-winner{color:#72efa9}
-#wow-tournament label{display:block;margin:10px 0;color:#c4d9ec}
-#wow-tournament label input{display:block;width:100%;margin-top:5px}
-#wow-tournament .wow-ranks strong{font-size:28px;color:#ffd37d}
-#wow-tournament .wow-status{min-height:28px;color:#8cdbff;white-space:pre-line}
-#wow-tournament .wow-live{color:#81efb1;font-weight:850}
-#wow-tournament [hidden]{display:none!important}
-#wow-tournament .wow-danger{color:#ffabb6;border-color:#854354}
-#wow-tournament details summary{cursor:pointer;padding:10px;color:#a1dfff}
-@media(max-width:600px){#wow-tournament .wow-panel{padding:13px}#wow-tournament .wow-brand>img{width:66px;height:66px}}
-@media(prefers-reduced-motion:no-preference){#wow-tournament .wow-reveal{animation:wow-reveal .5s ease-out}@keyframes wow-reveal{from{transform:translateY(8px);opacity:.3}to{transform:translateY(0);opacity:1}}}
+:is(#wow-tournament,#wowAdminTournament) *{box-sizing:border-box}
+:is(#wow-tournament,#wowAdminTournament) .wow-brand{display:flex;align-items:center;gap:18px;margin-bottom:24px}
+:is(#wow-tournament,#wowAdminTournament) .wow-brand>img{width:92px;height:92px;object-fit:contain;border-radius:16px;background:#fff}
+:is(#wow-tournament,#wowAdminTournament) h2{font-size:clamp(24px,5vw,42px);margin:4px 0;color:#fff}
+:is(#wow-tournament,#wowAdminTournament) h3{color:#8bd5ff;margin:12px 0}
+:is(#wow-tournament,#wowAdminTournament) p{color:#a9bed5;line-height:1.6}
+:is(#wow-tournament,#wowAdminTournament) .wow-bar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:14px 0}
+:is(#wow-tournament,#wowAdminTournament) button,:is(#wow-tournament,#wowAdminTournament) select,:is(#wow-tournament,#wowAdminTournament) input{font:inherit;border-radius:9px;padding:10px 13px;border:1px solid #315373;color:#e7f4ff;background:#0a1d32;max-width:100%}
+:is(#wow-tournament,#wowAdminTournament) button{cursor:pointer;font-weight:750}
+:is(#wow-tournament,#wowAdminTournament) button:hover{border-color:#5dc7ff;background:#123d62}
+:is(#wow-tournament,#wowAdminTournament) button:disabled{opacity:.5;cursor:wait}
+:is(#wow-tournament,#wowAdminTournament) button[aria-pressed=true]{background:#0876b3;border-color:#7bd5ff}
+:is(#wow-tournament,#wowAdminTournament) .wow-panel{border:1px solid #224768;background:#071524;border-radius:15px;padding:20px;margin:16px 0}
+:is(#wow-tournament,#wowAdminTournament) .wow-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,260px),1fr));gap:14px}
+:is(#wow-tournament,#wowAdminTournament) .wow-team{padding:12px;border:1px solid #224768;border-radius:10px;margin:10px 0;overflow-wrap:anywhere}
+:is(#wow-tournament,#wowAdminTournament) .wow-person{display:flex;align-items:center;gap:10px;margin:8px 0}
+:is(#wow-tournament,#wowAdminTournament) .wow-person img{width:44px;height:44px;border-radius:9px;object-fit:cover}
+:is(#wow-tournament,#wowAdminTournament) .wow-person small{display:block;color:#9fb5cd}
+:is(#wow-tournament,#wowAdminTournament) .wow-player{font-size:13px;padding-left:12px}
+:is(#wow-tournament,#wowAdminTournament) .wow-player img{width:32px;height:32px}
+:is(#wow-tournament,#wowAdminTournament) .wow-bracket{display:flex;gap:16px;overflow:auto;align-items:start;padding-bottom:12px}
+:is(#wow-tournament,#wowAdminTournament) .wow-round{flex:0 0 260px}
+:is(#wow-tournament,#wowAdminTournament) .wow-match{border:1px solid #315373;border-radius:11px;padding:12px;margin:12px 0;background:#091d30}
+:is(#wow-tournament,#wowAdminTournament) .wow-winner{color:#72efa9}
+:is(#wow-tournament,#wowAdminTournament) label{display:block;margin:10px 0;color:#c4d9ec}
+:is(#wow-tournament,#wowAdminTournament) label input{display:block;width:100%;margin-top:5px}
+:is(#wow-tournament,#wowAdminTournament) .wow-ranks strong{font-size:28px;color:#ffd37d}
+:is(#wow-tournament,#wowAdminTournament) .wow-status{min-height:28px;color:#8cdbff;white-space:pre-line}
+:is(#wow-tournament,#wowAdminTournament) .wow-live{color:#81efb1;font-weight:850}
+:is(#wow-tournament,#wowAdminTournament) [hidden]{display:none!important}
+:is(#wow-tournament,#wowAdminTournament) .wow-danger{color:#ffabb6;border-color:#854354}
+:is(#wow-tournament,#wowAdminTournament) details summary{cursor:pointer;padding:10px;color:#a1dfff}
+@media(max-width:600px){:is(#wow-tournament,#wowAdminTournament) .wow-panel{padding:13px}:is(#wow-tournament,#wowAdminTournament) .wow-brand>img{width:66px;height:66px}}
+@media(prefers-reduced-motion:no-preference){:is(#wow-tournament,#wowAdminTournament) .wow-reveal{animation:wow-reveal .5s ease-out}@keyframes wow-reveal{from{transform:translateY(8px);opacity:.3}to{transform:translateY(0);opacity:1}}}
 #live-draw #wowDrawView{display:block;margin:8px 0 16px}
 .wow-shared-chit img[alt="Team logo"]{width:40px;height:40px;object-fit:contain}
