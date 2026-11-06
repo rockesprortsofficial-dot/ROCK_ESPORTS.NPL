@@ -27,6 +27,71 @@ Deno.serve(async(req:Request)=>{
   const db=createClient(url,service,{auth:{persistSession:false,autoRefreshToken:false}});
   const checked=async(q:any)=>{const r=await q;if(r.error)throw r.error;return r.data;};
   const jwt=req.headers.get('Authorization')?.replace(/^Bearer\s+/i,'').trim()||'';
+  if(action==='connect_link'||action==='connect_unlink'){
+   const endpoint=b.subscription?.endpoint||b.endpoint;
+   if(!pushEndpoint(endpoint)||!/^[0-9a-f]{64}$/.test(b.device_token||''))return json({error:'Invalid CONNECT installation'},400);
+   const manageHash=await hash(b.device_token);
+   if(action==='connect_unlink'){
+    if(!uuid(b.user_id))return json({error:'Invalid CONNECT account'},400);
+    await checked(db.from('rock_app_devices').update({connect_user_id:null}).eq('endpoint',endpoint)
+      .eq('manage_hash',manageHash).eq('connect_user_id',b.user_id));
+    return json({linked:false});
+   }
+   const {data:auth,error}=await db.auth.getUser(jwt);
+   if(error||!auth.user)return json({error:'Sign in to CONNECT'},401);
+   if(!configured||!Deno.env.get('ROCK_CONNECT_PUSH_SECRET'))return json({error:'CONNECT push setup is incomplete'},503);
+   if(!pushKeys(b.subscription))return json({error:'Invalid browser push keys'},400);
+   const linked=await checked(db.rpc('rock_connect_link_device',{
+    p_endpoint:endpoint,p_hash:manageHash,p_key:b.subscription.keys.p256dh,p_auth:b.subscription.keys.auth,p_user:auth.user.id,
+   }));
+   return linked?json({linked:true}):json({error:'Reset this subscription in ROCK ESPORTS App settings, then try again'},403);
+  }
+  if(action==='connect_dispatch'){
+   const secret=Deno.env.get('ROCK_CONNECT_PUSH_SECRET');
+   const supplied=req.headers.get('x-rock-connect-secret')||'';
+   if(!secret||!supplied||await hash(supplied)!==await hash(secret))return json({error:'Forbidden'},403);
+   if(!configured)return json({error:'Push configuration unavailable'},503);
+   if(!uuid(b.id)||!['message','call'].includes(b.kind))return json({error:'Invalid CONNECT event'},400);
+   const call=b.kind==='call';
+   const event=call
+    ? await checked(db.from('rock_connect_calls').select('id,room_id,initiated_by,mode,status,created_at,expires_at').eq('id',b.id).maybeSingle())
+    : await checked(db.from('rock_connect_messages').select('id,room_id,sender_id,created_at').eq('id',b.id).maybeSingle());
+   const deadline=event&&Math.min(Date.parse(event.created_at)+(call?60000:3600000),call?Date.parse(event.expires_at):Infinity);
+   if(!event||deadline<=Date.now()||(call&&event.status!=='ringing'))return json({sent:0});
+   const room=await checked(db.from('rock_connect_rooms').select('kind').eq('id',event.room_id).maybeSingle());
+   if(!room||room.kind==='lobby')return json({sent:0});
+   const sender=call?event.initiated_by:event.sender_id;
+   const payload=JSON.stringify({
+    title:call?(event.mode==='audio'?'ROCK CONNECT • Incoming voice call':'ROCK CONNECT • Incoming video call'):'ROCK CONNECT • New message',
+    body:call?'Open CONNECT to answer.':'Open CONNECT to read your message.',
+    data:{audience:'connect',kind:b.kind,room_id:event.room_id,...(call?{call_id:event.id,expires_at:new Date(deadline).toISOString()}:{message_id:event.id})},
+   });
+   webpush.setVapidDetails(subject,publicKey,privateKey);
+   let after=null,sent=0,failed=0;
+   while(Date.now()<deadline){
+    const targets=await checked(db.rpc('rock_connect_push_targets',{p_room:event.room_id,p_sender:sender,p_after:after}));
+    if(!targets.length)break;
+    for(let start=0;start<targets.length&&Date.now()<deadline;start+=16){
+     await Promise.all(targets.slice(start,start+16).map(async(d:any)=>{
+      if(!pushEndpoint(d.endpoint))return;
+      try{
+       await webpush.sendNotification({endpoint:d.endpoint,keys:{p256dh:d.p256dh,auth:d.auth}},payload,
+        {TTL:Math.max(0,Math.floor((deadline-Date.now())/1000)),urgency:call?'high':'normal',timeout:4500});
+       sent++;
+      }catch(error){
+       failed++;
+       if([404,410].includes((error as {statusCode?:number}).statusCode||0)){
+        await db.from('rock_app_devices').update({connect_user_id:null}).eq('id',d.id)
+          .eq('connect_user_id',d.connect_user_id).eq('p256dh',d.p256dh).eq('auth',d.auth);
+       }
+      }
+     }));
+    }
+    if(targets.length<100)break;
+    after=targets[targets.length-1].id;
+   }
+   return json({sent,failed});
+  }
   async function member(){try{const key=Deno.env.get('LIVEKIT_API_KEY')||'',secret=Deno.env.get('LIVEKIT_API_SECRET')||'';if(!key||!secret||!jwt)return null;const claims=await new TokenVerifier(key,secret).verify(jwt);let metadata:any={};try{metadata=JSON.parse(String(claims.metadata||'{}'));}catch(_){}if(!String(claims.video?.room||'').startsWith('rock-private-')||claims.video?.roomJoin!==true||metadata.rock_private_member!==true||!uuid(claims.sub))return null;if(metadata.device_session_id){const valid=await checked(db.rpc('rock_member_session_valid',{p_id:metadata.device_session_id,p_member:claims.sub}));if(!valid)return null;}return await checked(db.from('rock_meeting_members').select('id,real_name').eq('id',claims.sub).eq('team_slug','rock-esports').eq('is_active',true).maybeSingle());}catch(_){return null;}}
 
   // A member may test only the installation they control; this never broadcasts or creates a notice/call.
