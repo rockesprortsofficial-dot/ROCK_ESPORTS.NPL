@@ -149,6 +149,7 @@
     #rockConnectApp .rc-call[data-mode=video]:has(video) .rc-call-stage{position:absolute;inset:0;width:100%;height:100%;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));padding:0}
     #rockConnectApp .rc-call[data-mode=video] .rc-call-stage video{height:100%;max-height:none;min-height:0;object-fit:cover;border-radius:0}
     #rockConnectApp .rc-call[data-mode=video] .rc-call-stage video[data-local]{position:absolute;z-index:1;top:58px;right:16px;width:clamp(84px,18vw,175px);height:auto;aspect-ratio:3/4;border-radius:12px;border:1px solid #ffffff69}
+    #rockConnectApp .rc-call-stage video[data-mirror]{transform:scaleX(-1)}
     #rockConnectApp .rc-call[data-mode=video]:has(video:not([data-local])) .rc-call-person{visibility:hidden}
     #rockConnectApp .rc-call-person{display:grid;justify-items:center;gap:12px;z-index:1}
     #rockConnectApp .rc-call-buttons{position:absolute;bottom:max(28px,env(safe-area-inset-bottom))}
@@ -870,6 +871,10 @@
   }
   $("rcMic").onclick=async()=>{if(!activeCall)return;try{const on=!activeCall.localParticipant.isMicrophoneEnabled;await activeCall.localParticipant.setMicrophoneEnabled(on);setCallControl("rcMic",on,on?t("🎙️ Mute"):t("🎙️ Unmute"));}catch(error){say("rcCallStatus",error.message);}};
   $("rcCamera").onclick=async()=>{if(!activeCall)return;try{const on=!activeCall.localParticipant.isCameraEnabled;await activeCall.localParticipant.setCameraEnabled(on);setCallControl("rcCamera",on,on?t("📹 Camera off"):t("📹 Camera on"));}catch(error){say("rcCallStatus",error.message);}};
+  function updateCameraPreview(video,track) {
+    const facing = track?.mediaStreamTrack?.getSettings().facingMode;
+    video?.toggleAttribute("data-mirror",Boolean(track && facing !== "environment"));
+  }
   $("rcFlipCamera").onclick = async () => {
     const room = activeCall;
     if (!room?.localParticipant.isCameraEnabled) {
@@ -884,7 +889,9 @@
       }
       const track = room.localParticipant.getTrackPublication(window.LivekitClient.Track.Source.Camera)?.track;
       const current = await track?.getDeviceId();
-      if (activeCall === room) await room.switchActiveDevice("videoinput",cameras[(cameras.findIndex(camera=>camera.deviceId===current)+1)%cameras.length].deviceId);
+      if (activeCall !== room) return;
+      await room.switchActiveDevice("videoinput",cameras[(cameras.findIndex(camera=>camera.deviceId===current)+1)%cameras.length].deviceId);
+      if (activeCall === room) updateCameraPreview($("rcCallStage").querySelector("video[data-local-camera]"),track);
     } catch (error) { say("rcCallStatus",error.message); }
   };
   $("rcScreen").onclick=async()=>{if(!activeCall)return;try{await activeCall.localParticipant.setScreenShareEnabled(!activeCall.localParticipant.isScreenShareEnabled);}catch(error){say("rcCallStatus","Screen share: "+error.message);}};
@@ -908,15 +915,22 @@
     $("rcCallAvatar").textContent=initials(name);
     panel.classList.add("open");
     say("rcCallStatus",t("Connecting… / जडान हुँदैछ…"));const sdk=window.LivekitClient;if(!sdk?.Room){say("rcCallStatus",t("Call service did not load. Refresh and try again."));await endCall();return;}
-    try{const {data,error}=await client.functions.invoke("rock-connect-token",{body:{room_id:record.room_id,call_id:record.id}});if(error||!data?.token||!data?.server_url)throw new Error(data?.error||error?.message||t("Call service is unavailable"));if(generation!==callGeneration||!session?.user)return;const room=new sdk.Room({adaptiveStream:true,dynacast:true});activeCall=room;const stage=$("rcCallStage");stage.replaceChildren();const attach=(track,person)=>{
+    try{const {data,error}=await client.functions.invoke("rock-connect-token",{body:{room_id:record.room_id,call_id:record.id}});if(error||!data?.token||!data?.server_url)throw new Error(data?.error||error?.message||t("Call service is unavailable"));if(generation!==callGeneration||!session?.user)return;const room=new sdk.Room({adaptiveStream:true,dynacast:true});activeCall=room;const stage=$("rcCallStage");stage.replaceChildren();const attach=(track,person,source)=>{
       if(Array.from(stage.children).some(el=>el.dataset.identity===person.identity&&el.dataset.track===(track.sid||"local")))return;
       const el=track.attach();el.dataset.identity=person.identity;el.dataset.track=track.sid||"local";
-      if(person===room.localParticipant){el.muted=true;el.dataset.local="";}
+      if(person===room.localParticipant){
+        el.muted=true;
+        el.dataset.local="";
+        if(source===sdk.Track.Source.Camera){
+          el.dataset.localCamera="";
+          updateCameraPreview(el,track);
+        }
+      }
       if(el.tagName==="VIDEO")el.playsInline=true;
       stage.append(el);
     };
       room.on(sdk.RoomEvent.TrackSubscribed,(track,_publication,person)=>attach(track,person));room.on(sdk.RoomEvent.TrackUnsubscribed,track=>track.detach().forEach(el=>el.remove()));
-      room.on(sdk.RoomEvent.LocalTrackPublished,publication=>{if(publication.track?.kind==="video")attach(publication.track,room.localParticipant);});room.on(sdk.RoomEvent.LocalTrackUnpublished,publication=>{if(publication.track)publication.track.detach().forEach(el=>el.remove());});
+      room.on(sdk.RoomEvent.LocalTrackPublished,publication=>{if(publication.track?.kind==="video")attach(publication.track,room.localParticipant,publication.source);});room.on(sdk.RoomEvent.LocalTrackUnpublished,publication=>{if(publication.track)publication.track.detach().forEach(el=>el.remove());});
       room.on(sdk.RoomEvent.Disconnected,()=>{if(activeCall===room)endCall();});
       await room.connect(data.server_url,data.token);if(generation!==callGeneration||!session?.user){await room.disconnect();return;}await room.localParticipant.setMicrophoneEnabled(true);if(generation!==callGeneration||!session?.user){await room.disconnect();return;}await room.localParticipant.setCameraEnabled(record.mode==="video");if(generation!==callGeneration||!session?.user){await room.disconnect();return;}setCallControl("rcCamera",record.mode==="video",record.mode==="video"?t("📹 Camera off"):t("📹 Camera on"));setCallControl("rcMic",true,t("🎙️ Mute"));
       for(const person of room.remoteParticipants.values())for(const publication of person.trackPublications.values())if(publication.track)attach(publication.track,person);
