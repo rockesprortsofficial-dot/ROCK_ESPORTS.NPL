@@ -64,9 +64,110 @@
     #rockConnectApp .rc-hangup{background:#df3551!important}
     #rcIncoming{position:fixed;z-index:1000030;inset:auto 16px 20px auto;width:min(360px,calc(100vw - 32px));padding:22px;background:#0c1d34;color:#fff;border:1px solid #4989c3;border-radius:20px;box-shadow:0 15px 70px #000b;font-family:system-ui}
     #rcIncoming h3{margin:0 0 10px}#rcIncoming button{padding:12px 18px;margin:8px 6px 0 0;border:0;border-radius:24px;color:#fff;cursor:pointer;font-weight:800;background:#139d70}#rcIncoming .rc-decline{background:#d43a53}
+    #rockConnectApp .rc-group{display:grid;gap:8px;margin-top:12px}
+    #rockConnectApp .rc-group-players{max-height:145px;overflow:auto}
+    #rockConnectApp .rc-group-players label{display:flex;align-items:center;gap:8px;padding:5px 0}
+    #rockConnectApp .rc-group-players input{width:auto}
+    #rockConnectApp .rc-history-row{display:block;text-align:left;width:100%;margin-top:6px}
+    #rockConnectApp .rc-room.active{box-shadow:inset 3px 0 #6ac0ff}
     @media(max-width:720px){#rockConnectApp .rc-layout{display:block}#rockConnectApp .rc-sidebar{order:0;border:0}#rockConnectApp .rc-chat{min-height:65vh}#rockConnectApp .rc-layout:not(.rc-show-chat) .rc-chat{display:none}#rockConnectApp .rc-layout.rc-show-chat .rc-sidebar{display:none}#rockConnectApp .rc-mobile-back{display:inline-flex}#rockConnectApp .rc-messages{max-height:48dvh}#rockConnectApp .rc-message{max-width:94%}#rockConnectApp .rc-call-stage{grid-template-columns:1fr}#rockConnectApp .rc-call-stage video{max-height:45vh}#rockConnectApp .rc-form{grid-template-columns:auto minmax(0,1fr) auto}}
   `;
   document.head.append(style);
+  const theme = document.createElement("style");
+  theme.textContent = `
+    #rockConnectApp{--rc-bg:#100e19;--rc-line:#2b243a;--rc-muted:#b8afca;--rc-violet:#8228ec;color:#faf6ff;font-family:system-ui,sans-serif}
+    #rockConnectApp .rc-card,#rockConnectApp .rc-layout{background:var(--rc-bg);border-color:var(--rc-line)}
+    #rockConnectApp .rc-status{color:var(--rc-muted)}
+    #rockConnectApp .rc-top{display:flex;align-items:center;gap:12px;padding:15px 18px;background:#151121;border:1px solid var(--rc-line);border-radius:18px 18px 0 0}
+    #rockConnectApp .rc-top h3{font-size:23px;line-height:1.15;margin:0}
+    #rockConnectApp .rc-top small{color:#c7b9de}
+    #rockConnectApp .rc-account{margin-left:auto;min-width:0;text-align:right}
+    #rockConnectApp .rc-account .rc-actions{justify-content:flex-end}
+    #rockConnectApp #rcPushStatus:empty{display:none}
+    #rockConnectApp .rc-layout{grid-template-columns:minmax(235px,32%) minmax(0,1fr);border-top:0;border-radius:0 0 18px 18px}
+    #rockConnectApp .rc-sidebar{background:#15111f;border-color:var(--rc-line);min-width:0;padding:12px 0}
+    #rockConnectApp .rc-search,#rockConnectApp .rc-filters{display:flex;gap:8px;margin:0 12px 12px}
+    #rockConnectApp .rc-search input,#rockConnectApp .rc-form textarea{background:#242033;border-color:transparent;color:#fff}
+    #rockConnectApp .rc-search input{min-width:0;border-radius:12px}
+    #rockConnectApp .rc-filters button{border-radius:999px;padding:7px 13px}
+    #rockConnectApp button{background:var(--rc-violet)}
+    #rockConnectApp button.secondary{background:#201a2f;border-color:#392952}
+    #rockConnectApp button:focus-visible,#rcIncoming button:focus-visible{outline:2px solid #dbabff;outline-offset:2px}
+    #rockConnectApp .rc-avatar,#rcIncoming .rc-avatar{display:grid;place-items:center;flex:none;width:42px;height:42px;border-radius:50%;background:linear-gradient(145deg,#b92cf4,#4d1bc1);color:white;font-weight:800;font-size:14px;border:1px solid #b790ee}
+    #rockConnectApp .rc-logo{font-size:26px;width:48px;height:48px}
+    #rockConnectApp .rc-room-list{display:block}
+    #rockConnectApp .rc-room{display:flex;align-items:center;gap:10px;padding:11px 12px;border-radius:12px;min-width:0;background:transparent!important}
+    #rockConnectApp .rc-room:hover,#rockConnectApp .rc-room.active{background:#292039!important}
+    #rockConnectApp .rc-room.active{box-shadow:inset 3px 0 #a856ff}
+    #rockConnectApp .rc-room-copy{flex:1;min-width:0}
+    #rockConnectApp .rc-room-copy strong,#rockConnectApp .rc-room-copy small{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    #rockConnectApp .rc-room-copy small{color:var(--rc-muted);font-weight:400}
+    #rockConnectApp .rc-room time{align-self:start;color:var(--rc-muted);font-size:11px;font-weight:400}
+    #rockConnectApp .rc-unread{border-radius:999px;background:#cf215d;color:white;font-size:11px;padding:2px 6px}
+    #rockConnectApp .rc-chat{padding:0;min-height:550px}
+    #rockConnectApp .rc-chat-head{padding:13px 16px;border-color:var(--rc-line);flex-wrap:nowrap}
+    #rockConnectApp .rc-chat-name{flex:1;min-width:0;overflow-wrap:anywhere}
+    #rockConnectApp .rc-icon{display:grid;place-items:center;width:40px;height:40px;padding:0;border-radius:50%;font-size:19px}
+    #rockConnectApp .rc-chat-head .rc-icon{background:transparent;color:#c16aff;border:1px solid #392952}
+    #rockConnectApp .rc-messages{padding:14px 16px;max-height:54vh;gap:14px}
+    #rockConnectApp .rc-message,#rockConnectApp .rc-message.rc-own{background:transparent;border:0;padding:0;box-shadow:none;max-width:85%}
+    #rockConnectApp .rc-bubble{background:#282438;border-radius:15px 15px 15px 4px;padding:9px 12px}
+    #rockConnectApp .rc-own .rc-bubble{background:linear-gradient(115deg,#7021dd,#5417af);border-radius:15px 15px 4px 15px}
+    #rockConnectApp .rc-message .body{margin:0}
+    #rockConnectApp .rc-message .meta{color:var(--rc-muted);margin-top:4px}
+    #rockConnectApp .rc-own .meta{justify-content:flex-end}
+    #rockConnectApp .rc-message:not(.rc-own):has(.rc-sender-avatar){position:relative;margin-left:38px}
+    #rockConnectApp .rc-sender-avatar{position:absolute;left:-38px;top:2px;width:29px;height:29px;font-size:11px}
+    #rockConnectApp .rc-day{align-self:center;background:#211b2e;color:var(--rc-muted);padding:4px 11px;border-radius:999px;font-size:12px}
+    #rockConnectApp .rc-seen{color:#d18bff}
+    #rockConnectApp .rc-online{color:#81e3a8}
+    #rockConnectApp .rc-icon svg,#rockConnectApp .rc-call-buttons svg,#rcIncoming svg{width:22px;height:22px;vertical-align:middle}
+    #rockConnectApp .rc-message details{font-size:12px;color:var(--rc-muted);margin-top:4px}
+    #rockConnectApp .rc-message summary{list-style:none;cursor:pointer;width:max-content}
+    #rockConnectApp .rc-message summary::-webkit-details-marker{display:none}
+    #rockConnectApp .rc-own summary{margin-left:auto}
+    #rockConnectApp .rc-message details button{background:#282038}
+    #rockConnectApp .rc-tools,#rockConnectApp .rc-form,#rockConnectApp .rc-compose-footer{padding:8px 12px}
+    #rockConnectApp .rc-tools{border-top:1px solid var(--rc-line)}
+    #rockConnectApp .rc-form{border:0;align-items:center;grid-template-columns:auto minmax(0,1fr) auto auto}
+    #rockConnectApp .rc-form textarea{border-radius:24px;min-height:44px;resize:none}
+    #rockConnectApp .rc-form .rc-icon{color:#fff;background:#6023a6;cursor:pointer}
+    #rockConnectApp .rc-picker,#rockConnectApp .rc-attachment{background:#201a2f;border-color:var(--rc-line);margin-inline:12px}
+    #rockConnectApp .rc-empty{padding:12px;color:var(--rc-muted)}
+    #rcIncoming,#rockConnectApp .rc-call.open{box-sizing:border-box;position:fixed;inset:0;width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;margin:0;padding:24px;color:#fff;border:0;border-radius:0;background:radial-gradient(ellipse at 50% 20%,#271437,#0d0b15 58%,#08080e);text-align:center}
+    #rcIncoming .rc-avatar,#rockConnectApp .rc-call .rc-avatar{width:98px;height:98px;font-size:32px;box-shadow:0 0 32px #9f36ec70;border:2px solid #cf62ff}
+    #rcIncoming h3,#rcIncoming p,#rockConnectApp .rc-call h3{margin:0}
+    #rcIncoming .rc-call-brand,#rockConnectApp .rc-call-brand{position:absolute;top:max(18px,env(safe-area-inset-top));font-weight:800;letter-spacing:.08em;z-index:1}
+    #rcIncoming .rc-call-buttons,#rockConnectApp .rc-call-buttons{display:flex;justify-content:center;gap:14px;flex-wrap:wrap;z-index:1}
+    #rcIncoming .rc-call-buttons{gap:32px;margin-top:18px}
+    #rcIncoming .rc-call-buttons button,#rockConnectApp .rc-call-buttons button{width:56px;height:56px;border-radius:50%;font-size:22px;margin:0;padding:0}
+    #rcIncoming .rc-call-buttons label{display:grid;justify-items:center;gap:7px;font-size:13px}
+    #rockConnectApp .rc-call-buttons button{background:#292539;border:1px solid #49385b}
+    #rockConnectApp .rc-call-buttons button.rc-control-off{background:#493358;color:#e6c2ff}
+    #rockConnectApp .rc-call-stage{margin:0;width:min(960px,100%);z-index:0}
+    #rockConnectApp .rc-call-stage:empty{display:none}
+    #rockConnectApp .rc-call[data-mode=video]:has(video) .rc-call-stage{position:absolute;inset:0;width:100%;height:100%;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));padding:0}
+    #rockConnectApp .rc-call[data-mode=video] .rc-call-stage video{height:100%;max-height:none;min-height:0;object-fit:cover;border-radius:0}
+    #rockConnectApp .rc-call[data-mode=video] .rc-call-stage video[data-local]{position:absolute;z-index:1;top:58px;right:16px;width:clamp(84px,18vw,175px);height:auto;aspect-ratio:3/4;border-radius:12px;border:1px solid #ffffff69}
+    #rockConnectApp .rc-call[data-mode=video]:has(video:not([data-local])) .rc-call-person{visibility:hidden}
+    #rockConnectApp .rc-call-person{display:grid;justify-items:center;gap:12px;z-index:1}
+    #rockConnectApp .rc-call-buttons{position:absolute;bottom:max(28px,env(safe-area-inset-bottom))}
+    #rockConnectApp #rcCallTimer{z-index:1;background:#100b1ccf;border-radius:999px;padding:4px 10px;font-variant-numeric:tabular-nums}
+    #rockConnectApp .rc-call[data-mode=video]:has(video:not([data-local])) #rcCallTimer{position:absolute;top:max(50px,calc(env(safe-area-inset-top) + 26px))}
+    #rockConnectApp #rcCallStatus{z-index:1;background:#100b1ccf;border-radius:10px;padding:4px 8px}
+    @media(max-width:720px){
+      #rockConnectApp .rc-top{padding:12px;gap:8px}
+      #rockConnectApp .rc-top h3{font-size:18px}
+      #rockConnectApp .rc-top small{font-size:10px}
+      #rockConnectApp .rc-account .rc-actions button{font-size:11px;padding:6px}
+      #rockConnectApp .rc-chat-head{padding:10px;gap:6px}
+      #rockConnectApp .rc-chat-head .rc-icon{width:34px;height:34px}
+      #rockConnectApp .rc-messages{padding:12px 10px;max-height:53dvh}
+      #rockConnectApp .rc-call-buttons{gap:7px}
+      #rockConnectApp .rc-call-buttons button{width:45px;height:45px}
+    }
+  `;
+  document.head.append(theme);
 
   const app = document.createElement("div");
   app.id = "rockConnectApp";
@@ -89,20 +190,23 @@
     '<input id="rcEmail" type="email" maxlength="254" required placeholder="इमेल ठेगाना">' +
     '<input id="rcPassword" type="password" minlength="8" maxlength="128" required placeholder="पासवर्ड (कम्तीमा ८ अक्षर)">' +
     '<button id="rcAuthSubmit" type="submit">लगइन</button></form><p class="rc-status" id="rcAuthStatus"></p></div>' +
-    '<div id="rcSignedIn" hidden><div class="rc-card rc-actions" style="align-items:center;justify-content:space-between">' +
-    '<strong id="rcAccountName">ROCK CONNECT</strong><div class="rc-actions"><button type="button" class="secondary" id="rcEnableNotifications">🔔 सूचना खोल्नुहोस्</button><button type="button" class="secondary" id="rcSignOut">लगआउट</button></div></div>' +
-    '<div class="rc-layout"><aside class="rc-sidebar"><div class="rc-card"><h3>च्याट कोठा</h3><div class="rc-room-list" id="rcRooms"></div></div>' +
-    '<div class="rc-card"><h3>निजी च्याट सुरु गर्नुहोस्</h3><select id="rcPlayerSelect"><option value="">खेलाडी छान्नुहोस्</option></select>' +
+    '<div id="rcSignedIn" hidden><header class="rc-top"><span class="rc-avatar rc-logo" aria-hidden="true">ϟ</span><div><h3>CONNECT</h3><small>Chat · Voice Call · Video Call</small></div><div class="rc-account">' +
+    '<strong id="rcAccountName" hidden>ROCK CONNECT</strong><div class="rc-actions"><button type="button" class="secondary" id="rcEnableNotifications">🔔 सूचना खोल्नुहोस्</button><button type="button" class="secondary" id="rcSignOut">लगआउट</button></div><span id="rcPushStatus" class="rc-status" role="status"></span></div></header>' +
+    '<div class="rc-layout"><aside class="rc-sidebar" aria-label="Chats"><div class="rc-search"><input id="rcSearch" type="search" aria-label="Search chats / च्याट खोज्नुहोस्" placeholder="⌕  Search chats…"><button type="button" class="rc-icon" id="rcCompose" aria-label="New chat / नयाँ च्याट" aria-controls="rcNewChat" aria-expanded="false">✎</button></div>' +
+    '<div class="rc-filters" role="group" aria-label="Filter chats"><button type="button" data-rc-filter="all" aria-pressed="true">All</button><button type="button" class="secondary" data-rc-filter="unread" aria-pressed="false">Unread <span class="rc-unread" id="rcUnreadCount" hidden></span></button><button type="button" class="secondary" data-rc-filter="calls" aria-pressed="false">Calls</button></div>' +
+    '<div class="rc-room-list" id="rcRooms"></div><div class="rc-card" id="rcHistoryPanel" hidden><strong>Recent calls / कल इतिहास</strong><div id="rcCallHistory" class="rc-status"></div></div>' +
+    '<div id="rcNewChat" hidden><div class="rc-card"><h3>निजी च्याट सुरु गर्नुहोस्</h3><select id="rcPlayerSelect"><option value="">खेलाडी छान्नुहोस्</option></select>' +
     '<button type="button" id="rcStartDm" style="margin-top:8px;width:100%">निजी च्याट खोल्नुहोस्</button><p class="rc-status" id="rcDmStatus"></p></div>' +
-    '<div class="rc-card"><strong>अनलाइन</strong><div class="rc-status" id="rcOnline">जडान हुँदैछ…</div></div><div class="rc-card"><strong>Recent calls / कल इतिहास</strong><div id="rcCallHistory" class="rc-status"></div></div></aside>' +
-    '<main class="rc-card rc-chat"><div class="rc-chat-head"><button type="button" class="secondary rc-mobile-back" id="rcBack" aria-label="Back to chats">‹ Chats</button><div><strong id="rcRoomTitle">ROCK CONNECT Lobby</strong><div class="rc-status" id="rcRoomStatus">जडान हुँदैछ…</div></div>' +
-    '<div class="rc-actions"><button type="button" id="rcAudioCall" aria-label="Audio call">📞 Audio</button><button type="button" id="rcCallButton" aria-label="Video call">📹 Video</button></div></div><div class="rc-messages" id="rcMessages"></div><div class="rc-status" id="rcReplyStatus"></div>' +
-    '<div class="rc-tools"><button type="button" class="secondary" id="rcEmojiToggle" aria-expanded="false">😊 Emoji</button><button type="button" class="secondary" id="rcStickerToggle" aria-expanded="false">🎨 Stickers</button><button type="button" class="secondary" id="rcCallSound">🔊 Call sound: off</button></div><div class="rc-picker" id="rcEmojiPicker" hidden><div class="rc-picker-grid" id="rcEmojiGrid"></div></div><div class="rc-picker" id="rcStickerPicker" hidden><div class="rc-picker-grid" id="rcStickerGrid"></div></div><div class="rc-attachment" id="rcAttachment" hidden></div><div class="rc-actions" id="rcEmojiRow"><button class="secondary" type="button">😄</button><button class="secondary" type="button">🎮</button><button class="secondary" type="button">🏆</button><button class="secondary" type="button">❤️</button><button class="secondary" type="button">🔥</button></div>' +
-    '<form class="rc-form" id="rcMessageForm"><label class="secondary" style="display:grid;place-items:center;padding:8px;border-radius:9px;cursor:pointer">＋<input id="rcMedia" aria-label="Attach photo or video (up to 25 MB)" type="file" accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/webm,video/quicktime" hidden></label>' +
-    '<textarea id="rcMessage" maxlength="2000" placeholder="सन्देश लेख्नुहोस्…" aria-label="सन्देश"></textarea><button id="rcSend" type="submit">पठाउनुहोस्</button></form>' +
-    '<div class="rc-actions" style="margin-top:8px"><button type="button" class="secondary" id="rcRecord">🎙️ आवाज रेकर्ड</button><span class="rc-status" id="rcChatStatus"></span></div></main></div>' +
-    '<section class="rc-call" id="rcCallPanel"><div class="rc-chat-head"><strong>ROCK CONNECT कल</strong><button type="button" class="secondary" id="rcCallClose" aria-label="End call">कल बन्द गर्नुहोस्</button></div>' +
-    '<div class="rc-call-stage" id="rcCallStage"></div><div class="rc-actions"><button type="button" id="rcMic">🎙️ माइक बन्द</button><button type="button" id="rcCamera">📹 क्यामेरा बन्द</button><button type="button" class="secondary" id="rcScreen">🖥️ Share screen</button></div><p class="rc-status" id="rcCallStatus"></p></section></div>';
+    '<details class="rc-card"><summary>👥 Group chat / समूह च्याट</summary><form class="rc-group" id="rcGroupForm"><input id="rcGroupName" aria-label="Group name / समूहको नाम" placeholder="Group name / समूहको नाम" minlength="2" maxlength="60" required><div id="rcGroupPlayers" class="rc-group-players" role="group" aria-label="Select 2–20 players"></div><button type="submit">Create group / समूह बनाउनुहोस्</button><span id="rcGroupStatus" class="rc-status" role="status"></span></form></details>' +
+    '</div></aside>' +
+    '<main class="rc-card rc-chat"><div class="rc-chat-head"><button type="button" class="secondary rc-mobile-back" id="rcBack" aria-label="Back to chats">‹</button><span class="rc-avatar" id="rcRoomAvatar" aria-hidden="true">R</span><div class="rc-chat-name"><strong id="rcRoomTitle">ROCK CONNECT Lobby</strong><div class="rc-status" id="rcRoomStatus">जडान हुँदैछ…</div></div>' +
+    '<div class="rc-actions"><button type="button" class="rc-icon" id="rcAudioCall" aria-label="Audio call" title="Audio call">☎</button><button type="button" class="rc-icon" id="rcCallButton" aria-label="Video call" title="Video call">▣</button><button type="button" class="rc-icon" id="rcRoomInfo" aria-label="Chat info" aria-expanded="false" aria-controls="rcRoomDetails">ⓘ</button></div></div><div class="rc-card" id="rcRoomDetails" hidden><strong>अनलाइन</strong><div class="rc-status" id="rcOnline">जडान हुँदैछ…</div></div><div class="rc-messages" id="rcMessages"></div><div class="rc-status" id="rcReplyStatus"></div>' +
+    '<div class="rc-picker" id="rcEmojiPicker" hidden><div class="rc-picker-grid" id="rcEmojiGrid"></div></div><div class="rc-picker" id="rcStickerPicker" hidden><div class="rc-picker-grid" id="rcStickerGrid"></div></div><div class="rc-attachment" id="rcAttachment" hidden></div>' +
+    '<form class="rc-form" id="rcMessageForm"><button type="button" class="rc-icon" id="rcAttach" aria-label="Attach photo or video (up to 25 MB)">＋</button><input id="rcMedia" aria-label="Attach photo or video (up to 25 MB)" type="file" accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/webm,video/quicktime" hidden>' +
+    '<textarea id="rcMessage" rows="1" maxlength="2000" placeholder="सन्देश लेख्नुहोस्…" aria-label="सन्देश"></textarea><button type="button" class="rc-icon secondary" id="rcEmojiToggle" aria-label="Emoji" aria-expanded="false">☺</button><button id="rcSend" class="rc-icon" type="submit" aria-label="Send message / सन्देश पठाउनुहोस्">➤</button></form>' +
+    '<div class="rc-actions rc-compose-footer"><button type="button" class="secondary" id="rcStickerToggle" aria-expanded="false">🎨 Stickers</button><button type="button" class="secondary" id="rcRecord">🎙️ आवाज रेकर्ड</button><button type="button" class="secondary" id="rcCallSound">🔊 Call sound: off</button><span class="rc-status" id="rcChatStatus" role="status"></span></div></main></div>' +
+    '<section class="rc-call" id="rcCallPanel" role="dialog" aria-labelledby="rcCallName"><div class="rc-call-brand">ROCK ESPORTS</div><div class="rc-call-person"><span class="rc-avatar" id="rcCallAvatar" aria-hidden="true"></span><h3 id="rcCallName"></h3></div><time id="rcCallTimer" hidden>00:00</time>' +
+    '<div class="rc-call-stage" id="rcCallStage"></div><div class="rc-call-buttons"><button type="button" id="rcMic" aria-label="Mute microphone" title="Mute microphone">🎙</button><button type="button" id="rcCamera" aria-label="Toggle camera" title="Toggle camera">📹</button><button type="button" id="rcFlipCamera" aria-label="Switch camera" title="Switch camera">↻</button><button type="button" id="rcScreen" aria-label="Share screen" title="Share screen">▣</button><button type="button" class="rc-hangup" id="rcCallClose" aria-label="End call" title="End call">☎</button></div><p class="rc-status" id="rcCallStatus" role="status"></p></section></div>';
   container.replaceChildren(heading, app);
 
   const languagePicker=document.createElement("div");languagePicker.id="rcLanguagePicker";languagePicker.className="rc-card rc-actions";languagePicker.setAttribute("role","group");languagePicker.setAttribute("aria-label","CONNECT language / भाषा");
@@ -114,6 +218,99 @@
   let recorder = null, recorderStream = null, roomNames = new Map();
   let replyTo = null, pendingFile = null, previewUrl = null, sending = false, messageLoadVersion = 0;
   let roomsById = new Map(), peopleNames = new Map(), callChannel = null, callRecord = null, incomingCall = null, incomingTimer = null, ringTimer = null, soundContext = null;
+  let roomPreviews = new Map(), roomFilter = "all", previewVersion = 0, previewTimer;
+  const roomFilters = Array.from(app.querySelectorAll("[data-rc-filter]"));
+  const initials = name => name.trim().split(/\s+/).slice(0,2).map(word=>Array.from(word)[0]).join("").toLocaleUpperCase();
+  const shortTime = value => new Date(value).toLocaleTimeString([], {hour:"numeric",minute:"2-digit"});
+
+  function togglePanel(button, panel) {
+    panel.hidden = !panel.hidden;
+    button.setAttribute("aria-expanded",String(!panel.hidden));
+  }
+  $("rcCompose").onclick = () => {
+    togglePanel($("rcCompose"),$("rcNewChat"));
+    if (!$("rcNewChat").hidden) $("rcPlayerSelect").focus();
+  };
+  $("rcRoomInfo").onclick = () => togglePanel($("rcRoomInfo"),$("rcRoomDetails"));
+  $("rcAttach").onclick = () => $("rcMedia").click();
+  $("rcSearch").oninput = renderRooms;
+  for (const button of roomFilters) button.onclick = () => {
+    roomFilter = button.dataset.rcFilter;
+    for (const filter of roomFilters) {
+      filter.setAttribute("aria-pressed",String(filter === button));
+      filter.classList.toggle("secondary",filter !== button);
+    }
+    renderRooms();
+    if (roomFilter === "calls") loadCallHistory();
+  };
+
+  function renderRooms() {
+    const list = $("rcRooms");
+    list.hidden = roomFilter === "calls";
+    $("rcHistoryPanel").hidden = !list.hidden;
+    const total = Array.from(roomPreviews.values()).filter(preview=>preview.unread>0).length;
+    $("rcUnreadCount").hidden = total === 0;
+    $("rcUnreadCount").textContent = total;
+    if (list.hidden) return;
+    const query = $("rcSearch").value.trim().toLocaleLowerCase();
+    const rooms = Array.from(roomsById.values()).sort((a,b)=>
+      (Date.parse(roomPreviews.get(b.id)?.created_at)||0)-(Date.parse(roomPreviews.get(a.id)?.created_at)||0));
+    list.replaceChildren();
+    for (const room of rooms) {
+      const preview = roomPreviews.get(room.id);
+      const name = roomNames.get(room.id) || room.title;
+      const message = preview?.body?.startsWith("[ROCK_STICKER:v1:") ? "Sticker" :
+        (preview?.body || ({image:"Photo",video:"Video",audio:"Voice message"}[preview?.media_type]) || "Start chatting");
+      if (roomFilter === "unread" && !preview?.unread) continue;
+      if (query && !name.toLocaleLowerCase().includes(query) && !message.toLocaleLowerCase().includes(query)) continue;
+      const row = document.createElement("button");
+      row.type = "button";
+      row.className = "rc-room" + (room.id === activeRoom?.id ? " active" : "");
+      const avatar = document.createElement("span"), copy = document.createElement("span");
+      const title = document.createElement("strong"), snippet = document.createElement("small");
+      avatar.className = "rc-avatar";
+      avatar.setAttribute("aria-hidden","true");
+      avatar.textContent = initials(name);
+      title.textContent = name;
+      snippet.textContent = message;
+      copy.className = "rc-room-copy";
+      copy.append(title,snippet);
+      row.append(avatar,copy);
+      if (preview?.created_at) {
+        const time = document.createElement("time");
+        time.dateTime = preview.created_at;
+        time.textContent = shortTime(preview.created_at);
+        row.append(time);
+      }
+      if (preview?.unread) {
+        const badge = document.createElement("span");
+        badge.className = "rc-unread";
+        badge.textContent = preview.unread >= 100 ? "99+" : preview.unread;
+        row.append(badge);
+      }
+      row.onclick = () => openRoom(room);
+      list.append(row);
+    }
+    if (!list.children.length) {
+      const empty = document.createElement("p");
+      empty.className = "rc-empty";
+      empty.textContent = roomFilter === "unread" ? "No unread chats / नपढेको च्याट छैन" : "No chats found / च्याट भेटिएन";
+      list.append(empty);
+    }
+  }
+
+  async function refreshRoomPreviews() {
+    const user = session?.user?.id, version = ++previewVersion;
+    if (!user) return;
+    const {data,error} = await client.rpc("rock_connect_chat_previews");
+    if (error || session?.user?.id !== user || version !== previewVersion) return;
+    roomPreviews = new Map(data.map(preview=>[preview.room_id,preview]));
+    renderRooms();
+  }
+  function scheduleRoomPreviews() {
+    clearTimeout(previewTimer);
+    previewTimer = setTimeout(refreshRoomPreviews,350);
+  }
 
   function say(id, text) { if ($(id)) $(id).textContent = t(text || ""); }
   function setAuthMode(mode) {
@@ -127,7 +324,9 @@
   $("rcSignupTab").onclick = () => setAuthMode("signup");
 
   function setSignedIn(next) {
+    const previousUser = session?.user?.id;
     session = next;
+    if (previousUser && previousUser === next?.user?.id) return;
     $("rcAuth").hidden = !!next?.user;
     $("rcSignedIn").hidden = !next?.user;
     if (!next?.user) {
@@ -136,12 +335,19 @@
       if(recorder?.state === "recording") recorder.stop();
       if(callChannel) client.removeChannel(callChannel); callChannel=null;
       $("rcMessages").replaceChildren(); $("rcRooms").replaceChildren(); $("rcPlayerSelect").replaceChildren(new Option(t("खेलाडी छान्नुहोस्"), ""));
+      roomPreviews.clear();
+      roomsById.clear();
+      $("rcGroupPlayers").replaceChildren();
+      $("rcCallHistory").replaceChildren();
+      syncConnectPush(null);
       if (activeChannel) client.removeChannel(activeChannel);
       activeChannel = null;
       return;
     }
     $("rcAccountName").textContent = t("ROCK CONNECT • Signed in");
-    loadDirectory(); loadRooms();
+    syncConnectPush(next);
+    loadDirectory();
+    loadRooms().then(openPushDestination);
   }
 
   $("rcAuthForm").addEventListener("submit", async (event) => {
@@ -160,13 +366,38 @@
     finally { button.disabled = false; }
   });
 
-  $("rcSignOut").onclick = async () => { await client.auth.signOut(); setSignedIn(null); };
-  $("rcEnableNotifications").onclick = async () => {
-    if (!("Notification" in window)) { say("rcChatStatus", t("यो ब्राउजरले सूचना देखाउन सक्दैन।")); return; }
-    const permission = await Notification.requestPermission();
-    say("rcChatStatus", permission === "granted" ? t("यो पेज पछाडि हुँदा सन्देशको सूचना आउँछ।") : t("सूचना अनुमति दिइएन।"));
+  $("rcSignOut").onclick = async () => {
+    const button = $("rcSignOut");
+    button.disabled = true;
+    try {
+      await window.rockConnectPush?.(null).catch(error=>console.warn("CONNECT device unlink pending",error));
+      await endCall().catch(error=>console.warn("CONNECT call close pending",error));
+      const {error} = await client.auth.signOut({scope:"local"});
+      if(error) throw error;
+      setSignedIn(null);
+    } catch (error) {
+      say("rcPushStatus", error.message);
+    } finally {
+      button.disabled = false;
+    }
   };
-  $("rcEmojiRow").onclick = (event) => { const emoji = event.target.closest("button")?.textContent; if (emoji) { $("rcMessage").value += emoji; $("rcMessage").focus(); } };
+  async function syncConnectPush(account, enable = false) {
+    if (!window.rockConnectPush) return;
+    try {
+      const linked = await window.rockConnectPush(account, enable);
+      if (session?.user?.id === account?.user?.id) {
+        say("rcPushStatus", linked ? "यो डिभाइसमा CONNECT सूचना सक्रिय छ। / CONNECT alerts are enabled on this device." : "");
+      }
+    } catch (error) {
+      if (session?.user?.id === account?.user?.id) say("rcPushStatus", error.message);
+    }
+  }
+  $("rcEnableNotifications").onclick = async () => {
+    const button = $("rcEnableNotifications");
+    button.disabled = true;
+    try { await syncConnectPush(session, true); }
+    finally { button.disabled = false; }
+  };
 
   async function loadDirectory() {
     const directoryUser=session?.user?.id;
@@ -175,8 +406,42 @@
     if(!directoryUser||session?.user?.id!==directoryUser)return;
     peopleNames = new Map((data||[]).map(person=>[person.user_id,person.display_name]));
     const select = $("rcPlayerSelect"); select.replaceChildren(new Option(t("खेलाडी छान्नुहोस्"), ""));
-    for (const person of data || []) if (person.user_id !== session?.user?.id) select.add(new Option(person.display_name, person.user_id));
+    const players = $("rcGroupPlayers");
+    players.replaceChildren();
+    for (const person of data || []) {
+      if (person.user_id === directoryUser) continue;
+      select.add(new Option(person.display_name, person.user_id));
+      const label = document.createElement("label");
+      const box = document.createElement("input");
+      box.type = "checkbox";
+      box.value = person.user_id;
+      label.append(box, document.createTextNode(person.display_name));
+      players.append(label);
+    }
   }
+
+  $("rcGroupForm").onsubmit = async (event) => {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const users = Array.from($("rcGroupPlayers").querySelectorAll(":checked"), box => box.value);
+    if (users.length < 2 || users.length > 20) {
+      say("rcGroupStatus", "२–२० खेलाडी छान्नुहोस्। / Choose 2–20 players.");
+      return;
+    }
+    const button = form.querySelector("button");
+    button.disabled = true;
+    try {
+      const {data, error} = await client.rpc("rock_connect_create_group", {p_title:$("rcGroupName").value, p_users:users});
+      if (error) throw error;
+      form.reset();
+      say("rcGroupStatus", "");
+      await loadRooms(data);
+    } catch (error) {
+      say("rcGroupStatus", error.message);
+    } finally {
+      button.disabled = false;
+    }
+  };
 
   $("rcStartDm").onclick = async () => {
     const other = $("rcPlayerSelect").value;
@@ -188,8 +453,9 @@
   };
 
   async function loadRooms(openId) {
-    if (!session?.user) return;
-    const { data: memberships, error: memberError } = await client.from("rock_connect_members").select("room_id").eq("user_id", session.user.id);
+    const user = session?.user?.id;
+    if (!user) return;
+    const { data: memberships, error: memberError } = await client.from("rock_connect_members").select("room_id").eq("user_id", user);
     if (memberError) { say("rcChatStatus", t("Supabase मा ROCK CONNECT सेटअप गर्न बाँकी छ।")); return; }
     const ids = (memberships || []).map((row) => row.room_id);
     if (!ids.length) { say("rcChatStatus", t("च्याट कोठा भेटिएन।")); return; }
@@ -199,49 +465,61 @@
     roomNames = new Map((rooms || []).map((room) => [room.id, room.title]));
     if (dmIds.length) {
       const { data: members } = await client.from("rock_connect_members").select("room_id,user_id").in("room_id", dmIds);
-      const otherIds = (members || []).filter((m) => m.user_id !== session.user.id).map((m) => m.user_id);
+      const otherIds = (members || []).filter((m) => m.user_id !== user).map((m) => m.user_id);
       const { data: profiles } = otherIds.length ? await client.from("rock_connect_profiles").select("user_id,display_name").in("user_id", otherIds) : { data: [] };
       const names = new Map((profiles || []).map((p) => [p.user_id, p.display_name]));
       for (const room of rooms || []) {
         if (room.kind === "dm") {
-          const other = (members || []).find((m) => m.room_id === room.id && m.user_id !== session.user.id);
-          roomNames.set(room.id, t("निजी: ") + (names.get(other?.user_id) || "खेलाडी"));
+          const other = (members || []).find((m) => m.room_id === room.id && m.user_id !== user);
+          roomNames.set(room.id, names.get(other?.user_id) || room.title);
         }
       }
     }
+    if (session?.user?.id !== user) return;
     roomsById = new Map((rooms||[]).map(room=>[room.id,room]));
-    watchCalls(); loadCallHistory();
+    if (!callChannel) watchCalls();
+    loadCallHistory();
     const ordered = (rooms || []).sort((a,b) => a.kind === "lobby" ? -1 : b.kind === "lobby" ? 1 : 0);
-    $("rcRooms").replaceChildren();
-    for (const room of ordered) {
-      const button = document.createElement("button"); button.type="button";
-      button.className = "rc-room" + (room.id === activeRoom?.id ? " active" : "");
-      button.textContent = roomNames.get(room.id) || room.title;
-      button.onclick = () => openRoom(room); $("rcRooms").append(button);
-    }
-    await openRoom(ordered.find((r) => r.id === openId) || ordered.find((r) => r.id === activeRoom?.id) || ordered[0]);
+    renderRooms();
+    refreshRoomPreviews();
+    const showChat = openId || $("rockConnectApp").querySelector(".rc-layout").classList.contains("rc-show-chat");
+    await openRoom(ordered.find((r) => r.id === openId) || ordered.find((r) => r.id === activeRoom?.id) || ordered[0], Boolean(showChat));
   }
 
-  async function openRoom(room) {
+  let roomGeneration = 0;
+  async function openRoom(room, showChat = true) {
+    const user = session?.user?.id;
+    if (!room || !user) return;
+    const generation = ++roomGeneration;
     activeRoom = room; replyTo=null; say("rcReplyStatus", ""); clearAttachment();
-    $("rockConnectApp").querySelector(".rc-layout").classList.add("rc-show-chat");
+    renderRooms();
+    $("rockConnectApp").querySelector(".rc-layout").classList.toggle("rc-show-chat", showChat);
     $("rcMessages").replaceChildren();
     $("rcRoomTitle").textContent = roomNames.get(room.id) || room.title;
-    if (activeChannel) await client.removeChannel(activeChannel);
-    activeChannel = client.channel("rock-connect-" + room.id, { config: { presence: { key: session.user.id } } });
-    activeChannel
-      .on("postgres_changes", { event:"*", schema:"public", table:"rock_connect_messages", filter:"room_id=eq." + room.id }, (payload) => {
-        if (payload.eventType === "INSERT" && session?.user && payload.new.sender_id !== session.user.id && document.hidden && "Notification" in window && Notification.permission === "granted") {
-          new Notification(roomNames.get(room.id) || room.title, { body: payload.new.body || "मिडिया सन्देश आयो।" });
-        }
-        loadMessages();
-      })
+    $("rcRoomAvatar").textContent = initials($("rcRoomTitle").textContent);
+    $("rcNewChat").hidden = true;
+    $("rcCompose").setAttribute("aria-expanded","false");
+    const previous = activeChannel;
+    activeChannel = null;
+    if (previous) await client.removeChannel(previous);
+    if (generation !== roomGeneration || session?.user?.id !== user) return;
+    const channel = client.channel("rock-connect-" + room.id, { config: { presence: { key: user } } });
+    activeChannel = channel;
+    channel
+      .on("postgres_changes", { event:"*", schema:"public", table:"rock_connect_messages", filter:"room_id=eq." + room.id }, loadMessages)
       .on("postgres_changes", { event:"*", schema:"public", table:"rock_connect_reactions" }, loadMessages)
-      .on("presence", { event:"sync" }, () => { $("rcOnline").textContent = Object.keys(activeChannel.presenceState()).length + t(" जना यो कोठामा अनलाइन"); })
+      .on("presence", { event:"sync" }, () => {
+        if(activeChannel !== channel) return;
+        const online = Object.keys(channel.presenceState()).filter(id=>id!==user).length;
+        const label = online ? "● " + (room.kind === "dm" ? "Active now / अहिले अनलाइन" : online + t(" जना यो कोठामा अनलाइन")) : "Chat / च्याट";
+        $("rcRoomStatus").textContent = label;
+        $("rcRoomStatus").classList.toggle("rc-online",online>0);
+        $("rcOnline").textContent = label;
+      })
       .subscribe(async (state) => {
-        if (state === "SUBSCRIBED" && session?.user && activeRoom?.id===room.id) {
-          await activeChannel.track({ name:peopleNames.get(session.user.id)||"खेलाडी", online_at:new Date().toISOString() });
-          $("rcRoomStatus").textContent = t("जडान भयो");
+        if (activeChannel !== channel || session?.user?.id !== user) return;
+        if (state === "SUBSCRIBED") {
+          await channel.track({ name:peopleNames.get(user)||"खेलाडी", online_at:new Date().toISOString() });
         } else if (state === "CHANNEL_ERROR" || state === "TIMED_OUT") $("rcRoomStatus").textContent = t("जडान हुन सकेन");
       });
     await loadMessages();
@@ -265,15 +543,35 @@
     const names = new Map((profiles||[]).map((p)=>[p.user_id,p.display_name]));
     const byId = new Map(messages.map((m)=>[m.id,m]));
     host.replaceChildren();
+    let day = "";
     for (const message of messages) {
       if(activeRoom?.id!==room.id || version!==messageLoadVersion || !session?.user)return;
-      const card=document.createElement("article"); card.className="rc-message"+(message.sender_id===session.user.id?" rc-own":"");
+      const messageDay = new Date(message.created_at).toDateString();
+      if (messageDay !== day) {
+        day = messageDay;
+        const divider = document.createElement("time");
+        divider.className = "rc-day";
+        divider.dateTime = message.created_at;
+        divider.textContent = day === new Date().toDateString() ? (connectLanguage==="ne"?"आज":"Today") : new Date(message.created_at).toLocaleDateString();
+        host.append(divider);
+      }
+      const own = message.sender_id === session.user.id;
+      const card=document.createElement("article"); card.className="rc-message"+(own?" rc-own":"");
+      const bubble=document.createElement("div"); bubble.className="rc-bubble";
       const meta=document.createElement("div"); meta.className="meta";
       const author=document.createElement("strong"); author.textContent=names.get(message.sender_id)||"ROCK CONNECT";
-      const date=document.createElement("time"); date.textContent=new Date(message.created_at).toLocaleString();
-      meta.append(author,date); card.append(meta);
-      if (message.reply_to && byId.has(message.reply_to)) { const quote=document.createElement("div"); quote.className="rc-status"; quote.textContent="↪ "+(byId.get(message.reply_to).body||"मिडिया सन्देश"); card.append(quote); }
-      if (message.body) { const sticker=STICKERS.find(item=>message.body==="[ROCK_STICKER:v1:"+item.id+"]"); if(sticker)card.append(stickerNode(sticker)); else { const body=document.createElement("div"); body.className="body"; body.textContent=message.body; card.append(body); } }
+      const date=document.createElement("time"); date.dateTime=message.created_at; date.textContent=shortTime(message.created_at);
+      if (!own) {
+        const avatar = document.createElement("span");
+        avatar.className = "rc-avatar rc-sender-avatar";
+        avatar.textContent = initials(author.textContent);
+        avatar.setAttribute("aria-hidden","true");
+        card.append(avatar);
+        meta.append(author);
+      }
+      meta.append(date); card.append(bubble,meta);
+      if (message.reply_to && byId.has(message.reply_to)) { const quote=document.createElement("div"); quote.className="rc-status"; quote.textContent="↪ "+(byId.get(message.reply_to).body||"मिडिया सन्देश"); bubble.append(quote); }
+      if (message.body) { const sticker=STICKERS.find(item=>message.body==="[ROCK_STICKER:v1:"+item.id+"]"); if(sticker)bubble.append(stickerNode(sticker)); else { const body=document.createElement("div"); body.className="body"; body.textContent=message.body; bubble.append(body); } }
       if (message.media_path) {
         const {data:signed}=await client.storage.from("rock-connect-media").createSignedUrl(message.media_path,3600);
         if (signed?.signedUrl) {
@@ -282,7 +580,7 @@
           media.src=signed.signedUrl;
           if (message.media_type==="image") { media.alt="साझा गरिएको फोटो"; media.loading="lazy"; }
           else { media.controls=true; if (message.media_type==="video") media.playsInline=true; }
-          card.append(media);
+          bubble.append(media);
         }
       }
       const actions=document.createElement("div"); actions.className="rc-actions";
@@ -296,15 +594,31 @@
       actions.append(reply);
       if (message.sender_id===session.user.id) {
         const read=(receipts||[]).some((r)=>r.message_id===message.id&&r.user_id!==session.user.id);
-        const seen=document.createElement("span"); seen.className="rc-status"; seen.textContent=read?t("पढियो"):t("पठाइयो"); actions.append(seen);
+        const seen=document.createElement("span");
+        const label=read?t("पढियो"):t("पठाइयो");
+        seen.className="rc-seen"; seen.textContent=read?"✓✓":"✓"; seen.title=label; seen.setAttribute("aria-label",label);
+        meta.append(seen);
       }
-      card.append(actions); host.append(card);
+      const menu=document.createElement("details");
+      const summary=document.createElement("summary");
+      summary.textContent="⋯";
+      summary.setAttribute("aria-label","Message actions / सन्देशका विकल्प");
+      menu.append(summary,actions);
+      card.append(menu); host.append(card);
     }
     if(activeRoom?.id!==room.id || version!==messageLoadVersion || !session?.user)return;
     host.scrollTop=host.scrollHeight;
-    const seen=messages.filter((m)=>m.sender_id!==session.user.id).map((m)=>({message_id:m.id,user_id:session.user.id}));
-    if (seen.length) await client.from("rock_connect_receipts").upsert(seen,{onConflict:"message_id,user_id",ignoreDuplicates:true});
+    const chat = app.querySelector(".rc-chat");
+    if (location.hash !== "#connect" || document.hidden || !chat.getClientRects().length) return;
+    const received = new Set((receipts||[]).filter(receipt=>receipt.user_id===session.user.id).map(receipt=>receipt.message_id));
+    const seen=messages.filter(m=>m.sender_id!==session.user.id&&!received.has(m.id)).map(m=>({message_id:m.id,user_id:session.user.id}));
+    if (seen.length) {
+      await client.from("rock_connect_receipts").upsert(seen,{onConflict:"message_id,user_id",ignoreDuplicates:true});
+      scheduleRoomPreviews();
+    }
   }
+  window.addEventListener("hashchange",()=>{if(location.hash==="#connect")loadMessages();});
+  document.addEventListener("visibilitychange",()=>{if(!document.hidden&&location.hash==="#connect"){loadMessages();scheduleRoomPreviews();}});
 
   async function toggleReaction(messageId,emoji) {
     const {data,error}=await client.from("rock_connect_reactions").select("message_id").eq("message_id",messageId).eq("user_id",session.user.id).eq("emoji",emoji).maybeSingle();
@@ -379,38 +693,267 @@
   $("rcEmojiToggle").onclick=()=>togglePicker("rcEmojiPicker","rcEmojiToggle");
   $("rcStickerToggle").onclick=()=>togglePicker("rcStickerPicker","rcStickerToggle");
   $("rcBack").onclick=()=>$("rockConnectApp").querySelector(".rc-layout").classList.remove("rc-show-chat");
+  const connectUrl = new URL(location.href);
+  const validConnectId = id => typeof id === "string" && /^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(id);
+  let pushDestination = {
+    room_id: connectUrl.searchParams.get("connect_room"),
+    call_id: connectUrl.searchParams.get("connect_call")
+  };
+  navigator.serviceWorker?.addEventListener("message", ({data}) => {
+    if (data?.type !== "ROCK_CONNECT_OPEN" || !validConnectId(data.room_id)) return;
+    pushDestination = data;
+    location.hash = "connect";
+    openPushDestination();
+  });
+  async function openPushDestination() {
+    const user = session?.user?.id;
+    const destination = pushDestination;
+    if (!user || !validConnectId(destination?.room_id)) return;
+    pushDestination = null;
+    location.hash = "connect";
+    const url = new URL(location.href);
+    url.searchParams.delete("connect_room");
+    url.searchParams.delete("connect_call");
+    history.replaceState(history.state, "", url);
+    const {data:room} = await client.from("rock_connect_rooms").select("id,title,kind").eq("id",destination.room_id).maybeSingle();
+    if (session?.user?.id !== user || pushDestination) return;
+    if (!room) {
+      say("rcPushStatus", "यो च्याट उपलब्ध छैन। / This chat is unavailable.");
+      return;
+    }
+    roomsById.set(room.id, room);
+    await openRoom(room);
+    if (!validConnectId(destination.call_id)) return;
+    const {data:call} = await client.from("rock_connect_calls").select("*").eq("id",destination.call_id).eq("room_id",room.id).maybeSingle();
+    if (session?.user?.id !== user || activeRoom?.id !== room.id) return;
+    if (call && canOfferCall(call) && callDeadline(call) > Date.now()) offerCall(call);
+    else say("rcChatStatus", "कल निमन्त्रणा सकियो। कल इतिहास हेर्नुहोस्। / The invitation ended. Check call history.");
+    loadCallHistory();
+  }
   for(const emoji of ["😀","😁","😂","🤣","😊","😍","🥰","😎","🥳","😢","😮","😡","👍","👎","👏","🙌","🙏","💪","👋","🤝","❤️","💙","💜","💯","🔥","⚡","✨","🎉","🎮","🏆","🥇","🎯","🚀","✅","🇳🇵","🤩"]){const button=document.createElement("button");button.type="button";button.className="secondary";button.textContent=emoji;button.setAttribute("aria-label","Insert emoji "+emoji);button.onclick=()=>{const field=$("rcMessage");const start=field.selectionStart??field.value.length,end=field.selectionEnd??start;if(field.value.length-(end-start)+emoji.length>2000)return;field.setRangeText(emoji,start,end,"end");field.focus();};$("rcEmojiGrid").append(button);}
   for(const sticker of STICKERS){const button=document.createElement("button");button.type="button";button.className="secondary";button.setAttribute("aria-label","Send "+sticker.label+" sticker");button.append(stickerNode(sticker));button.onclick=async()=>{await sendMessage(null,"[ROCK_STICKER:v1:"+sticker.id+"]");$("rcStickerPicker").hidden=true;$("rcStickerToggle").setAttribute("aria-expanded","false");};$("rcStickerGrid").append(button);}
-  const incoming=document.createElement("section");incoming.id="rcIncoming";incoming.hidden=true;incoming.setAttribute("role","dialog");incoming.setAttribute("aria-modal","false");incoming.setAttribute("aria-labelledby","rcIncomingTitle");incoming.innerHTML='<h3 id="rcIncomingTitle">Incoming call</h3><p id="rcIncomingName"></p><button type="button" id="rcAcceptCall">Accept / उठाउनुहोस्</button><button type="button" class="rc-decline" id="rcDeclineCall">Decline / अस्वीकार</button>';document.body.append(incoming);
+  const incoming=document.createElement("section");
+  incoming.id="rcIncoming";
+  incoming.hidden=true;
+  incoming.setAttribute("role","dialog");
+  incoming.setAttribute("aria-labelledby","rcIncomingTitle");
+  incoming.innerHTML='<div class="rc-call-brand">ROCK ESPORTS</div><span class="rc-avatar" id="rcIncomingAvatar" aria-hidden="true"></span><h3 id="rcIncomingName"></h3><p id="rcIncomingTitle">Incoming call</p><div class="rc-call-buttons"><label><button type="button" class="rc-decline" id="rcDeclineCall" aria-label="Decline">☎</button><span>Decline / अस्वीकार</span></label><label><button type="button" id="rcAcceptCall" aria-label="Accept">☎</button><span>Accept / उठाउनुहोस्</span></label></div>';
+  document.body.append(incoming);
+  const phoneIcon = '<path d="M5 3h4l2 5-3 2a14 14 0 0 0 6 6l2-3 5 2v4c0 1-1 2-2 2C10 21 3 14 3 5c0-1 1-2 2-2Z"/>';
+  const videoIcon = '<rect x="3" y="6" width="12" height="12" rx="3"/><path d="m15 10 6-4v12l-6-4"/>';
+  function setIcon(id,path) {
+    $(id).innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'+path+'</svg>';
+  }
+  for (const id of ["rcAudioCall","rcAcceptCall","rcDeclineCall","rcCallClose"]) setIcon(id,phoneIcon);
+  for (const id of ["rcCallButton","rcCamera"]) setIcon(id,videoIcon);
   function stopRing(){if(ringTimer)clearInterval(ringTimer);ringTimer=null;}
   function ring(){if(!soundContext||soundContext.state!=="running")return;try{const oscillator=soundContext.createOscillator(),gain=soundContext.createGain();oscillator.type="sine";oscillator.frequency.value=660;gain.gain.setValueAtTime(.035,soundContext.currentTime);gain.gain.exponentialRampToValueAtTime(.001,soundContext.currentTime+.25);oscillator.connect(gain);gain.connect(soundContext.destination);oscillator.start();oscillator.stop(soundContext.currentTime+.3);}catch(_){}}
   $("rcCallSound").onclick=async()=>{try{if(soundContext){stopRing();await soundContext.close();soundContext=null;$("rcCallSound").textContent=t("🔊 Call sound: off");}else{const Audio=window.AudioContext||window.webkitAudioContext;if(!Audio)throw new Error(t("Sound is unavailable"));soundContext=new Audio();await soundContext.resume();ring();$("rcCallSound").textContent=t("🔔 Call sound: on");}}catch(error){say("rcChatStatus",error.message);}};
   function hideIncoming(){incoming.hidden=true;incomingCall=null;if(incomingTimer)clearTimeout(incomingTimer);incomingTimer=null;stopRing();}
-  function offerCall(row){if(!session?.user||row.initiated_by===session.user.id||row.status!=="ringing"||activeCall||callRecord||callStarting)return;const age=Date.now()-Date.parse(row.created_at);if(age>60000||Date.parse(row.expires_at)<Date.now())return;incomingCall=row;$("rcIncomingTitle").textContent=row.mode==="audio"?t("📞 Incoming audio call"):t("📹 Incoming video call");$("rcIncomingName").textContent=peopleNames.get(row.initiated_by)||"ROCK CONNECT member";incoming.hidden=false;ring();stopRing();ringTimer=setInterval(ring,2000);if(incomingTimer)clearTimeout(incomingTimer);incomingTimer=setTimeout(()=>{hideIncoming();loadCallHistory();},Math.max(0,60000-age));}
-  function watchCalls(){if(!session?.user)return;if(callChannel)client.removeChannel(callChannel);callChannel=client.channel("rock-connect-call-events-"+session.user.id).on("postgres_changes",{event:"INSERT",schema:"public",table:"rock_connect_calls"},event=>{offerCall(event.new);loadCallHistory();}).on("postgres_changes",{event:"UPDATE",schema:"public",table:"rock_connect_calls"},event=>{if(event.new.status==="ended"){if(incomingCall?.id===event.new.id)hideIncoming();if(callRecord?.id===event.new.id)endCall(false);}loadCallHistory();}).on("postgres_changes",{event:"INSERT",schema:"public",table:"rock_connect_members",filter:"user_id=eq."+session.user.id},()=>loadRooms()).subscribe();
-    client.from("rock_connect_calls").select("id,room_id,initiated_by,mode,status,created_at,expires_at").eq("status","ringing").neq("initiated_by",session.user.id).gte("created_at",new Date(Date.now()-60000).toISOString()).order("created_at",{ascending:false}).limit(1).then(({data})=>{if(data?.[0])offerCall(data[0]);});
+  const callDeadline = row => Math.min(Date.parse(row.created_at)+60000,Date.parse(row.expires_at));
+  const dismissedCalls = new Set();
+  const canOfferCall = row => row.status === "ringing" || (row.status === "accepted" && roomsById.get(row.room_id)?.kind === "group");
+  function offerCall(row) {
+    const remaining = callDeadline(row) - Date.now();
+    if (!session?.user || row.initiated_by === session.user.id || !canOfferCall(row) ||
+        dismissedCalls.has(row.id) || !(remaining > 0) || activeCall || callRecord || callStarting) return;
+    hideIncoming();
+    incomingCall = row;
+    $("rcIncomingTitle").textContent = t(row.mode === "audio" ? "📞 Incoming audio call" : "📹 Incoming video call");
+    $("rcIncomingName").textContent = peopleNames.get(row.initiated_by) || "ROCK CONNECT member";
+    $("rcIncomingAvatar").textContent = initials($("rcIncomingName").textContent);
+    incoming.hidden = false;
+    ring();
+    ringTimer = setInterval(ring, 2000);
+    incomingTimer = setTimeout(() => { hideIncoming(); loadCallHistory(); }, remaining);
   }
-  async function loadCallHistory(){if(!session?.user)return;const {data,error}=await client.from("rock_connect_calls").select("id,room_id,initiated_by,mode,status,created_at").order("created_at",{ascending:false}).limit(12);if(error){say("rcCallHistory",t("Call history is unavailable."));return;}const host=$("rcCallHistory");host.replaceChildren();for(const item of data||[]){const line=document.createElement("p");const missed=item.status==="ringing"&&Date.now()-Date.parse(item.created_at)>60000;line.textContent=(item.mode==="audio"?"📞 ":"📹 ")+(missed?t("Missed / छुटेको"):item.status==="accepted"?t("In progress"):item.status==="ended"?t("Ended"):t("Ringing"))+" · "+(roomNames.get(item.room_id)||t("Chat"))+" · "+new Date(item.created_at).toLocaleTimeString();host.append(line);}if(!data?.length)host.textContent=t("No recent calls / हाल कुनै कल छैन।");}
+  function watchCalls() {
+    const user = session.user.id;
+    callChannel = client.channel("rock-connect-call-events-"+user)
+      .on("postgres_changes",{event:"INSERT",schema:"public",table:"rock_connect_calls"},({new:row})=>{
+        offerCall(row);
+        loadCallHistory();
+      })
+      .on("postgres_changes",{event:"UPDATE",schema:"public",table:"rock_connect_calls"},({new:row})=>{
+        if (incomingCall?.id === row.id && (row.status === "ended" || roomsById.get(row.room_id)?.kind === "dm")) hideIncoming();
+        if (callRecord?.id === row.id) {
+          if (row.status === "ended") endCall(false);
+          if (row.status === "accepted") {
+            callRecord = row;
+            clearTimeout(outgoingTimer);
+            startCallClock();
+            say("rcCallStatus", t("Connected / जडान भयो।"));
+          }
+        }
+        loadCallHistory();
+      })
+      .on("postgres_changes",{event:"INSERT",schema:"public",table:"rock_connect_members",filter:"user_id=eq."+user},()=>loadRooms())
+      .on("postgres_changes",{event:"INSERT",schema:"public",table:"rock_connect_messages"},scheduleRoomPreviews)
+      .subscribe(async state=>{
+        if(state!=="SUBSCRIBED" || session?.user?.id!==user)return;
+        const {data} = await client.from("rock_connect_calls").select("*").eq("status","ringing").neq("initiated_by",user)
+          .gte("created_at",new Date(Date.now()-60000).toISOString()).order("created_at",{ascending:false}).limit(1);
+        if (session?.user?.id === user && data?.[0]) offerCall(data[0]);
+      });
+  }
+  async function loadCallHistory() {
+    const user = session?.user?.id;
+    if (!user) return;
+    const {data,error} = await client.from("rock_connect_calls").select("*").order("created_at",{ascending:false}).limit(30);
+    if (session?.user?.id !== user) return;
+    if (error) { say("rcCallHistory",t("Call history is unavailable.")); return; }
+    const host = $("rcCallHistory");
+    host.replaceChildren();
+    for (const item of data || []) {
+      const outgoing = item.initiated_by === user;
+      const expired = (item.status === "ringing" || item.status === "ended") && callDeadline(item) <= Date.now();
+      const result = item.outcome === "declined" ? "Declined / अस्वीकृत"
+        : item.outcome === "cancelled" ? "Cancelled / रद्द"
+        : item.outcome === "completed" ? "Ended / सकियो"
+        : item.outcome === "missed" || (expired && item.status === "ringing") ? (outgoing ? "Unanswered / उत्तर आएन" : "Missed / छुटेको")
+        : item.status === "accepted" && Date.parse(item.expires_at) > Date.now() ? t("In progress")
+        : t(item.status === "ringing" ? "Ringing" : "Ended");
+      const line = document.createElement("button");
+      line.type = "button";
+      line.className = "secondary rc-history-row";
+      line.textContent = (item.mode === "audio" ? "📞 " : "📹 ") + (outgoing ? "↗ " : "↙ ") + result +
+        " · " + (roomNames.get(item.room_id)||t("Chat")) + " · " + new Date(item.created_at).toLocaleString();
+      line.disabled = !roomsById.has(item.room_id);
+      line.onclick = () => openRoom(roomsById.get(item.room_id));
+      host.append(line);
+    }
+    if (!data?.length) host.textContent = t("No recent calls / हाल कुनै कल छैन।");
+  }
   setInterval(()=>{if(session?.user&&location.hash==="#connect")loadCallHistory();},30000);
-  $("rcDeclineCall").onclick=async()=>{const row=incomingCall;hideIncoming();if(row&&roomsById.get(row.room_id)?.kind==="dm")await client.from("rock_connect_calls").update({status:"ended"}).eq("id",row.id);};
-  $("rcAcceptCall").onclick=async()=>{const row=incomingCall;if(!row||!session?.user)return;hideIncoming();try{const {data:rooms,error:roomError}=await client.from("rock_connect_rooms").select("id,title,kind").eq("id",row.room_id).maybeSingle();if(roomError||!rooms)throw new Error(t("Chat is no longer available"));const {data,error}=await client.from("rock_connect_calls").update({status:"accepted"}).eq("id",row.id).in("status",["ringing","accepted"]).gt("expires_at",new Date().toISOString()).select();if(error||!data?.length)throw new Error(t("This call has ended"));roomsById.set(rooms.id,rooms);location.hash="connect";await openRoom(rooms);await joinCall({...row,status:"accepted"});}catch(error){say("rcChatStatus",error.message);}};
+  $("rcDeclineCall").onclick = async () => {
+    const row = incomingCall;
+    hideIncoming();
+    if (!row) return;
+    dismissedCalls.add(row.id);
+    setTimeout(()=>dismissedCalls.delete(row.id),60000);
+    const {data:room} = await client.from("rock_connect_rooms").select("kind").eq("id",row.room_id).maybeSingle();
+    if (room?.kind === "dm") {
+      const {error} = await client.from("rock_connect_calls").update({status:"ended"}).eq("id",row.id).eq("status","ringing");
+      if (error) say("rcPushStatus",error.message);
+    }
+  };
+  $("rcAcceptCall").onclick = async () => {
+    const row = incomingCall, user = session?.user?.id;
+    if (!row || !user || callStarting || activeCall || callRecord) return;
+    callStarting = true;
+    hideIncoming();
+    location.hash = "connect";
+    try {
+      if (callDeadline(row) <= Date.now()) throw Error(t("This call has ended"));
+      const {data:room} = await client.from("rock_connect_rooms").select("id,title,kind").eq("id",row.room_id).maybeSingle();
+      if (!room || session?.user?.id !== user) throw Error(t("Chat is no longer available"));
+      const {data,error} = await client.from("rock_connect_calls").update({status:"accepted"}).eq("id",row.id)
+        .in("status",room.kind === "dm" ? ["ringing"] : ["ringing","accepted"]).select().maybeSingle();
+      if (error || !data) throw Error(t("This call has ended"));
+      if (session?.user?.id !== user) return;
+      roomsById.set(room.id,room);
+      await openRoom(room);
+      if (session?.user?.id === user) await joinCall(data);
+    } catch(error) {
+      say("rcPushStatus",error.message);
+    } finally {
+      callStarting = false;
+    }
+  };
   async function beginCall(mode){if(!activeRoom||!session?.user||activeCall||callRecord||callStarting)return;const targetRoom=activeRoom.id,caller=session.user.id;callStarting=true;say("rcChatStatus",t("Starting call… / कल सुरु हुँदैछ…"));try{const {data:existing,error:lookupError}=await client.from("rock_connect_calls").select("id,room_id,initiated_by,mode,status,created_at,expires_at").eq("room_id",targetRoom).eq("status","accepted").gt("expires_at",new Date().toISOString()).order("created_at",{ascending:false}).limit(1);if(lookupError)throw lookupError;if(session?.user?.id!==caller)return;if(existing?.[0]){await joinCall(existing[0]);return;}const {data,error}=await client.from("rock_connect_calls").insert({room_id:targetRoom,initiated_by:caller,mode}).select().single();if(error)throw error;if(session?.user?.id!==caller)return;await joinCall(data);}catch(error){say("rcChatStatus",error.message||t("Call service is unavailable"));}finally{callStarting=false;}}
   $("rcCallButton").onclick=()=>beginCall("video");$("rcAudioCall").onclick=()=>beginCall("audio");$("rcCallClose").classList.add("rc-hangup");$("rcCallClose").onclick=()=>endCall();
-  $("rcMic").onclick=async()=>{if(!activeCall)return;try{const on=!activeCall.localParticipant.isMicrophoneEnabled;await activeCall.localParticipant.setMicrophoneEnabled(on);$("rcMic").textContent=on?t("🎙️ Mute"):t("🎙️ Unmute");}catch(error){say("rcCallStatus",error.message);}};
-  $("rcCamera").onclick=async()=>{if(!activeCall)return;try{const on=!activeCall.localParticipant.isCameraEnabled;await activeCall.localParticipant.setCameraEnabled(on);$("rcCamera").textContent=on?t("📹 Camera off"):t("📹 Camera on");}catch(error){say("rcCallStatus",error.message);}};
+  function setCallControl(id,on,label) {
+    const button=$(id);
+    button.title=label;
+    button.setAttribute("aria-label",label);
+    button.classList.toggle("rc-control-off",!on);
+  }
+  $("rcMic").onclick=async()=>{if(!activeCall)return;try{const on=!activeCall.localParticipant.isMicrophoneEnabled;await activeCall.localParticipant.setMicrophoneEnabled(on);setCallControl("rcMic",on,on?t("🎙️ Mute"):t("🎙️ Unmute"));}catch(error){say("rcCallStatus",error.message);}};
+  $("rcCamera").onclick=async()=>{if(!activeCall)return;try{const on=!activeCall.localParticipant.isCameraEnabled;await activeCall.localParticipant.setCameraEnabled(on);setCallControl("rcCamera",on,on?t("📹 Camera off"):t("📹 Camera on"));}catch(error){say("rcCallStatus",error.message);}};
+  $("rcFlipCamera").onclick = async () => {
+    const room = activeCall;
+    if (!room?.localParticipant.isCameraEnabled) {
+      say("rcCallStatus","पहिले क्यामेरा खोल्नुहोस्। / Turn on the camera first.");
+      return;
+    }
+    try {
+      const cameras = (await navigator.mediaDevices.enumerateDevices()).filter(device=>device.kind==="videoinput"&&device.deviceId);
+      if (cameras.length < 2) {
+        say("rcCallStatus","अर्को क्यामेरा उपलब्ध छैन। / No other camera is available.");
+        return;
+      }
+      const track = room.localParticipant.getTrackPublication(window.LivekitClient.Track.Source.Camera)?.track;
+      const current = await track?.getDeviceId();
+      if (activeCall === room) await room.switchActiveDevice("videoinput",cameras[(cameras.findIndex(camera=>camera.deviceId===current)+1)%cameras.length].deviceId);
+    } catch (error) { say("rcCallStatus",error.message); }
+  };
   $("rcScreen").onclick=async()=>{if(!activeCall)return;try{await activeCall.localParticipant.setScreenShareEnabled(!activeCall.localParticipant.isScreenShareEnabled);}catch(error){say("rcCallStatus","Screen share: "+error.message);}};
-  let callGeneration=0, callStarting=false;
-  async function joinCall(record){if(activeCall||callRecord)return;const generation=++callGeneration;callRecord=record;$("rcCallPanel").classList.add("open");say("rcCallStatus",t("Connecting… / जडान हुँदैछ…"));const sdk=window.LivekitClient;if(!sdk?.Room){say("rcCallStatus",t("Call service did not load. Refresh and try again."));await endCall();return;}
-    try{const {data,error}=await client.functions.invoke("rock-connect-token",{body:{room_id:record.room_id,call_id:record.id}});if(error||!data?.token||!data?.server_url)throw new Error(data?.error||error?.message||t("Call service is unavailable"));if(generation!==callGeneration||!session?.user)return;const room=new sdk.Room({adaptiveStream:true,dynacast:true});activeCall=room;const stage=$("rcCallStage");stage.replaceChildren();const attach=(track,person)=>{const el=track.attach();el.dataset.identity=person.identity;el.dataset.track=track.sid||"local";if(person===room.localParticipant)el.muted=true;stage.append(el);};
+  let callGeneration=0, callStarting=false, outgoingTimer, callClock;
+  function startCallClock() {
+    if (callClock) return;
+    const since = Date.now();
+    const clock = $("rcCallTimer");
+    clock.hidden = false;
+    clock.textContent = "00:00";
+    callClock = setInterval(()=>{
+      const seconds = Math.floor((Date.now()-since)/1000);
+      clock.textContent = [Math.floor(seconds/60),seconds%60].map(value=>String(value).padStart(2,"0")).join(":");
+    },1000);
+  }
+  async function joinCall(record){if(activeCall||callRecord)return;const generation=++callGeneration;callRecord=record;
+    const panel=$("rcCallPanel");
+    panel.dataset.mode=record.mode;
+    const name=roomNames.get(record.room_id)||roomsById.get(record.room_id)?.title||"ROCK CONNECT";
+    $("rcCallName").textContent=name;
+    $("rcCallAvatar").textContent=initials(name);
+    panel.classList.add("open");
+    say("rcCallStatus",t("Connecting… / जडान हुँदैछ…"));const sdk=window.LivekitClient;if(!sdk?.Room){say("rcCallStatus",t("Call service did not load. Refresh and try again."));await endCall();return;}
+    try{const {data,error}=await client.functions.invoke("rock-connect-token",{body:{room_id:record.room_id,call_id:record.id}});if(error||!data?.token||!data?.server_url)throw new Error(data?.error||error?.message||t("Call service is unavailable"));if(generation!==callGeneration||!session?.user)return;const room=new sdk.Room({adaptiveStream:true,dynacast:true});activeCall=room;const stage=$("rcCallStage");stage.replaceChildren();const attach=(track,person)=>{
+      if(Array.from(stage.children).some(el=>el.dataset.identity===person.identity&&el.dataset.track===(track.sid||"local")))return;
+      const el=track.attach();el.dataset.identity=person.identity;el.dataset.track=track.sid||"local";
+      if(person===room.localParticipant){el.muted=true;el.dataset.local="";}
+      if(el.tagName==="VIDEO")el.playsInline=true;
+      stage.append(el);
+    };
       room.on(sdk.RoomEvent.TrackSubscribed,(track,_publication,person)=>attach(track,person));room.on(sdk.RoomEvent.TrackUnsubscribed,track=>track.detach().forEach(el=>el.remove()));
       room.on(sdk.RoomEvent.LocalTrackPublished,publication=>{if(publication.track?.kind==="video")attach(publication.track,room.localParticipant);});room.on(sdk.RoomEvent.LocalTrackUnpublished,publication=>{if(publication.track)publication.track.detach().forEach(el=>el.remove());});
-      room.on(sdk.RoomEvent.Disconnected,()=>{if(activeCall===room){activeCall=null;callRecord=null;stage.replaceChildren();$("rcCallPanel").classList.remove("open");}});
-      await room.connect(data.server_url,data.token);if(generation!==callGeneration||!session?.user){await room.disconnect();return;}await room.localParticipant.setMicrophoneEnabled(true);if(generation!==callGeneration||!session?.user){await room.disconnect();return;}await room.localParticipant.setCameraEnabled(record.mode==="video");if(generation!==callGeneration||!session?.user){await room.disconnect();return;}$("rcCamera").textContent=record.mode==="video"?t("📹 Camera off"):t("📹 Camera on");$("rcMic").textContent=t("🎙️ Mute");
+      room.on(sdk.RoomEvent.Disconnected,()=>{if(activeCall===room)endCall();});
+      await room.connect(data.server_url,data.token);if(generation!==callGeneration||!session?.user){await room.disconnect();return;}await room.localParticipant.setMicrophoneEnabled(true);if(generation!==callGeneration||!session?.user){await room.disconnect();return;}await room.localParticipant.setCameraEnabled(record.mode==="video");if(generation!==callGeneration||!session?.user){await room.disconnect();return;}setCallControl("rcCamera",record.mode==="video",record.mode==="video"?t("📹 Camera off"):t("📹 Camera on"));setCallControl("rcMic",true,t("🎙️ Mute"));
       for(const person of room.remoteParticipants.values())for(const publication of person.trackPublications.values())if(publication.track)attach(publication.track,person);
-      say("rcCallStatus",record.status==="ringing"?t("Calling room members… / सदस्यलाई कल हुँदैछ…"):t("Connected / जडान भयो।"));
+      if (callRecord?.status === "ringing") {
+        say("rcCallStatus",t("Calling room members… / सदस्यलाई कल हुँदैछ…"));
+        outgoingTimer = setTimeout(async () => {
+          if (callRecord?.id !== record.id || callRecord.status !== "ringing") return;
+          const {data,error} = await client.from("rock_connect_calls").update({status:"ended"})
+            .eq("id",record.id).eq("status","ringing").select("id").maybeSingle();
+          if (data && callRecord?.id === record.id) await endCall(false);
+          if (error) say("rcCallStatus",error.message);
+        },Math.max(0,callDeadline(record)-Date.now())+1000);
+      } else {
+        startCallClock();
+        say("rcCallStatus",t("Connected / जडान भयो।"));
+      }
     }catch(error){const message=error.message||t("Could not connect");if(generation===callGeneration){await endCall();say("rcChatStatus",message);}}
   }
-  async function endCall(markEnded=true){callGeneration++;const room=activeCall,record=callRecord;activeCall=null;callRecord=null;if(room)await room.disconnect();$("rcCallStage").replaceChildren();$("rcCallPanel").classList.remove("open");if(markEnded&&record&&session?.user&&(record.initiated_by===session.user.id||roomsById.get(record.room_id)?.kind==="dm")){const {error}=await client.from("rock_connect_calls").update({status:"ended"}).eq("id",record.id);if(error)say("rcChatStatus",t("Call closed. History will update when connected."));}loadCallHistory();}
+  async function endCall(markEnded = true) {
+    callGeneration++;
+    clearTimeout(outgoingTimer);
+    clearInterval(callClock);
+    callClock = null;
+    $("rcCallTimer").hidden = true;
+    const room = activeCall, record = callRecord, user = session?.user?.id;
+    activeCall = null;
+    callRecord = null;
+    $("rcCallStage").replaceChildren();
+    $("rcCallPanel").classList.remove("open");
+    if (room) await room.disconnect();
+    if (markEnded && record && user && session?.user?.id === user &&
+        (record.initiated_by === user || roomsById.get(record.room_id)?.kind === "dm")) {
+      const {error} = await client.from("rock_connect_calls").update({status:"ended"}).eq("id",record.id).neq("status","ended");
+      if (error) say("rcChatStatus",t("Call closed. History will update when connected."));
+    }
+    loadCallHistory();
+  }
 
   applyConnectLanguage();
   client.auth.onAuthStateChange((_event,next)=>setSignedIn(next));

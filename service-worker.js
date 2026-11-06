@@ -17,9 +17,10 @@ self.addEventListener('fetch', (event) => {
         return index < 0 ? source + snippet : source.slice(0, index) + snippet + source.slice(index);
       };
       html = html.replaceAll('rock-community-feed.js', 'rock-community-feed-v2.js?media=community-20261106-mux');
+      html = html.replace('rock-pwa.js?pwa=call-device-check-20261031b','rock-pwa.js?pwa=connect-push-v2');
       for (const file of ['meeting-room-chat.js', 'meeting-room-guest.js', 'rock-community-feed-v2.js', 'rock-connect.js', 'rock-meeting-100.js']) {
         if (!html.includes(file)) {
-          const scriptUrl = new URL(file === 'rock-community-feed-v2.js' ? file + '?media=community-20261106-mux' : file === 'rock-connect.js' ? file + '?connect=bilingual-20261029' : file === 'rock-meeting-100.js' ? file + '?meeting=20261029a' : file, self.registration.scope).href;
+          const scriptUrl = new URL(file === 'rock-community-feed-v2.js' ? file + '?media=community-20261106-mux' : file === 'rock-connect.js' ? file + '?connect=messenger-v2' : file === 'rock-meeting-100.js' ? file + '?meeting=20261029a' : file, self.registration.scope).href;
           const script = '<script src="' + scriptUrl + '" defer><\/script>';
           html = insertBeforeBodyClose(html, script);
         }
@@ -42,6 +43,20 @@ self.addEventListener('fetch', (event) => {
 // Only the small public App shell is cached. Backend/auth/media requests pass through uncached.
 self.addEventListener('push',event=>{
  let payload={};try{payload=event.data?event.data.json():{};}catch(_){}
+ const connect=payload?.data;
+ if(connect?.audience==='connect'){
+  const call=connect.kind==='call';
+  const id=call?connect.call_id:connect.message_id;
+  if(!validConnectId(connect.room_id)||!validConnectId(id)||(!call&&connect.kind!=='message'))return;
+  const expired=call&&!(Date.parse(connect.expires_at)>Date.now());
+  event.waitUntil(self.registration.showNotification(
+   expired?'ROCK CONNECT • Call invitation expired':String(payload.title||'ROCK CONNECT').slice(0,120),
+   {body:expired?'Open CONNECT to check your call history.':String(payload.body||'Open CONNECT.').slice(0,160),
+    icon:new URL('assets/icons/rock-192.png',self.registration.scope).href,
+    tag:'rock-connect-'+connect.kind+'-'+id,silent:expired,data:connect}
+  ));
+  return;
+ }
  const allowed=new Set(['home','about','management','members','statements','contact','tournament','registration','group-division','tdm-group-division','live-draw','connect','jersey-preview','meeting','rock-meeting-room','notifications']);
  const audience=payload?.data?.audience==='members'?'members':'public';const section=audience==='members'?'rock-meeting-room':allowed.has(payload?.data?.section)?payload.data.section:'notifications';
  const isCall=audience==='members'&&payload?.data?.kind==='call'&&/^[0-9a-f-]{36}$/i.test(payload?.data?.call_id||'');const expired=isCall&&Date.parse(payload.data.expires_at)<=Date.now();
@@ -49,7 +64,29 @@ self.addEventListener('push',event=>{
  const notice=String(payload?.data?.notice_id||'');const id=/^[0-9a-f-]{36}$/i.test(notice)?notice:'';
  event.waitUntil(self.registration.showNotification(String(expired?'ROCK ESPORTS • Missed call / छुटेको कल':payload.title||'ROCK ESPORTS').slice(0,120),{body:String(payload.body||'A new update is available.').slice(0,1200),icon:new URL('assets/icons/rock-192.png',self.registration.scope).href,tag:deviceTest?'rock-device-test-'+deviceTest:isCall?'rock-call-'+payload.data.call_id:'rock-app-'+audience+'-'+(id||section),renotify:!expired,silent:!!expired,...(isCall?{actions:[{action:'open-call',title:'Open call / कल खोल्नुहोस्'}]}:{}),data:{audience,section,notice_id:id,...(deviceTest?{kind:'device-test',test_id:deviceTest}:{}),...(isCall?{kind:'call',call_id:payload.data.call_id,expires_at:payload.data.expires_at}:{})}}).then(async()=>{if(deviceTest){const windows=await clients.matchAll({type:'window',includeUncontrolled:true});for(const client of windows){const u=new URL(client.url),scope=new URL(self.registration.scope);if(u.origin===scope.origin&&u.pathname.startsWith(scope.pathname))client.postMessage({type:'ROCK_DEVICE_TEST_RECEIVED',test_id:deviceTest});}}}));
 });
+const validConnectId=id=>typeof id==='string'&&/^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(id);
 self.addEventListener('notificationclick',event=>{
+ const connect=event.notification.data;
+ if(connect?.audience==='connect'){
+  event.notification.close();
+  if(!validConnectId(connect.room_id))return;
+  const destination=new URL('./',self.registration.scope);
+  destination.hash='connect';
+  destination.searchParams.set('connect_room',connect.room_id);
+  if(connect.kind==='call'&&validConnectId(connect.call_id))destination.searchParams.set('connect_call',connect.call_id);
+  event.waitUntil((async()=>{
+   const windows=await self.clients.matchAll({type:'window',includeUncontrolled:true});
+   const app=windows.find(client=>{
+    const url=new URL(client.url);
+    return url.origin===destination.origin&&(url.pathname===destination.pathname||url.pathname===destination.pathname+'index.html');
+   });
+   if(app){
+    await app.focus();
+    app.postMessage({type:'ROCK_CONNECT_OPEN',room_id:connect.room_id,call_id:connect.call_id});
+   }else await self.clients.openWindow(destination.href);
+  })());
+  return;
+ }
  event.notification.close();const data=event.notification.data||{};const destination=new URL('./',self.registration.scope);destination.hash=data.audience==='members'?'rock-meeting-room':data.section||'notifications';const callId=data.kind==='call'&&/^[0-9a-f-]{36}$/i.test(data.call_id||'')?data.call_id:null;if(callId)destination.searchParams.set('call',callId);else if(data.audience==='members'&&data.notice_id)destination.searchParams.set('notice',data.notice_id);
  event.waitUntil((async()=>{const windows=await clients.matchAll({type:'window',includeUncontrolled:true});for(const client of windows){const current=new URL(client.url),scope=new URL(self.registration.scope);if(current.origin===scope.origin&&current.pathname.startsWith(scope.pathname)){await client.focus();client.postMessage({type:data.kind==='device-test'?'ROCK_DEVICE_TEST_OPEN':callId?'ROCK_CALL_OPEN':'ROCK_NOTICE_OPEN',...data});return;}}return clients.openWindow(destination.href);})());
 });
