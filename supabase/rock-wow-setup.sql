@@ -22,9 +22,11 @@ begin
  if not found then raise exception 'Unknown WOW mode'; end if;
  s:=r.state;d:=s->'draw';n:=0;
  if d is not null and d<>'null'::jsonb then
-  n:=least(jsonb_array_length(d->'order'),greatest(0,floor(extract(epoch from (clock_time-(d->>'startsAt')::timestamptz))/3)::integer+1));
+  n:=case when d->>'manual'='true' then (d->>'revealed')::integer
+    else least(jsonb_array_length(d->'order'),greatest(0,floor(extract(epoch from (clock_time-(d->>'startsAt')::timestamptz))/3)::integer+1)) end;
   select coalesce(jsonb_agg(value order by ord),'[]'::jsonb) into visible_order from jsonb_array_elements(d->'order') with ordinality a(value,ord) where ord<=n;
-  s:=jsonb_set(s,'{draw}',jsonb_build_object('startsAt',d->>'startsAt','order',visible_order,'revealed',n));
+  s:=jsonb_set(s,'{draw}',jsonb_build_object('startsAt',d->>'startsAt','order',visible_order,'revealed',n,
+    'manual',coalesce((d->>'manual')::boolean,false),'finished',coalesce((d->>'finished')::boolean,false)));
  end if;
  if p_known_revision=r.revision and p_known_revealed=n then
   return jsonb_build_object('unchanged',true,'revision',r.revision,'server_now',clock_time);
@@ -36,13 +38,13 @@ grant execute on function public.rock_wow_public(integer,bigint,integer) to anon
 
 create or replace function public.rock_wow_owner(p_mode integer,p_revision bigint,p_action text,p_payload jsonb)
 returns jsonb language plpgsql security definer set search_path=public,pg_temp as $$
-declare r public.rock_wow_tournaments; s jsonb; draw_order jsonb; starts timestamptz; item jsonb; player jsonb; total integer; previous_ids jsonb; next_ids jsonb;
+declare r public.rock_wow_tournaments; s jsonb; d jsonb; draw_order jsonb; starts timestamptz; item jsonb; player jsonb; total integer; previous_ids jsonb; next_ids jsonb;
 begin
  if auth.uid() is null or lower(coalesce(auth.jwt()->>'email',''))<>'rockesprorts.official@gmail.com' then raise exception 'Owner login required' using errcode='42501'; end if;
  select * into r from public.rock_wow_tournaments where mode=p_mode for update;
  if not found then raise exception 'Unknown WOW mode'; end if;
  if r.revision<>p_revision then raise exception 'Another session changed this tournament. Cancel, refresh and retry.' using errcode='40001'; end if;
- s:=r.state;
+ s:=r.state;d:=s->'draw';
  if p_action='reset' then
   s:=s||jsonb_build_object('draw',null,'seeds','[]'::jsonb,'results','{}'::jsonb);
  elsif p_action='draw' then
@@ -56,7 +58,18 @@ begin
   if starts<clock_timestamp()-interval '1 minute' then raise exception 'Draw time is in the past'; end if;
   starts:=greatest(starts,clock_timestamp());
   select jsonb_agg(value->'id' order by random()) into draw_order from jsonb_array_elements(s->'teams');
-  s:=s||jsonb_build_object('draw',jsonb_build_object('startsAt',starts,'order',draw_order),'seeds','[]'::jsonb,'results','{}'::jsonb);
+  s:=s||jsonb_build_object('draw',jsonb_build_object('startsAt',starts,'order',draw_order,
+    'manual',coalesce((p_payload->>'manual')::boolean,false),'revealed',0,'finished',false),'seeds','[]'::jsonb,'results','{}'::jsonb);
+ elsif p_action='reveal' then
+  if d->>'manual' is distinct from 'true' or d->>'finished'='true' then raise exception 'Prepare a manual WOW draw first'; end if;
+  if (d->>'revealed')::integer>=jsonb_array_length(d->'order') then raise exception 'All chits are open. Finish the round.'; end if;
+  s:=jsonb_set(s,'{draw,revealed}',to_jsonb((d->>'revealed')::integer+1));
+ elsif p_action='finish' then
+  if d is null or d='null'::jsonb then raise exception 'Prepare the WOW draw first'; end if;
+  if (case when d->>'manual'='true' then (d->>'revealed')::integer<jsonb_array_length(d->'order')
+    else clock_timestamp()<(d->>'startsAt')::timestamptz+make_interval(secs=>greatest(0,jsonb_array_length(d->'order')-1)*3) end)
+    then raise exception 'Open all chits before finishing the round'; end if;
+  s:=jsonb_set(s,'{draw,finished}','true'::jsonb);
  elsif p_action='save' then
   if p_payload is null or octet_length(p_payload::text)>16000000 then raise exception 'Tournament is too large. Use smaller images.'; end if;
   if jsonb_typeof(p_payload->'teams') is distinct from 'array' or jsonb_typeof(p_payload->'groups') is distinct from 'array' or jsonb_typeof(p_payload->'seeds') is distinct from 'array' or jsonb_typeof(p_payload->'results') is distinct from 'object' then raise exception 'Invalid tournament data'; end if;
@@ -80,7 +93,9 @@ begin
    if previous_ids<>next_ids or s->'groups'<>p_payload->'groups' then raise exception 'Reset draw before adding/removing teams or changing groups'; end if;
   end if;
   if jsonb_array_length(p_payload->'seeds')>0 then
-   if s->'draw'='null'::jsonb or clock_timestamp()<(s->'draw'->>'startsAt')::timestamptz+make_interval(secs=>greatest(0,jsonb_array_length(s->'teams')-1)*3) then raise exception 'Wait for the draw to finish'; end if;
+   if d='null'::jsonb or (case when d->>'manual'='true' then d->>'finished'<>'true'
+    else clock_timestamp()<(d->>'startsAt')::timestamptz+make_interval(secs=>greatest(0,jsonb_array_length(s->'teams')-1)*3) end)
+    then raise exception 'Wait for the draw to finish'; end if;
    if jsonb_array_length(p_payload->'seeds')<2 then raise exception 'At least two qualifiers required'; end if;
    if exists(select 1 from jsonb_array_elements(p_payload->'seeds') seed where not exists(select 1 from jsonb_array_elements(p_payload->'teams') t where t->'id'=seed)) then raise exception 'Unknown qualifier'; end if;
    if (select count(*)<>count(distinct value) from jsonb_array_elements(p_payload->'seeds')) then raise exception 'Duplicate qualifier'; end if;
