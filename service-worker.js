@@ -18,7 +18,7 @@ self.addEventListener('fetch', (event) => {
       };
       html = html.replaceAll('rock-community-feed.js', 'rock-community-feed-v2.js?media=community-20261106-mux');
       html = html.replace('rock-wow.js?v=1','rock-wow.js?v=4').replace('rock-wow.css?v=1','rock-wow.css?v=4');
-      html = html.replace('rock-pwa.js?pwa=call-device-check-20261031b','rock-pwa.js?pwa=connect-push-v4');
+      html = html.replace('rock-pwa.js?pwa=call-device-check-20261031b','rock-pwa.js?pwa=notice-read-v1');
       for (const file of ['meeting-room-chat.js', 'meeting-room-guest.js', 'rock-community-feed-v2.js', 'rock-connect.js', 'rock-meeting-100.js']) {
         if (!html.includes(file)) {
           const scriptUrl = new URL(file === 'rock-community-feed-v2.js' ? file + '?media=community-20261106-mux' : file === 'rock-connect.js' ? file + '?connect=messenger-v4' : file === 'rock-meeting-100.js' ? file + '?meeting=20261029a' : file, self.registration.scope).href;

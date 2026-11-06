@@ -4,6 +4,47 @@
 const API='https://pokdcjqvyjddbixqaktj.supabase.co/functions/v1/rock-app-notifications',KEY='sb_publishable_jK4Pnt8Ou9lZOmQ2AEB60w_YFytJcbp',base=new URL('./',document.baseURI),L=(a,b)=>a+' / '+b;
 let deviceQueue=Promise.resolve();const queueDevice=job=>(deviceQueue=deviceQueue.catch(()=>{}).then(job));let config=null,registration=null,subscription=null,memberSession=null,memberLinked=false,installEvent=null,deviceBusy=false,publication=null,pendingNotice=new URL(location.href).searchParams.get('notice'),ownerBusy=false,subscriptionConflict=false,pendingDeviceTest=null,receivedDeviceTest=null;
 const store={get(k,fallback){try{return localStorage.getItem(k)??fallback;}catch(_){return fallback;}},set(k,v){try{localStorage.setItem(k,v);}catch(_){}}};
+// Read state for the public website feed, shared by tabs in this browser.
+const noticeBadge=document.getElementById('rockNotificationCount');
+const noticeList=document.getElementById('rockNotificationList');
+if(noticeBadge&&noticeList&&typeof window.rockRenderNotifications==='function'){
+ const readKey='rockPublicNoticeReadIds';
+ const readSaved=()=>{
+  try{const saved=JSON.parse(store.get(readKey,'[]'));return Array.isArray(saved)?saved:[];}catch(_){return [];}
+ };
+ let readIds=new Set(readSaved()),noticeIds=[];
+ function refreshNoticeBadge(){
+  if(!document.hidden&&location.hash==='#notifications'&&noticeIds.length){
+   for(const id of readSaved())readIds.add(id);
+   const newReads=noticeIds.filter(id=>!readIds.has(id));
+   if(newReads.length){
+    const recent=[...readIds,...newReads].slice(-500);
+    readIds=new Set(recent);
+    store.set(readKey,JSON.stringify(recent));
+   }
+  }
+  const unread=noticeIds.filter(id=>!readIds.has(id)).length;
+  noticeBadge.textContent=String(unread);
+  noticeBadge.hidden=unread===0;
+  noticeBadge.style.display=unread===0?'none':'';
+ }
+ const renderNotices=window.rockRenderNotifications;
+ window.rockRenderNotifications=function(rows){
+  renderNotices(rows);
+  noticeIds=Array.isArray(rows)?Array.from(new Set(rows.filter(row=>row?.id!=null).map(row=>String(row.id)))):[];
+  refreshNoticeBadge();
+ };
+ window.addEventListener('hashchange',refreshNoticeBadge);
+ document.addEventListener('visibilitychange',refreshNoticeBadge);
+ window.addEventListener('storage',event=>{
+  if(event.key===readKey){
+   for(const id of readSaved())readIds.add(id);
+   refreshNoticeBadge();
+  }
+ });
+ refreshNoticeBadge();
+ if(noticeList.querySelector('.rock-notification-card'))window.rockLoadNotifications();
+}
 let deviceToken=store.get('rockAppDeviceToken','');if(!/^[0-9a-f]{64}$/.test(deviceToken)){deviceToken=Array.from(crypto.getRandomValues(new Uint8Array(32))).map(v=>v.toString(16).padStart(2,'0')).join('');store.set('rockAppDeviceToken',deviceToken);}
 const style=document.createElement('style');style.textContent=`#rockAppDialog[hidden]{display:none!important}#rockAppDialog{position:fixed;inset:0;z-index:1000100;background:#010812dd;display:grid;place-items:center;padding:12px;color:#edf7ff;font:14px system-ui}#rockAppDialog *{box-sizing:border-box}#rockAppDialog [hidden]{display:none!important}#rockAppCard{width:min(560px,100%);max-height:94dvh;overflow:auto;background:#081b2c;border:1px solid #2b6793;border-radius:20px;padding:20px}#rockAppCard header{display:flex;align-items:center;gap:12px;margin-bottom:14px}#rockAppCard header img{width:58px;height:58px;border-radius:13px}#rockAppCard header strong{flex:1;font-size:18px}#rockAppCard button{cursor:pointer;border:1px solid #28618b;border-radius:10px;background:#0a78bb;color:#fff;padding:10px 13px;font:inherit;margin:4px 3px 4px 0}#rockAppCard button:disabled{opacity:.5;cursor:wait}#rockAppCard p{line-height:1.65;color:#bad0e2}#rockAppCard label{display:flex;align-items:center;gap:9px;padding:10px 0;line-height:1.5}#rockAppCard input[type=checkbox]{width:20px;height:20px;flex:0 0 20px}#rockAppCard input[readonly]{width:100%;background:#102c43;color:#cee8fa;border:1px solid #356b91;border-radius:9px;padding:10px}#rockAppPrivateList article{border:1px solid #285575;background:#0d263c;border-radius:12px;padding:12px;margin:10px 0;overflow-wrap:anywhere}#rockAppPrivateList article p{white-space:pre-wrap;margin:7px 0}#rockAppPrivateList small{color:#9bb8cd}#rockAppCard .app-divider{border-top:1px solid #24506f;margin-top:14px;padding-top:14px}#rockAppCard #rockAppClose{background:#17374e}#rockAppStatus{min-height:22px}#rockAppOwnerAudience{width:100%;padding:11px;border-radius:9px;border:1px solid #39718e;background:#071e31;color:white}#rockAppOwnerPreview{margin:10px 0}.rock-app-card{border:1px solid #23649a;border-radius:14px;background:#081f34;padding:14px;margin:14px 0}.rock-app-card p{color:#b6cee2;line-height:1.6}.rock-app-card button{cursor:pointer;border:0;border-radius:9px;background:#0878bd;color:white;padding:11px 15px;font-weight:700}@media(max-width:500px){#rockAppCard{padding:15px}#rockAppCard header strong{font-size:16px}}`;document.head.append(style);
 const modal=document.createElement('div');modal.id='rockAppDialog';modal.hidden=true;modal.setAttribute('role','dialog');modal.setAttribute('aria-modal','true');modal.setAttribute('aria-label','ROCK ESPORTS App and notifications');modal.innerHTML=`<section id="rockAppCard"><header><img src="${new URL('assets/icons/rock-192.png',base)}" alt="ROCK ESPORTS logo"><strong>ROCK ESPORTS App</strong><button id="rockAppClose" aria-label="Close App settings">✕</button></header><button id="rockAppInstall">📲 Install / App थप्नुहोस्</button><button id="rockAppCopyLink">🔗 Install link</button><input id="rockAppInstallLink" readonly hidden aria-label="App install link"><div id="rockAppInstructions" hidden><p><b>Android / PC:</b> Chrome वा Edge को menu → Install app / Add to Home screen.</p><p><b>iPhone:</b> Safari → Share → Add to Home Screen → Add. त्यसपछि Home Screen को ROCK ESPORTS खोल्नुहोस्। Push का लागि iOS 16.4 वा नयाँ चाहिन्छ।</p><p><b>Mac:</b> समर्थित Chrome/Edge बाट Install, वा Safari को File → Add to Dock प्रयोग गर्नुहोस्।</p></div><div class="app-divider"><h3>🔔 सूचना / Notifications</h3><p>यो device मा सूचना खोल्नुहोस्: सार्वजनिक पोस्ट, गोप्य सूचना र सदस्यका incoming call। / Enable public announcements, private notices and incoming-call alerts on this device.</p><button id="rockAppEnable" disabled>🔔 सूचना खोल्नुहोस् / Enable notifications</button><label><input id="rockAppPublic" type="checkbox">सबैका लागि सार्वजनिक सूचना / Public announcements</label><label><input id="rockAppMembers" type="checkbox" disabled>यो device का गोप्य सदस्य सूचना / Private member alerts on this device</label><p id="rockAppMemberStatus">गोप्य सूचनाका लागि यही device मा Meeting Room login गर्नुहोस्। / Sign in to Meeting Room on this device for private alerts.</p><button id="rockAppMemberLogin">🔐 Meeting Room login</button><button id="rockAppPrivateInbox">📩 गोप्य सूचना पढ्नुहोस् / Private notices</button><button id="rockAppTestDevice" disabled>🧪 यही device जाँच / Test only this device</button><p id="rockAppStatus" role="status"></p></div><section class="app-divider" id="rockAppPrivateSection" hidden><h3>🔒 सदस्यका गोप्य सूचना / Private member notices</h3><div id="rockAppPrivateList"></div></section></section>`;document.body.append(modal);
