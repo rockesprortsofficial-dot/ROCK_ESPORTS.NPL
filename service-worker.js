@@ -17,10 +17,10 @@ self.addEventListener('fetch', (event) => {
         return index < 0 ? source + snippet : source.slice(0, index) + snippet + source.slice(index);
       };
       html = html.replaceAll('rock-community-feed.js', 'rock-community-feed-v2.js?media=community-20261106-mux');
-      html = html.replace('rock-pwa.js?pwa=call-device-check-20261031b','rock-pwa.js?pwa=connect-push-v1');
+      html = html.replace('rock-pwa.js?pwa=call-device-check-20261031b','rock-pwa.js?pwa=connect-push-v2');
       for (const file of ['meeting-room-chat.js', 'meeting-room-guest.js', 'rock-community-feed-v2.js', 'rock-connect.js', 'rock-meeting-100.js']) {
         if (!html.includes(file)) {
-          const scriptUrl = new URL(file === 'rock-community-feed-v2.js' ? file + '?media=community-20261106-mux' : file === 'rock-connect.js' ? file + '?connect=messenger-v1' : file === 'rock-meeting-100.js' ? file + '?meeting=20261029a' : file, self.registration.scope).href;
+          const scriptUrl = new URL(file === 'rock-community-feed-v2.js' ? file + '?media=community-20261106-mux' : file === 'rock-connect.js' ? file + '?connect=messenger-v2' : file === 'rock-meeting-100.js' ? file + '?meeting=20261029a' : file, self.registration.scope).href;
           const script = '<script src="' + scriptUrl + '" defer><\/script>';
           html = insertBeforeBodyClose(html, script);
         }

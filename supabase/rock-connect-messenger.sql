@@ -40,6 +40,31 @@ end $$;
 revoke all on function public.rock_connect_create_group(text,uuid[]) from public,anon;
 grant execute on function public.rock_connect_create_group(text,uuid[]) to authenticated;
 
+-- Summaries follow the same membership boundary as the messages and receipts.
+create or replace function public.rock_connect_chat_previews()
+returns table(room_id uuid,body text,media_type text,created_at timestamptz,unread bigint)
+language sql stable security definer set search_path='' as $$
+  select member.room_id, latest.body, latest.media_type, latest.created_at, coalesce(latest.unread,0)
+  from public.rock_connect_members member
+  left join lateral (
+    select recent.body,recent.media_type,recent.created_at,
+      count(*) filter(where recent.sender_id<>member.user_id and receipt.user_id is null) over () as unread
+    from (
+      select message.id,message.body,message.media_type,message.created_at,message.sender_id
+      from public.rock_connect_messages message
+      where message.room_id=member.room_id
+      order by message.created_at desc,message.id desc
+      limit 100
+    ) recent
+    left join public.rock_connect_receipts receipt on receipt.message_id=recent.id and receipt.user_id=member.user_id
+    order by recent.created_at desc,recent.id desc
+    limit 1
+  ) latest on true
+  where member.user_id=auth.uid()
+$$;
+revoke all on function public.rock_connect_chat_previews() from public,anon;
+grant execute on function public.rock_connect_chat_previews() to authenticated;
+
 alter table public.rock_connect_calls add column if not exists outcome text
   check(outcome in ('completed','declined','cancelled','missed'));
 
