@@ -1,133 +1,115 @@
-/* ROCK ESPORTS: TDM-only live-draw and placement extension. Existing draws remain intact. */
+/* TDM-only tournament presentation. All mutations go through owner-checked RPCs. */
 (function(root){
 'use strict';
 const sizes=[8,16,24,32];
-function codes(n){return Array.from({length:n/2},(_,i)=>String.fromCharCode(65+i).repeat(2));}
-function model(state){
- const n=(state.participants||[]).length,all=[],initial=[],byes=[];
- if(!sizes.includes(n))return {all,initial,winner:[],loser:[],byes,places:[]};
- const add=(id,a,b,label)=>{const m={id,a,b,label};all.push(m);return m;};
- const from=(m,out='win')=>({match:m.id,out});
- codes(n).forEach((code,i)=>initial.push(add('M'+(i+1),{code,slot:0},{code,slot:1},code+' vs '+code)));
- let order=Array.from({length:n/2},(_,i)=>i);
- if(n===24&&Array.isArray(state.tdmByeOrder)&&state.tdmByeOrder.length===12&&new Set(state.tdmByeOrder).size===12&&state.tdmByeOrder.every(i=>Number.isInteger(i)&&i>=0&&i<12))order=state.tdmByeOrder;
- function route(prefix,stop){let pool=order.map(i=>from(initial[i],prefix==='W'?'win':'lose')),rounds=[],k=1;
-  while(pool.length>stop){const power=2**Math.floor(Math.log2(pool.length)),pairs=pool.length===power?pool.length/2:pool.length-power,next=[],round=[];
-   for(let i=0;i<pairs;i++){const m=add(prefix+k++,pool[i*2],pool[i*2+1],prefix==='W'?'WINNER MATCH':'LOSER MATCH');round.push(m);next.push(from(m));}
-   const pass=pool.slice(pairs*2);if(pass.length)byes.push({prefix,refs:pass});rounds.push(round);pool=pass.length?next.flatMap((s,i)=>[s,pass[i]]):next;
-  }return {rounds,pool};
+function groupCount(n){return n===8?4:n/4;}
+function graph(n,order){
+ if(!sizes.includes(n))throw Error('Unsupported player count');
+ const matches=[],initial=[],winnerRounds=[],loserRounds=[];let loserChampion=null;
+ const add=(id,a,b,lane,round)=>{const m={id,a,b,lane,round};matches.push(m);return m;};
+ const ref=(m,out='win')=>({match:m.id,out});
+ for(let i=0;i<n/2;i++)initial.push(add('M'+(i+1),{slot:i*2},{slot:i*2+1},'group',0));
+ order=order||Array.from({length:n/2},(_,i)=>i);
+ if(order.length!==n/2||new Set(order).size!==n/2||order.some(i=>!Number.isInteger(i)||i<0||i>=n/2))throw Error('Invalid draw order');
+ for(const lane of ['W','L']){
+  let pool=order.map(i=>ref(initial[i],lane==='W'?'win':'lose')),r=1,k=1;
+  while(pool.length>(lane==='W'?2:1)){
+   const power=2**Math.floor(Math.log2(pool.length)),pairs=pool.length===power?pool.length/2:pool.length-power;
+   const next=[],round=[];
+   for(let i=0;i<pairs;i++){const m=add(lane+k++,pool[2*i],pool[2*i+1],lane,r);round.push(m);next.push(ref(m));}
+   // Non-power-of-two fields receive explicit, persisted byes; no entrant is dropped.
+   const pass=pool.slice(pairs*2);pool=next.concat(pass);
+   (lane==='W'?winnerRounds:loserRounds).push({matches:round,byes:pass});r++;
+  }
+  if(lane==='W')add('GF',pool[0],pool[1],lane,r);else loserChampion=pool[0];
  }
- const w=route('W',2),l=route('L',1),semis=w.rounds.at(-1);
- const third=add('T',from(semis[0],'lose'),from(semis[1],'lose'),'THIRD PLACE');
- const fourth=add('F',from(third,'lose'),l.pool[0],'FOURTH PLACE');
- const final=add('GF',w.pool[0],w.pool[1],'GRAND FINAL');
- const results=state.tdmFlowResults||{};
- function source(s){return s.code?s.code+' · '+(s.slot+1)+' नम्बर खेलाडी':s.match+' को '+(s.out==='win'?'विजेता':'हार्ने');}
- function resolve(s){
-  if(s.code){const found=(state.chits||[]).map((c,i)=>({c,i})).filter(x=>x.c?.revealed&&x.c.value===s.code);return found[s.slot]?.i??null;}
-  const m=all.find(x=>x.id===s.match);if(!m)return null;const a=resolve(m.a),b=resolve(m.b),r=results[m.id];if(a===null||b===null||a===b||(r!==a&&r!==b))return null;return s.out==='win'?r:r===a?b:a;
+ const semis=winnerRounds.at(-1).matches;const third=add('TP',ref(semis[0],'lose'),ref(semis[1],'lose'),'P',0);add('FP',ref(third,'lose'),loserChampion,'P',1);
+ return {matches,initial,winnerRounds,loserRounds};
+}
+function model(s){
+ const g=graph(s.participants.length,s.order);if(s.bracket){g.matches=s.bracket;g.initial=s.bracket.filter(x=>x.lane==='group');for(const rounds of [g.winnerRounds,g.loserRounds])for(const r of rounds)r.matches=r.matches.map(x=>s.bracket.find(b=>b.id===x.id));}const results=s.results||{},byId=new Map(g.matches.map(m=>[m.id,m]));
+ function resolve(ref){
+  if(Number.isInteger(ref.slot))return s.revealed>ref.slot?ref.slot:null;
+  const m=byId.get(ref.match),result=results[ref.match];if(!m||!result)return null;
+  const a=resolve(m.a),b=resolve(m.b);if(a===null||b===null||![a,b].includes(result.winner))return null;
+  return ref.out==='lose'?(result.winner===a?b:a):result.winner;
  }
- function pair(m){return [resolve(m.a),resolve(m.b)];}
- function winner(m){const [a,b]=pair(m),r=results[m.id];return a!==null&&b!==null&&(r===a||r===b)?r:null;}
- return {all,initial,winnerRounds:w.rounds,loserRounds:l.rounds,byes,third,fourth,final,source,resolve,pair,winner,places:[from(final),from(final,'lose'),from(third),from(fourth)]};
+ const pair=m=>[resolve(m.a),resolve(m.b)];
+ const source=r=>Number.isInteger(r.slot)?'GROUP '+String.fromCharCode(65+Math.floor(r.slot/(s.participants.length===8?2:4)))+' · '+(r.slot+1):r.match+' '+(r.out==='win'?'WINNER':'LOSER');
+ const places=[resolve({match:'GF',out:'win'}),resolve({match:'GF',out:'lose'}),resolve({match:'TP',out:'win'}),resolve({match:'FP',out:'win'})];
+ const semis=new Set(g.winnerRounds.at(-1).matches.map(x=>x.id));
+ const out=g.matches.filter(m=>results[m.id]&&m.id!=='GF'&&m.id!=='TP'&&!semis.has(m.id)&&m.lane!=='group').map(m=>({player:resolve({match:m.id,out:'lose'}),match:m.id}));
+ return {...g,resolve,pair,source,places,out};
 }
-function updateResult(state,id,value){
- const m=model(state),changed=new Set([id]);state.tdmFlowResults={...(state.tdmFlowResults||{})};
- const match=m.all.find(x=>x.id===id);if(!match)return;
- const pair=m.pair(match);if(value===null)delete state.tdmFlowResults[id];else if(pair.every(Number.isInteger)&&pair.includes(value))state.tdmFlowResults[id]=value;else return;
- for(const next of m.all){if(changed.has(next.a.match)||changed.has(next.b.match)){delete state.tdmFlowResults[next.id];changed.add(next.id);}}
-}
-const API={sizes,codes,model,updateResult};
+const API={sizes,groupCount,graph,model};
 if(typeof module==='object'&&module.exports){module.exports=API;return;}
 root.RockTdm=API;
-if(root.__rockTdmReady)return;root.__rockTdmReady=true;
-const el=id=>document.getElementById(id),isFlow=()=>liveDrawState.stage==='tdmGroups'&&liveDrawState.tdmFormat===2;
-const old={render:renderTdmDivision,live:renderLiveDraw,admin:buildTdmAdmin,save:saveTdmAdmin,prepare:prepareLiveDraw,loadFields:loadLiveDrawProfileFields,profiles:buildLiveDrawPlayerEditor,saveProfiles:saveLiveDrawProfiles,scheduled:checkScheduledDraw,migrate:migrateLegacyTdmDraw};
-let draft=null,uploading=false;
-function selectedCount(){return Number(el('tdmPlayerCount')?.value)||32;}
-function typedNames(){return (el('drawPlayerNames')?.value||'').split(/\n|,/).map(s=>s.trim()).filter(Boolean);}
-function player(i){return Number.isInteger(i)?tdmPlayerAt(i):null;}
-function person(s,m){const p=player(m.resolve(s));return `<div class="tdmf-person">${tdmImg(p?.photo||'',p?.name||'?','tdm-avatar')}<span><b>${esc(p?.name||m.source(s))}</b><small>${esc(m.source(s))}</small></span>${p?.logo?tdmImg(p.logo,'Team logo','tdm-logo'):''}</div>`;}
-function matchHTML(x,m,editable=false){const pair=m.pair(x),win=m.winner(x);return `<article class="tdmf-match"><header><b>${esc(x.id)}</b><span>${esc(x.label)}</span></header>${person(x.a,m)}<div class="tdmf-vs">VS</div>${person(x.b,m)}${win!==null?`<div class="tdmf-result">✓ ${esc(player(win)?.name)} — WINNER</div>`:''}${editable?`<select aria-label="${esc(x.id)} winner" data-tdmf-result="${esc(x.id)}" ${!pair.every(Number.isInteger)?'disabled':''}><option value="">Select winner / नतिजा बाँकी</option>${pair.filter(Number.isInteger).map(i=>`<option value="${i}" ${win===i?'selected':''}>${esc(player(i)?.name)}</option>`).join('')}</select>`:''}</article>`;}
-function roundsHTML(rounds,m,prefix,editable=false){return `<div class="tdmf-rounds">${rounds.map((round,i)=>`<div class="tdmf-round"><h4>ROUND ${i+1} · ${round.length} MATCH${round.length===1?'':'ES'}</h4><div class="tdmf-round-body">${round.map(x=>matchHTML(x,m,editable)).join('')}${i===0?m.byes.filter(b=>b.prefix===prefix).map(b=>`<div class="tdmf-bye"><b>LIVE DRAW BYE → अर्को चरण</b>${b.refs.map(s=>`<div>${esc(m.source(s))}</div>`).join('')}</div>`).join(''):''}</div></div>`).join('<span class="tdmf-arrow" aria-hidden="true">→</span>')}</div>`;}
-function boardHTML(m,editable=false){return `<div class="tdmf-section"><h3>① LIVE DRAW → FIRST MATCH</h3><p>एउटै कोड परेका दुई जनाबीच खेल: AA vs AA, BB vs BB…। जित्ने WINNER ROUTE मा र हार्ने LOSER ROUTE मा जान्छन्।</p><div class="tdmf-initial">${m.initial.map(x=>matchHTML(x,m,editable)).join('')}</div></div><div class="tdmf-section"><h3>② WINNER ROUTE → GRAND FINAL</h3><p>हरेक बाकसमा खेलाडी आउने खेलको नम्बर छ। अन्तिम दुई खेलका हार्ने तेस्रो स्थान खेल्छन्; यसअघिका हार्ने बाहिरिन्छन्।</p>${roundsHTML(m.winnerRounds,m,'W',editable)}</div><div class="tdmf-section tdmf-loser"><h3>③ LOSER ROUTE → FOURTH PLACE CHANCE</h3><p>पहिलो समूह खेलका हार्नेहरू खेल्छन्। यहाँ फेरि हार्ने बाहिरिन्छन्। अन्तिम विजेता चौथो स्थानको खेलमा जान्छ।</p>${roundsHTML(m.loserRounds,m,'L',editable)}</div><div class="tdmf-section"><h3>④ THIRD PLACE · FOURTH PLACE · GRAND FINAL</h3><div class="tdmf-placement">${[m.third,m.fourth,m.final].map(x=>matchHTML(x,m,editable)).join('')}</div><div class="tdmf-ranks">${m.places.map((s,i)=>`<div><strong>#${i+1}</strong>${person(s,m)}</div>`).join('')}</div></div>`;}
-root.renderTdmDivision=function(){
- const h=el('tdmGroupDivisionPublic');if(!h)return;
- const section=el('tdm-group-division');const hint=section?.querySelector('.head p'),tag=section?.querySelector('.module-tag');
- if(hint)hint.textContent='8 / 16 / 24 / 32 players · LIVE DRAW code pairs → full tournament → final top 4.';
- if(tag)tag.textContent=isFlow()?liveDrawState.participants.length+' PLAYERS · LIVE DRAW':'8 / 16 / 24 / 32 PLAYERS';
- if(!isFlow()){if(liveDrawState.stage==='tdmGroups'){old.render();h.insertAdjacentHTML('afterbegin','<div class="tdm-stage-note">Existing draw retained. नयाँ AA–AA प्रणाली प्रयोग गर्न Admin → LIVE DRAW बाट 8 / 16 / 24 / 32 जना छानेर नयाँ ड्र तयार गर्नुहोस्।</div>');}else h.innerHTML='<div class="tdm-stage-note">Admin → LIVE DRAW → TDM GROUPS मा 8 / 16 / 24 / 32 जना छान्नुहोस्। AA–AA, BB–BB को खेल र फाइनलसम्मको पूरा तालिका यहाँ देखिन्छ।</div>';return;}
- const m=model(liveDrawState),n=liveDrawState.participants.length,opened=(liveDrawState.chits||[]).filter(c=>c.revealed).length;
- h.innerHTML=`<div class="tdm-board-head"><h3>ROCK ESPORTS — ${n} PLAYERS TDM</h3><span class="tdm-live-pill">⚔ LIVE DRAW ${opened}/${n}</span><button type="button" class="module-btn" onclick="downloadTdmDivision()">↓ DOWNLOAD FULL PHOTO</button></div><div class="tdm-stage-note">${opened===n?'Draw complete':'Draw in progress'} · ${n/2} code pairs · फोटो, नाम र लोगो सहित पूरा खेल तालिका${n===24?' · 12 → 8 चरणका BYE स्थान ड्रसँगै छानिएका छन्।':''}</div>${boardHTML(m)}`;
-};
-root.buildTdmAdmin=function(){if(!isFlow()){old.admin();return;}const h=el('tdmAdminEditor');if(!h)return;
- const m=model(liveDrawState);h.innerHTML='<p class="hint">नाम, फोटो र लोगो LIVE DRAW को Player Profiles बाट सम्पादन गर्नुहोस्। समूह कोड ड्रअनुसार कायम रहन्छ। नतिजा परिवर्तन गर्दा त्यसमा निर्भर अर्को खेलको नतिजा हट्छ।</p>'+boardHTML(m,true);
- h.querySelectorAll('[data-tdmf-result]').forEach(select=>select.addEventListener('change',()=>{const id=select.dataset.tdmfResult,v=select.value===''?null:Number(select.value);updateResult(liveDrawState,id,v);buildTdmAdmin();el('tdmAdminEditor').dataset.unsaved='true';}));
-};
-root.saveTdmAdmin=async function(){if(!isFlow())return old.save();if(!(await getAdminSession())){alert('Admin login required.');return;}try{await saveLiveDraw();buildTdmAdmin();showToast('✓ TDM results saved online');}catch(e){alert('TDM save failed: '+e.message);}};
-root.loadLiveDrawProfileFields=function(){if(el('drawStage')?.value!=='tdmGroups')return old.loadFields();const names=typedNames();if(names.length!==selectedCount()){alert(`${selectedCount()} जना खेलाडीको नाम राख्नुहोस्। अहिले ${names.length} जना छन्।`);return;}draft={names,profiles:names.map((name,i)=>({name,...tdmProfile(name),...(liveDrawState.tdmPlayers||[]).find(p=>p.name===name)}))};buildLiveDrawPlayerEditor(true);el('liveDrawPlayerEditor')?.scrollIntoView({behavior:'smooth',block:'start'});};
-root.buildLiveDrawPlayerEditor=function(force=false){if(!draft){old.profiles(force);const h=el('liveDrawPlayerEditor');if(h&&!liveDrawState.participants?.length)h.innerHTML='<p class="hint">खेलाडीका नाम राखेर LOAD PLAYER PHOTO / LOGO FIELDS थिच्नुहोस्।</p>';return;}const h=el('liveDrawPlayerEditor');if(!h)return;
- if(!force&&h.dataset.tdmDraft==='true')return;h.dataset.tdmDraft='true';h.innerHTML='<div class="live-profile-grid">'+draft.profiles.map((p,i)=>`<article class="live-profile-card"><div class="live-profile-title"><b>${i+1}. PLAYER PROFILE</b><span>NEW DRAW · ${selectedCount()} PLAYERS</span></div><label>Player Name<input data-live-name="${i}" value="${esc(p.name)}"></label><div class="live-profile-upload">${['photo','logo'].map(kind=>`<label>${kind==='photo'?'Player Photo':'Team Logo'}<input type="file" accept="image/*" data-live-${kind}="${i}" onchange="previewLiveDrawImage(this,'live-${kind}-preview-${i}')"><span id="live-${kind}-preview-${i}">${p[kind]?`<img src="${esc(p[kind])}" alt="${kind} preview">`:'PREVIEW'}</span></label>`).join('')}</div></article>`).join('')+'</div>';};
-async function collectDraft(){const ps=[];for(let i=0;i<draft.profiles.length;i++){const old=draft.profiles[i],p={...old,name:document.querySelector(`[data-live-name="${i}"]`)?.value.trim()||old.name};for(const kind of ['photo','logo']){const file=document.querySelector(`[data-live-${kind}="${i}"]`)?.files?.[0];if(file)p[kind]=await compressImage(file,kind==='photo'?500:320,.8);}ps.push(p);}if(new Set(ps.map(p=>p.name.toLowerCase())).size!==ps.length)throw Error('Each player needs a unique name.');return ps;}
-root.saveLiveDrawProfiles=async function(){if(!draft)return old.saveProfiles();if(uploading)return;if(!(await getAdminSession())){alert('Admin login required.');return;}uploading=true;try{draft.profiles=await collectDraft();draft.names=draft.profiles.map(p=>p.name);el('drawPlayerNames').value=draft.names.join('\n');buildLiveDrawPlayerEditor(true);showToast('✓ Profiles ready — PREPARE DRAW to save this new draw online');}catch(e){alert(e.message);}finally{uploading=false;}};
-root.prepareLiveDraw=async function(){if(el('drawStage')?.value!=='tdmGroups')return old.prepare();if(uploading)return;if(!(await getAdminSession())){alert('Admin login required.');return;}
- let names=typedNames(),n=selectedCount();if(names.length!==n||new Set(names.map(x=>x.toLowerCase())).size!==n){alert(`ठीक ${n} फरक खेलाडीका नाम राख्नुहोस्।`);return;}
- if(liveDrawState.stage&&liveDrawState.status!=='idle'&&!confirm('नयाँ TDM ड्र तयार गर्दा हालको ड्र र नतिजा बदलिन्छ। अघि बढ्ने?'))return;
- uploading=true;const previous=structuredClone(liveDrawState);try{
-  if(draft&&JSON.stringify(names)!==JSON.stringify(draft.names))throw Error('Player list changed. Reload the photo/logo fields before preparing the draw.');
-  let profiles=draft&&draft.profiles.length===n?await collectDraft():names.map(name=>({name,...tdmProfile(name),...(liveDrawState.tdmPlayers||[]).find(p=>p.name===name)}));names=profiles.map(p=>p.name);
-  const drawCodes=shuffled(codes(n).flatMap(c=>[c,c])),scheduled=el('drawScheduleAt')?.value;
-  liveDrawState={stage:'tdmGroups',stageLabel:`TDM GROUPS — ${n} PLAYERS`,tdmFormat:2,participants:names,chits:drawCodes.map(value=>({value,revealed:false})),tdmPlayers:profiles.map((p,i)=>({...p,code:drawCodes[i],group:drawCodes[i]})),tdmFlowResults:{},tdmByeOrder:n===24?shuffled([...Array(12).keys()]):[],revealed:0,status:'ready',scheduledAt:scheduled?new Date(scheduled).toISOString():null,autoRevealed:false,history:[...(previous.history||[]),`${new Date().toLocaleString()} — ${n}-player TDM pair draw prepared`].slice(-50)};
-  await saveLiveDraw();draft=null;const host=el('liveDrawPlayerEditor');if(host)delete host.dataset.tdmDraft;buildLiveDrawPlayerEditor();buildTdmAdmin();startDrawScheduleWatcher();showToast('✓ '+n+' player TDM draw ready');
- }catch(e){liveDrawState=previous;renderLiveDraw();alert('Could not prepare TDM draw: '+e.message);}finally{uploading=false;}
-};
-// Never re-shuffle a published legacy draw in a spectator's browser.
-root.migrateLegacyTdmDraw=function(){return false;};
-root.renderLiveDraw=function(){old.live();if(isFlow()&&liveDrawState.autoRevealed){const status=el('publicDrawStatus');if(status)status.textContent=`SCHEDULED LIVE DRAW — all ${liveDrawState.participants.length} players revealed automatically.`;}};
-root.checkScheduledDraw=async function(){if(!isFlow())return old.scheduled();const s=liveDrawState;if(s.status!=='ready'||!s.scheduledAt||s.autoRevealed||Date.now()<new Date(s.scheduledAt).getTime())return;
- // Only the already-authorized admin publishes an automatic reveal; viewers stay read-only.
- if(!(await getAdminSession()))return;const previous=structuredClone(s);s.chits=s.chits.map(c=>({...c,revealed:true}));s.revealed=s.participants.length;s.status='finished';s.autoRevealed=true;s.history=[...(s.history||[]),`${new Date().toLocaleString()} — Scheduled draw revealed ${s.revealed} players`].slice(-50);try{await saveLiveDraw();}catch(e){liveDrawState=previous;console.warn('TDM scheduled reveal failed',e);}
-};
-root.downloadTdmDivision=async function(){
- if(!isFlow())return;const snapshot=structuredClone(liveDrawState),m=model(snapshot),n=snapshot.participants.length;
- const button=document.querySelector('#tdmGroupDivisionPublic button');if(button)button.disabled=true;
- try{
-  const images={},profiles=snapshot.tdmPlayers||[];
-  await Promise.all([...new Set(profiles.flatMap(p=>[p.photo,p.logo]).filter(Boolean))].map(src=>new Promise(done=>{const image=new Image();image.crossOrigin='anonymous';const timer=setTimeout(done,7000);image.onload=()=>{clearTimeout(timer);images[src]=image;done();};image.onerror=()=>{clearTimeout(timer);done();};image.src=src;})));
-  await document.fonts.ready;
-  const width=1800,pad=36,gap=16,cardH=148;
-  const sections=[{title:'1  LIVE DRAW → FIRST MATCH · एउटै कोडको जोडी',rounds:[m.initial],grid:true},{title:'2  WINNER ROUTE → FINAL · जित्नेको बाटो',rounds:m.winnerRounds,prefix:'W'},{title:'3  LOSER ROUTE → FOURTH PLACE · हार्नेको बाटो',rounds:m.loserRounds,prefix:'L'},{title:'4  THIRD PLACE · FOURTH PLACE · GRAND FINAL',rounds:[[m.third],[m.fourth],[m.final]]}];
-  for(const s of sections)s.height=95+(s.grid?Math.ceil(m.initial.length/4):Math.max(...s.rounds.map(r=>r.length)))*(cardH+gap)+(m.byes.some(b=>b.prefix===s.prefix)?90:0);
-  const canvas=document.createElement('canvas');canvas.width=width;canvas.height=230+sections.reduce((h,s)=>h+s.height+30,0)+170;
-  const c=canvas.getContext('2d');c.fillStyle='#091425';c.fillRect(0,0,width,canvas.height);c.fillStyle='#ffcf64';c.font='900 56px Arial';c.fillText('ROCK ESPORTS',pad,75);c.font='bold 29px Arial';c.fillStyle='#fff';c.fillText(n+' PLAYERS · 1V1 TDM · FULL LIVE DRAW MATCH MAP',pad,125);c.font='20px sans-serif';c.fillStyle='#9bd7e1';c.fillText('AA vs AA · BB vs BB · हरेक बाकसमा अर्को खेलका खेलाडी आउने स्रोत लेखिएको छ।',pad,168);c.fillText('Winner route: early loss → OUT | Last round losers → T | Loser route: loss → OUT',pad,204);
-  function text(label,x,y,max,font='bold 19px sans-serif'){c.font=font;label=String(label);while(c.measureText(label).width>max&&label.length>3)label=label.slice(0,-2)+'…';c.fillText(label,x,y);}
-  function drawCard(match,x,y,w,loser){c.fillStyle='#11243a';c.fillRect(x,y,w,cardH);c.strokeStyle=loser?'#ed74b2':'#3bd5d9';c.strokeRect(x,y,w,cardH);c.fillStyle=loser?'#ed74b2':'#3bd5d9';text(match.id+' · '+match.label,x+12,y+25,w-24);
-   [match.a,match.b].forEach((s,i)=>{const index=m.resolve(s),p=index===null?null:{...profiles[index],name:snapshot.participants[index]},yy=y+37+i*52;
-    if(m.winner(match)===index&&index!==null){c.fillStyle='#164c3a';c.fillRect(x+2,yy-2,w-4,51);}
-    c.fillStyle='#29435c';c.fillRect(x+12,yy,38,38);if(images[p?.photo])c.drawImage(images[p.photo],x+12,yy,38,38);
-    c.fillStyle='#fff';text(p?.name||m.source(s),x+60,yy+17,w-110);c.fillStyle='#a2b9d0';text(m.source(s),x+60,yy+37,w-110,'15px sans-serif');if(images[p?.logo])c.drawImage(images[p.logo],x+w-42,yy+3,30,30);
-   });
-  }
-  let y=230;
-  for(const s of sections){c.fillStyle=s.prefix==='L'?'#ed74b2':'#3bd5d9';c.font='bold 27px sans-serif';c.fillText(s.title,pad,y+34);const top=y+60;
-   if(s.grid){const w=(width-pad*2-gap*3)/4;s.rounds[0].forEach((match,i)=>drawCard(match,pad+(i%4)*(w+gap),top+Math.floor(i/4)*(cardH+gap),w,false));}
-   else{const cols=s.rounds.length,w=(width-pad*2-(cols-1)*38)/cols,rows=Math.max(...s.rounds.map(r=>r.length)),usable=rows*(cardH+gap);
-    s.rounds.forEach((round,j)=>round.forEach((match,i)=>{const yy=top+(i+.5)*usable/round.length-cardH/2;drawCard(match,pad+j*(w+38),yy,w,s.prefix==='L');if(s.prefix&&j<cols-1){c.fillStyle='#c8d8e5';c.font='26px Arial';c.fillText('→',pad+j*(w+38)+w+5,yy+75);}}));
-    const bye=m.byes.find(b=>b.prefix===s.prefix);if(bye){c.fillStyle='#ffcf64';text('DRAW BYE → NEXT ROUND: '+bye.refs.map(m.source).join(' · '),pad,top+usable+37,width-pad*2,'21px sans-serif');}
-   }y+=s.height+30;
-  }
-  c.fillStyle='#ffcf64';c.font='bold 30px Arial';c.fillText('FINAL RANKING',pad,y+25);
-  m.places.forEach((s,i)=>{const index=m.resolve(s),name=index===null?'निर्णय बाँकी':snapshot.participants[index];c.fillStyle='#fff';text('#'+(i+1)+' '+name,pad+i*430,y+80,410,'bold 24px sans-serif');});
-  const blob=await new Promise(resolve=>canvas.toBlob(resolve,'image/png'));if(!blob)throw Error('Image could not be created.');const link=document.createElement('a'),url=URL.createObjectURL(blob);link.href=url;link.download='ROCK-ESPORTS-TDM-'+n+'-PLAYERS.png';link.click();setTimeout(()=>URL.revokeObjectURL(url),3000);
- }catch(e){alert('Photo download failed: '+e.message);}finally{if(button)button.disabled=false;}
-};
-const style=document.createElement('style');style.id='rock-tdm-flow-styles';style.textContent=`
-#tdmPlayerCount{width:100%;padding:12px;border-radius:8px;background:#102b40;color:white;border:1px solid #375b76}.tdmf-section{margin:18px 0;padding:15px;border:1px solid #b9d7cc;border-radius:10px;background:#fff;color:#111}.tdmf-section h3{margin:0 0 8px;font-size:18px;color:#087b49}.tdmf-section p{font-size:12px;color:#42565c;line-height:1.7}.tdmf-initial{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px}.tdmf-match{min-width:210px;border:1px solid #99bdb1;border-radius:8px;background:#fff;overflow:hidden;color:#111}.tdmf-match header{display:flex;gap:10px;align-items:center;background:#e8f5ee;padding:8px 10px;font-size:12px;color:#087b49}.tdmf-match header b{font-size:15px}.tdmf-person{display:flex;align-items:center;gap:8px;padding:8px 10px;min-height:48px;color:#101820}.tdmf-person>span{flex:1;min-width:0}.tdmf-person b{display:block;font-size:12px;overflow-wrap:anywhere}.tdmf-person small{display:block;font-size:10px;color:#536971;margin-top:3px}.tdmf-vs{font-size:10px;text-align:center;color:#668579;font-weight:900;line-height:1}.tdmf-result{font-size:11px;color:#087b49;padding:6px 10px;background:#eaf8ed;font-weight:800}.tdmf-match select{width:calc(100% - 12px);margin:6px;padding:8px;background:#f1f6f3;color:#111;border:1px solid #a5c6b6;border-radius:5px}.tdmf-match select:disabled{opacity:.5}.tdmf-rounds{display:flex;align-items:stretch;gap:12px;overflow-x:auto;padding:10px 0}.tdmf-round{flex:1;min-width:235px;display:flex;flex-direction:column}.tdmf-round h4{font-size:11px;color:#536971}.tdmf-round-body{display:flex;flex:1;flex-direction:column;justify-content:space-around;gap:12px}.tdmf-arrow{align-self:center;color:#087b49;font-size:24px}.tdmf-bye{padding:10px;font-size:11px;line-height:1.8;border:1px dashed #ad8428;background:#fff8e6;border-radius:7px;color:#705718}.tdmf-loser{border-color:#deb5c5}.tdmf-loser h3{color:#a82e67}.tdmf-loser .tdmf-match{border-color:#deb5c5}.tdmf-loser .tdmf-match header{color:#a82e67;background:#fcecf3}.tdmf-placement{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:15px}.tdmf-ranks{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-top:20px}.tdmf-ranks>div{border:1px solid #d4ba77;border-radius:8px;background:#fffbec}.tdmf-ranks strong{display:block;padding:8px 12px;color:#886817;font-size:20px}#tdmAdminEditor .tdmf-section{color:#111}#tdmAdminEditor .tdmf-person b{color:#111}@media(max-width:650px){.tdmf-placement{grid-template-columns:1fr}.tdmf-ranks{grid-template-columns:repeat(2,minmax(0,1fr))}.tdmf-section{padding:10px}.tdmf-round{min-width:220px}}`;
-document.head.appendChild(style);
-const stage=el('drawStage');if(stage){stage.querySelector('option[value="tdmGroups"]').textContent='TDM GROUPS — LIVE DRAW PAIRS (8 / 16 / 24 / 32)';const field=document.createElement('div');field.className='field';field.id='tdmCountField';field.innerHTML='<label for="tdmPlayerCount">TDM player count / खेलाडी सङ्ख्या</label><select id="tdmPlayerCount">'+sizes.map(n=>`<option value="${n}">${n} PLAYERS — ${n/2} PAIRS</option>`).join('')+'</select><small class="hint">AA–AA, BB–BB… एउटै कोड पर्ने दुई जनाबीच खेल हुन्छ।</small>';stage.parentElement.after(field);el('tdmPlayerCount').value=String(sizes.includes(liveDrawState.participants?.length)?liveDrawState.participants.length:32);const sync=()=>{field.hidden=stage.value!=='tdmGroups';if(field.hidden){draft=null;const h=el('liveDrawPlayerEditor');if(h)delete h.dataset.tdmDraft;}};stage.addEventListener('change',sync);el('tdmPlayerCount').addEventListener('change',()=>{draft=null;const h=el('liveDrawPlayerEditor');if(h){delete h.dataset.tdmDraft;h.innerHTML='<p class="hint">नयाँ सङ्ख्याअनुसार नाम राखेर LOAD PLAYER PHOTO / LOGO FIELDS थिच्नुहोस्।</p>';}});sync();}
-// Update only the TDM-specific fixed-count labels, without changing site branding or other modules.
-const profileButton=document.querySelector('button[onclick="loadLiveDrawProfileFields()"]');if(profileButton){profileButton.textContent='① LOAD PLAYER PHOTO / LOGO FIELDS';const hint=profileButton.parentElement.querySelector('small');if(hint)hint.textContent='छानेको सङ्ख्याअनुसार खेलाडीका नाम राख्नुहोस्, अनि फोटो र Team Logo राख्नुहोस्।';}
-const sched=el('drawScheduleAt')?.parentElement.querySelector('small');if(sched)sched.textContent='Optional: set auto-reveal time, or open chits manually. Keep the authorized Admin tab open for scheduled reveal.';
-const profileTitle=el('liveDrawPlayerEditor')?.parentElement.querySelector('h3');if(profileTitle)profileTitle.textContent='PLAYER PHOTO, NAME & TEAM LOGO';
-renderTdmDivision();
+const el=id=>document.getElementById(id),E=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const safeImage=url=>typeof url==='string'&&(/^(https:\/\/|data:image\/(png|jpeg|webp);base64,)/i).test(url)?url:'';
+const img=(url,name,kind='portrait')=>safeImage(url)?`<img class="nt-${kind}" src="${E(url)}" alt="${E(name)}" loading="lazy">`:`<span class="nt-${kind} nt-placeholder">${E((name||'?').slice(0,1))}</span>`;
+let legacySnapshots=[],tournaments=[],selected=null,owner=false,ready=false,busy=false,uploads=0,draft=[],error='';
+const legacy={prepare:prepareLiveDraw,reveal:revealNextChit,finish:finishLiveDraw,reset:resetLiveDraw,profiles:buildLiveDrawPlayerEditor,saveProfiles:saveLiveDrawProfiles,fields:loadLiveDrawProfileFields,render:renderLiveDraw,tdm:renderTdmDivision,admin:buildTdmAdmin,save:saveTdmAdmin};
+const isTdm=()=>el('drawStage')?.value==='tdmGroups';
+const current=()=>tournaments.find(t=>t.id===selected);
+const rpc=async(name,args)=>{const {data,error}=await sb.rpc(name,args);if(error)throw Error(error.message);return data;};
+function sourcePerson(s,m,ref){const i=m.resolve(ref),p=i===null?null:s.participants[i];return `<div class="nt-person">${img(p?.photo,p?.name)}<span><b>${E(p?.name||'निर्णय बाँकी')}</b><small>${E(m.source(ref))}</small></span>${p?.logo?img(p.logo,'Team logo','logo'):''}</div>`;}
+function card(s,m,match,admin=false){
+ const result=s.results[match.id],pair=m.pair(match),drawn=s.draws.some(d=>d.matches.includes(match.id)),playable=pair.every(Number.isInteger)&&drawn;
+ return `<article class="nt-match ${match.id==='GF'?'nt-final':(match.id==='TP'||match.id==='FP')?'nt-third':''} ${result?'nt-done':''}"><header><b>${E(match.id)}</b><span>${match.lane==='group'?E(m.source(match.a).split(' · ')[0])+' vs SAME GROUP':match.id==='GF'?'GRAND FINAL':match.id==='TP'?'THIRD PLACE':match.id==='FP'?'FOURTH PLACE':'ROUND '+match.round}</span></header><div class="nt-versus">${[match.a,match.b].map((ref,j)=>`<div class="${result?(result.winner===pair[j]?'nt-win':'nt-lose'):''}">${sourcePerson(s,m,ref)}${result?`<em>${result.winner===pair[j]?'✓ WIN':'LOSE'}</em>`:''}</div>`).join(`<strong class="nt-score">${result?E(result.scores.join(' – ')):'VS'}</strong>`)}</div>${admin&&!result?`<fieldset ${!playable?'disabled':''}><legend>${drawn?'✓ विजेता छानेर Confirm गर्नुहोस्':'NEXT ROUND DRAW बाँकी'}</legend>${pair.map((p,j)=>`<label><input type="checkbox" name="nt-${match.id}" value="${p}"> ✓ ${E(s.participants[p]?.name||'बाँकी')}<input aria-label="${match.id} player ${j+1} score" type="number" min="0" max="999" value="0" data-score="${j}"></label>`).join('')}<button type="button" data-confirm="${match.id}">CONFIRM WINNER ✓</button></fieldset>`:''}</article>`;
+}
+function lane(s,m,rounds,admin){return rounds.map((r,i)=>`<div class="nt-round"><h4>ROUND ${i+1}</h4>${r.matches.map(x=>card(s,m,x,admin)).join('')}${r.byes.length?`<p class="nt-bye">DRAW BYE → ${r.byes.map(x=>E(s.participants[m.resolve(x)]?.name||m.source(x))).join(' · ')}</p>`:''}</div>`).join('<span class="nt-arrow">➜</span>');}
+function podium(s,m){return `<div class="nt-podium"><div class="nt-podium-title">♛<br>FINAL RESULT<br><b>TOP 4</b></div>${m.places.map((p,i)=>{const player=s.participants[p];return `<article class="nt-place nt-place-${i}"><strong>#${i+1}</strong><div>${img(player?.photo,player?.name)}${player?.logo?img(player.logo,'Team logo','logo'):''}</div><h3>${E(player?.name||'निर्णय बाँकी')}</h3><small>${player?'GROUP '+String.fromCharCode(65+Math.floor(p/(s.participants.length===8?2:4))):'AWAITING RESULT'}</small><b>${['🏆 CHAMPION','🥈 RUNNER UP','🥉 THIRD PLACE','♜ FOURTH PLACE'][i]}</b></article>`;}).join('')}</div>`;}
+function board(t,admin=false){
+ const s=t.state,m=model(s),n=s.participants.length,complete=m.places.every(Number.isInteger),initial={matches:m.initial,byes:[]};
+ return `<div class="nt-board"><div class="nt-top"><aside class="nt-panel"><h3>ⓘ TOURNAMENT INFO</h3><dl><dt>Format</dt><dd>1V1 TDM</dd><dt>Players</dt><dd>${n}</dd><dt>Groups</dt><dd>${Array.from({length:groupCount(n)},(_,i)=>String.fromCharCode(65+i)).join(' · ')}</dd><dt>Start</dt><dd>${E(new Date(s.createdAt).toLocaleString('en-GB',{timeZone:'Asia/Tokyo'}))} JP</dd><dt>Status</dt><dd>${complete?'✓ COMPLETED':'● LIVE'}</dd></dl></aside><div class="nt-heading"><h2>⚔ TDM GROUP DIVISION ⚔</h2><b>${n} PLAYERS | 1V1 TDM TOURNAMENT</b><p>${E(s.title)}</p><div class="nt-timeline">${['LIVE DRAW','GROUP MATCH','WINNER ROUTE','LOSER ROUTE','THIRD PLACE','FOURTH PLACE','GRAND FINAL'].map((name,i)=>`<span>${(i===0?s.revealed===n:i===4?!!s.results.TP:i===5?!!s.results.FP:i===6?!!s.results.GF:i===1?m.initial.every(x=>s.results[x.id]):(i===2?m.winnerRounds:m.loserRounds).every(r=>r.matches.every(x=>s.results[x.id])))?'✓':'○'}<small>${name}</small></span>`).join('')}</div></div><aside class="nt-panel nt-prizes"><h3>🏆 PRIZE POOL</h3>${s.prizes.map((p,i)=>`<p><b>#${i+1}</b> ${E(p||'—')}</p>`).join('')}</aside></div><div class="nt-grid"><section class="nt-panel nt-group"><h3>🔴 ① LIVE DRAW & ROUND 1</h3><p>आफ्नै Group भित्रका खेल</p>${initial.matches.map(x=>card(s,m,x,admin)).join('')}</section><section class="nt-panel nt-winners"><h3>♛ ② WINNER ROUTE</h3><p>Round 1 Winners → Final #1 / #2</p><div class="nt-rounds">${lane(s,m,m.winnerRounds,admin)}</div>${card(s,m,m.matches.find(x=>x.id==='GF'),admin)}</section><section class="nt-panel nt-losers"><h3>⚔ ③ LOSER ROUTE</h3><p>Round 1 Losers → Fourth Place Chance</p><div class="nt-rounds">${lane(s,m,m.loserRounds,admin)}</div><div class="nt-down">⇩</div>${card(s,m,m.matches.find(x=>x.id==='TP'),admin)}${card(s,m,m.matches.find(x=>x.id==='FP'),admin)}</section></div><div class="nt-summary"><section class="nt-panel"><h3>ⓘ TOURNAMENT FLOW</h3><p>${n} PLAYERS → ${groupCount(n)} GROUPS</p><p>↓ ${n/2} GROUP MATCHES ↓</p><p>WINNERS → FINAL #1 / #2</p><p>LAST WINNER-ROUTE LOSERS → #3 → #4 CHANCE</p><p>LOSERS → REMATCH → #4 CHANCE</p><small>Tournament ID: ${E(t.id)}</small></section><section class="nt-panel nt-ranklist"><h3>🏆 WINNER LIST</h3>${m.places.map((p,i)=>`<p><b>#${i+1}</b> ${img(s.participants[p]?.photo,s.participants[p]?.name)} ${E(s.participants[p]?.name||'निर्णय बाँकी')}</p>`).join('')}</section><section class="nt-panel nt-eliminated"><h3>❌ ELIMINATED / GAME OUT</h3>${m.out.map(o=>`<p>${img(s.participants[o.player]?.photo,s.participants[o.player]?.name)} ${E(s.participants[o.player]?.name)} ${s.participants[o.player]?.logo?img(s.participants[o.player].logo,'Team logo','logo'):''}<small>${E(o.match)} · OUT</small></p>`).join('')||'<p>अहिलेसम्म कोही बाहिरिएको छैन।</p>'}</section><section class="nt-panel"><h3>COMPLETE TOURNAMENT BRACKET</h3><div class="nt-mini">${m.matches.map(x=>`<p><b>${E(x.id)}</b> ${m.pair(x).map((p,j)=>E(s.participants[p]?.name||m.source(j?x.b:x.a))).join(' vs ')}<small>${E(s.results[x.id]?.scores.join(' – ')||'PENDING')}</small></p>`).join('')}</div></section></div>${podium(s,m)}<details class="nt-panel"><summary>DRAW & MATCH HISTORY (${s.events.length})</summary>${s.events.map(e=>`<p>${E(new Date(e.at).toLocaleString('en-GB',{timeZone:'Asia/Tokyo'}))} JP · ${E(e.type)} ${E(e.match||'')} ${e.winner!==undefined?E(s.participants[e.winner]?.name):''}</p>`).join('')}</details></div>`;
+}
+function legacyArchive(){return legacySnapshots.length?'<details class="nt-panel"><summary>पुरानो TDM DRAW — सुरक्षित मूल अभिलेख</summary>'+legacySnapshots.map(t=>{const s=t.state;return '<h3>'+E(s.stageLabel||'LEGACY TDM')+'</h3><p>मूल मिति: '+E(s.updated_at||t.capturedAt)+'</p><div class="nt-chits">'+(s.participants||[]).map((name,i)=>'<article>'+img(s.tdmPlayers?.[i]?.photo,name)+'<b>'+E(name)+'</b>'+img(s.tdmPlayers?.[i]?.logo,'Logo','logo')+'<small>'+E(s.chits?.[i]?.revealed?s.chits[i].value:'SEALED')+'</small></article>').join('')+'</div><h4>Saved results</h4>'+Object.entries(s.tdmFlowResults||s.tdmResults||{}).map(([id,result])=>'<p>'+E(id)+' · '+E(s.participants?.[typeof result==='number'?result:result.winner]||JSON.stringify(result))+'</p>').join('')+'<h4>Original history</h4>'+(s.history||[]).map(e=>'<p>'+E(e)+'</p>').join('');}).join('')+'</details>':'';}
+function selector(){return `<label class="nt-select">TOURNAMENT ARCHIVE <select data-tournament><option value="">Tournament छान्नुहोस्</option>${tournaments.map(t=>`<option value="${E(t.id)}" ${t.id===selected?'selected':''}>${E(t.state.title)} · ${E(new Date(t.state.createdAt).toLocaleDateString())} · ${t.state.participants.length} players</option>`).join('')}</select></label>`;}
+function bind(host){host.querySelectorAll('fieldset input[type=checkbox]').forEach(input=>input.onchange=()=>{if(input.checked)input.closest('fieldset').querySelectorAll('input[type=checkbox]').forEach(other=>{if(other!==input)other.checked=false;});});host.querySelectorAll('[data-tournament]').forEach(select=>select.onchange=()=>{selected=select.value;paint();});host.querySelectorAll('[data-confirm]').forEach(button=>button.onclick=async()=>{const t=current(),id=button.dataset.confirm,box=button.closest('fieldset'),radio=box.querySelector('input[type=checkbox]:checked');if(!radio)return alert('✓ लगाएर विजेता छान्नुहोस्।');const scores=[...box.querySelectorAll('[data-score]')].map(x=>Number(x.value));if(!confirm(`${id}: ${t.state.participants[Number(radio.value)].name} लाई विजेता Confirm गर्ने? यो नतिजा इतिहासमा स्थायी रहन्छ।`))return;await mutate('confirm',{match:id,winner:Number(radio.value),scores});});host.querySelector('[data-next]')?.addEventListener('click',()=>mutate('draw',{}));host.querySelector('[data-delete]')?.addEventListener('click',async()=>{const t=current();if(!t)return;if(!confirm(`“${t.state.title}” को सम्पूर्ण Tournament स्थायी रूपमा मेटाउने?`))return;if(prompt('पुष्टि गर्न DELETE लेख्नुहोस्')!=='DELETE')return;await mutate('delete',{confirmation:t.id});});}
+function paint(){
+ const host=el('tdmGroupDivisionPublic');if(!host)return;const t=current();host.classList.add('nt-root');
+ host.innerHTML=selector()+(t?board(t):`<p class="nt-panel">${E(error|| (ready?'नयाँ TDM Tournament तयार भएपछि यहाँ देखिनेछ। पुरानो Draw Live Draw मा सुरक्षित छ।':'Tournament लोड हुँदैछ…'))}</p>`);host.insertAdjacentHTML('beforeend',legacyArchive());bind(host);
+ const editor=el('nt-owner-matches');if(editor){editor.innerHTML=owner?selector()+(t?`<div class="nt-tools"><button type="button" data-next ${busy?'disabled':''}>NEXT ROUND LIVE DRAW</button><button type="button" data-delete ${busy?'disabled':''}>DELETE TOURNAMENT</button></div>${board(t,true)}`:'<p>PREPARE DRAW बाट नयाँ Tournament सुरु गर्नुहोस्।</p>'):'<p>Owner login आवश्यक छ।</p>';bind(editor);}
+ const section=el('tdm-group-division');section?.classList.add('nt-section');const hint=section?.querySelector('.head p');if(hint)hint.textContent='8 / 16 / 24 / 32 PLAYERS · FULL TOURNAMENT · LIVE RESULTS';
+ const tag=section?.querySelector('.module-tag');if(tag)tag.textContent=t?t.state.participants.length+' PLAYERS · '+groupCount(t.state.participants.length)+' GROUPS':'TDM TOURNAMENT ARCHIVE';
+ paintLive();
+}
+function paintLive(){
+ const host=el('nt-public-live');if(!host)return;const t=current();host.innerHTML=selector()+(t?`<div class="nt-panel"><h3>${E(t.state.title)} · LIVE DRAW ${t.state.revealed}/${t.state.participants.length}</h3><p>${E(t.state.createdAt)} · Tournament ID ${E(t.id)}</p><div class="nt-chits">${t.state.participants.map((p,i)=>`<article>${img(p.photo,p.name)}<b>${E(p.name)}</b>${p.logo?img(p.logo,'Team logo','logo'):''}<strong>${t.state.revealed>i?'GROUP '+String.fromCharCode(65+Math.floor(i/(t.state.participants.length===8?2:4))):'?'}</strong></article>`).join('')}</div></div>`:'<p class="nt-panel">नयाँ TDM Draw बाँकी छ।</p>');host.insertAdjacentHTML('beforeend',legacyArchive());bind(host);
+ // Hide only the obsolete TDM live output, while other draw modes retain their original UI.
+ for(const id of ['publicDrawCards','publicDrawMatches','publicDrawParticipants'])if(el(id))el(id).hidden=!!t&&liveDrawState.stage==='tdmGroups';
+ if(t&&liveDrawState.stage==='tdmGroups'){el('publicDrawRound').textContent=t.state.title;el('publicDrawStatus').textContent=`LIVE DRAW ${t.state.revealed}/${t.state.participants.length} · सबै नतिजा TDM GROUP DIVISION मा`;}
+}
+async function refresh(){try{const list=await rpc('rock_tdm_list',{});const changed=!ready||JSON.stringify((list||[]).map(t=>[t.id,t.revision]))!==JSON.stringify(tournaments.map(t=>[t.id,t.revision]));if(!ready)legacySnapshots=await rpc('rock_tdm_legacy_list',{});tournaments=list||[];ready=true;error='';if(!tournaments.some(t=>t.id===selected))selected=tournaments[0]?.id||null;if(changed)paint();}catch(e){error='TDM database setup बाँकी छ: '+e.message;ready=false;paint();}}
+async function mutate(action,payload){if(busy)return;busy=true;try{if(!(await getAdminSession()))throw Error('Owner login आवश्यक छ।');const t=current();if(!t)throw Error('Tournament छान्नुहोस्।');const updated=await rpc('rock_tdm_owner',{p_id:t.id,p_revision:t.revision,p_action:action,p_payload:payload});if(action==='delete'){tournaments=tournaments.filter(x=>x.id!==t.id);selected=tournaments[0]?.id||null;}else tournaments=tournaments.map(x=>x.id===t.id?updated:x);paint();showToast('✓ Tournament सुरक्षित भयो');}catch(e){alert(e.message);await refresh();}finally{busy=false;}}
+function names(){return (el('drawPlayerNames')?.value||'').split(/\n|,/).map(x=>x.trim()).filter(Boolean);}
+function count(){return Number(el('tdmPlayerCount').value);}
+function profileEditor(){const host=el('liveDrawPlayerEditor');if(!host)return;host.innerHTML=`<div class="live-profile-grid">${draft.map((p,i)=>`<article class="live-profile-card"><h4>${i+1}. ${E(p.name)}</h4>${['photo','logo'].map(kind=>`<label>${kind.toUpperCase()}<input type="file" accept="image/png,image/jpeg,image/webp" data-nt-upload="${i}" data-kind="${kind}"><span data-preview="${i}-${kind}">${p[kind]?img(p[kind],p.name):'PREVIEW'}</span></label>`).join('')}</article>`).join('')}</div>`;host.querySelectorAll('[data-nt-upload]').forEach(input=>input.onchange=async()=>{const file=input.files[0];if(!file)return;uploads++;try{const data=await compressImage(file,input.dataset.kind==='photo'?500:320,.8);draft[Number(input.dataset.ntUpload)][input.dataset.kind]=data;host.querySelector(`[data-preview="${input.dataset.ntUpload}-${input.dataset.kind}"]`).innerHTML=img(data,'Preview');}catch(e){alert(e.message);}finally{uploads--;}});}
+root.loadLiveDrawProfileFields=function(){if(!isTdm())return legacy.fields();const ns=names();if(ns.length!==count()||new Set(ns.map(x=>x.toLowerCase())).size!==count())return alert(`ठीक ${count()} फरक खेलाडीका नाम राख्नुहोस्।`);draft=ns.map(name=>({name,photo:'',logo:''}));profileEditor();};
+root.buildLiveDrawPlayerEditor=function(force){if(!isTdm())return legacy.profiles(force);if(draft.length&&force)profileEditor();};
+root.saveLiveDrawProfiles=async function(){if(!isTdm())return legacy.saveProfiles();showToast('✓ फोटो तयार छन्। PREPARE DRAW गर्दा सुरक्षित हुनेछन्।');};
+root.prepareLiveDraw=async function(){if(!isTdm())return legacy.prepare();if(busy)return;if(uploads)return alert('फोटो तयार हुँदैछन्। केही क्षणपछि PREPARE DRAW थिच्नुहोस्।');if(!(await getAdminSession()))return alert('Owner login आवश्यक छ।');if(!ready)return alert(error||'पहिले TDM database setup पूरा गर्नुहोस्।');const ns=names(),n=count();if(ns.length!==n||new Set(ns.map(x=>x.toLowerCase())).size!==n)return alert(`ठीक ${n} फरक खेलाडीका नाम राख्नुहोस्।`);if(draft.length&&draft.some((p,i)=>p.name!==ns[i]))return alert('नाम परिवर्तन भएको छ। फोटोका Fields फेरि Load गर्नुहोस्।');busy=true;try{const t=await rpc('rock_tdm_owner',{p_id:null,p_revision:0,p_action:'create',p_payload:{title:el('nt-title').value||'ROCK ESPORTS TDM',participants:draft.length?draft:ns.map(name=>({name,photo:'',logo:''})),scheduledAt:el('drawScheduleAt').value?new Date(el('drawScheduleAt').value).toISOString():null,prizes:[0,1,2,3].map(i=>el('nt-prize-'+i).value)}});tournaments.unshift(t);selected=t.id;draft=[];el('liveDrawPlayerEditor').innerHTML='';paint();showToast('✓ नयाँ Tournament सुरक्षित भयो; पुराना Tournament यथावत् छन्।');}catch(e){alert(e.message);}finally{busy=false;}};
+root.revealNextChit=()=>isTdm()?mutate('reveal',{}):legacy.reveal();
+root.finishLiveDraw=()=>isTdm()?mutate('draw',{}):legacy.finish();
+root.resetLiveDraw=()=>{if(isTdm()||liveDrawState.stage==='tdmGroups'){alert('TDM reset बन्द छ। नयाँ Tournament बनाउँदा पुरानो सुरक्षित रहन्छ। मेटाउन Live Draw को DELETE TOURNAMENT प्रयोग गर्नुहोस्।');return;}return legacy.reset();};
+root.renderLiveDraw=function(){legacy.render();paintLive();};
+root.renderTdmDivision=()=>{if(ready||error)paint();else legacy.tdm();};
+root.buildTdmAdmin=function(){const note=el('tdmAdmin')?.querySelector('.setup-ok');if(note)note.textContent='OWNER WINNER CONTROL — सबै Match को ✓ र Confirm Admin → LIVE DRAW मा छ।';el('tdmAdminEditor').innerHTML='<p>हरेक Match को ✓ Winner Control Admin → LIVE DRAW मा छ। पुराना Draw सुरक्षित छन्।</p>';};
+root.saveTdmAdmin=function(){showToast('Live Draw मा हरेक Match को CONFIRM WINNER ✓ प्रयोग गर्नुहोस्।');};
+// Never allow the old automatic migration or old scheduled writer to alter legacy TDM data.
+root.migrateLegacyTdmDraw=()=>false;
+const oldScheduled=checkScheduledDraw;
+root.checkScheduledDraw=function(){if(liveDrawState.stage!=='tdmGroups')return oldScheduled();};
+const stage=el('drawStage');stage.querySelector('option[value="tdmGroups"]').textContent='TDM GROUPS — 8 / 16 / 24 / 32';
+const fields=document.createElement('div');fields.id='nt-create';fields.className='field';fields.innerHTML='<label>Tournament name<input id="nt-title" value="ROCK ESPORTS TDM" maxlength="120"></label><label>Players<select id="tdmPlayerCount">'+sizes.map(n=>`<option value="${n}">${n} PLAYERS · ${groupCount(n)} GROUPS · ${n===8?2:4} EACH</option>`).join('')+'</select></label><label>Prizes (optional)</label>'+[0,1,2,3].map(i=>`<input id="nt-prize-${i}" aria-label="Prize ${i+1}" placeholder="#${i+1} prize">`).join('');stage.parentElement.after(fields);
+const adminHost=el('adminDrawLog')?.parentElement;const ownerHost=document.createElement('div');ownerHost.id='nt-owner-matches';ownerHost.className='nt-root';adminHost?.append(ownerHost);
+const publicHost=document.createElement('div');publicHost.id='nt-public-live';publicHost.className='nt-root';el('publicDrawCards')?.before(publicHost);
+const liveHint=el('adminDrawStatus')?.parentElement?.querySelector('p.hint[style]');if(liveHint)liveHint.textContent='पहिलो Draw का Group Match पछि ✓ Confirm गर्नुहोस्। NEXT ROUND LIVE DRAW ले योग्य खेलाडीको अर्को चरण खोल्छ; पुराना चरण र मिति बदलिँदैनन्।';
+const profileTitle=el('liveDrawPlayerEditor')?.parentElement?.querySelector('h3');if(profileTitle)profileTitle.textContent='PLAYER PHOTO, NAME & TEAM LOGO';
+const scheduleHint=el('drawScheduleAt')?.parentElement?.querySelector('small');if(scheduleHint)scheduleHint.textContent='निर्धारित समय पुगेपछि सर्भरले सबै चिट्ठा खोल्छ। Owner को Browser खुला राख्नुपर्दैन।';
+const profileButton=document.querySelector('button[onclick="loadLiveDrawProfileFields()"]');if(profileButton){profileButton.textContent='① LOAD PLAYER PHOTO / LOGO FIELDS';const hint=profileButton.parentElement.querySelector('small');if(hint)hint.textContent='छानेको खेलाडी सङ्ख्याअनुसार नाम, फोटो र Team Logo राख्नुहोस्।';}
+const sync=()=>{fields.hidden=!isTdm();ownerHost.hidden=!isTdm();if(isTdm()){const status=el('adminDrawStatus');if(status)status.textContent='नयाँ Tournament ले पुरानो मेट्दैन। हरेक Match को ✓ Winner Control तल छ।';}draft=[];};stage.addEventListener('change',sync);el('tdmPlayerCount').addEventListener('change',()=>{draft=[];el('liveDrawPlayerEditor').innerHTML='';});sync();
+const css=document.createElement('link');css.rel='stylesheet';css.href='./rock-tdm.css?v=3';document.head.append(css);
+async function authChanged(){const {data:{session}}=await sb.auth.getSession();owner=session?.user?.email?.toLowerCase()===ADMIN_EMAIL.toLowerCase();paint();}sb.auth.onAuthStateChange(()=>setTimeout(authChanged,0));authChanged();refresh();
+setInterval(()=>{if(!busy&&!document.hidden)refresh();},8000);
 })(typeof window==='object'?window:globalThis);
