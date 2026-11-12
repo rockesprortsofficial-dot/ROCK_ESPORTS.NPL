@@ -148,7 +148,7 @@ begin
  end if;
  return jsonb_build_object('id',t.id,'revision',t.revision,'state',t.state);
 end $$;
-revoke all on function public.rock_tdm_graph(integer,jsonb),public.rock_tdm_resolve(jsonb,jsonb,jsonb),public.rock_tdm_draw(jsonb),public.rock_tdm_list(),public.rock_tdm_legacy_list(),public.rock_tdm_owner(uuid,bigint,text,jsonb) from public;
+revoke all on function public.rock_tdm_graph(integer,jsonb),public.rock_tdm_resolve(jsonb,jsonb,jsonb),public.rock_tdm_draw(jsonb),public.rock_tdm_list(),public.rock_tdm_legacy_list(),public.rock_tdm_owner(uuid,bigint,text,jsonb) from public,anon,authenticated;
 grant execute on function public.rock_tdm_list(),public.rock_tdm_legacy_list() to anon,authenticated;
 grant execute on function public.rock_tdm_owner(uuid,bigint,text,jsonb) to authenticated;
 commit;
