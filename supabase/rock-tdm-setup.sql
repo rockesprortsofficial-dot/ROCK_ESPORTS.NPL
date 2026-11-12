@@ -69,6 +69,7 @@ create or replace function public.rock_tdm_draw(s jsonb)
 returns jsonb language plpgsql volatile set search_path=public,pg_temp as $$
 declare g jsonb; ids jsonb; m jsonb; already boolean;
 begin
+ if exists(select 1 from jsonb_array_elements(s->'draws') d cross join lateral jsonb_array_elements_text(d->'matches') mid where not (s->'results' ? mid)) then raise exception 'Finish current round matches before drawing the next round.';end if;
  g:=coalesce(s->'bracket',public.rock_tdm_graph(jsonb_array_length(s->'participants'),s->'order'));ids:='[]';
  for m in select value from jsonb_array_elements(g) loop
   select exists(select 1 from jsonb_array_elements(s->'draws') d where d->'matches' ? (m->>'id')) into already;

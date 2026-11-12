@@ -11,6 +11,7 @@ const {graph,model,groupCount}=require('../rock-tdm.js');
  grant usage on schema auth to anon,authenticated; grant execute on all functions in schema auth to anon,authenticated;
  create table public.rock_esports_live_draw(id text primary key,state jsonb);
  insert into public.rock_esports_live_draw values ('rock-esports-main','{"stage":"tdmGroups","tdmFormat":2,"participants":["Legacy"],"history":["old result"],"tdmPlayers":[{"photo":"https://example.org/old.jpg"}]}');`);
+ await db.exec('alter default privileges grant execute on functions to anon,authenticated');
  const sql=fs.readFileSync(require('node:path').join(__dirname,'../supabase/rock-tdm-setup.sql'),'utf8');
  await db.exec(sql);await db.exec(sql); // migration is safe to run twice
  const query=async(sql,args=[])=> (await db.query(sql,args)).rows;
@@ -34,7 +35,7 @@ const {graph,model,groupCount}=require('../rock-tdm.js');
    await db.exec('reset role');const sqlGraph=await scalar('select rock_tdm_graph($1,$2::jsonb)',[n,JSON.stringify(t.state.order)]);
    await db.exec('set role authenticated');assert.deepEqual(t.state.bracket,sqlGraph,'complete graph is persisted');assert.deepEqual(sqlGraph,graph(n,t.state.order).matches,'browser and server graph must agree');
    await fail(rpc(t.id,t.revision,'confirm',{match:'M1',winner:0,scores:[10,1]}),/not ready/);
-   await fail(rpc(t.id,t.revision,'draw'),/No new round/);
+   await fail(rpc(t.id,t.revision,'draw'),/Finish current round/);
    for(let i=0;i<n;i++)t=await rpc(t.id,t.revision,'reveal');
    await fail(rpc(t.id,t.revision,'reveal'),/All chits/);
    const initial=model(t.state).initial;
@@ -50,7 +51,7 @@ const {graph,model,groupCount}=require('../rock-tdm.js');
      await fail(rpc(t.id,rev,'confirm',{match:m.id,winner}),/Two scores/);await fail(rpc(t.id,rev,'confirm',{match:m.id,winner:n+1,scores}),/invalid winner/);
      await fail(rpc(t.id,rev,'confirm',{match:m.id,winner,scores:[7,7]}),/higher score/);
      t=await rpc(t.id,rev,'confirm',{match:m.id,winner,scores});
-     assert.equal(t.state.createdAt,original);played++;progress=true;
+     assert.equal(t.state.createdAt,original);played++;progress=true;if(played===2)await fail(rpc(t.id,t.revision,'draw'),/Finish current round/);
      await fail(rpc(t.id,rev,'confirm',{match:m.id,winner,scores}),/Another session/);
      await fail(rpc(t.id,t.revision,'confirm',{match:m.id,winner,scores}),/immutable/);
     }

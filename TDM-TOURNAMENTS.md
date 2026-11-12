@@ -35,6 +35,8 @@ The setup copies the current original TDM draw into `rock_tdm_legacy_snapshots` 
 
 The initial shuffled roster automatically creates within-group match pairs; no manual opponent entry is required. Live Draw displays explicit player-versus-player match cards and Group Division displays the same pairings. Confirmed winner/loser routes automatically resolve later opponents.
 
+A new round cannot be drawn until every already-published match is confirmed. Repeated draws during an unfinished round are rejected by PostgreSQL; the next-round button is also disabled.
+
 New rounds append draw records under the same tournament ID. Their pairings follow persisted bracket routes; they never reshuffle confirmed matches. Scheduled reveal uses the server's timestamp and is materialized when the public list is read, so no owner browser needs to remain open. Public refresh is every eight seconds.
 
 ## Validation
