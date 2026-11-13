@@ -36,7 +36,7 @@ const {graph,model,groupCount}=require('../rock-tdm.js');
    await db.exec('set role authenticated');assert.deepEqual(t.state.bracket,sqlGraph,'complete graph is persisted');assert.deepEqual(sqlGraph,graph(n,t.state.order).matches,'browser and server graph must agree');
    await fail(rpc(t.id,t.revision,'confirm',{match:'M1',winner:0,scores:[10,1]}),/not ready/);
    await fail(rpc(t.id,t.revision,'draw'),/Finish current round/);
-   for(let i=0;i<n;i++)t=await rpc(t.id,t.revision,'reveal');
+   for(let i=0;i<n;i++){if(run===0&&i===4){t=await rpc(t.id,t.revision,'reveal_all');break;}t=await rpc(t.id,t.revision,'reveal');}assert.equal(t.state.revealed,n);
    await fail(rpc(t.id,t.revision,'reveal'),/All chits/);
    const initial=model(t.state).initial;
    const groupSize=n===8?2:4;
@@ -51,7 +51,7 @@ const {graph,model,groupCount}=require('../rock-tdm.js');
      await fail(rpc(t.id,rev,'confirm',{match:m.id,winner}),/Two scores/);await fail(rpc(t.id,rev,'confirm',{match:m.id,winner:n+1,scores}),/invalid winner/);
      await fail(rpc(t.id,rev,'confirm',{match:m.id,winner,scores:[7,7]}),/higher score/);
      t=await rpc(t.id,rev,'confirm',{match:m.id,winner,scores});
-     assert.equal(t.state.createdAt,original);played++;progress=true;if(played===2)await fail(rpc(t.id,t.revision,'draw'),/Finish current round/);
+     assert.equal(t.state.createdAt,original);played++;progress=true;if(played===1&&run===0){const before=structuredClone(t.state);const ps=t.state.participants.map((p,i)=>({...p,photo:i===0?'https://example.org/restored.jpg':p.photo}));await fail(rpc(t.id,t.revision,'profiles',{players:[...ps].reverse()}),/names\/order/);t=await rpc(t.id,t.revision,'profiles',{players:ps});assert.deepEqual(t.state.results,before.results);assert.deepEqual(t.state.draws,before.draws);assert.equal(t.state.createdAt,before.createdAt);assert.equal(t.state.revealed,before.revealed);assert.deepEqual(t.state.bracket,before.bracket);assert.equal(t.state.participants[0].photo,'https://example.org/restored.jpg');}if(played===2)await fail(rpc(t.id,t.revision,'draw'),/Finish current round/);
      await fail(rpc(t.id,rev,'confirm',{match:m.id,winner,scores}),/Another session/);
      await fail(rpc(t.id,t.revision,'confirm',{match:m.id,winner,scores}),/immutable/);
     }

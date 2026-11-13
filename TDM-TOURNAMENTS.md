@@ -61,3 +61,13 @@ No production SQL, tournament mutations, deletion, merge or deployment was execu
 Only the new TDM Live Draw controls are shown. Obsolete live-draw modes, legacy public cards and their reset control are hidden. WOW code and data are untouched. Old snapshots remain protected in storage; an owner-only, twice-confirmed cleanup button can delete an old snapshot and clear the shared legacy row only when its exact ID/content hash still matches. A changed or non-TDM shared draw is preserved.
 
 New tournaments cannot be reset or deleted before every bracket match has a confirmed result. After completion, Reset archives the tournament, keeps every result/draw/player image and clears the active selection/form for a fresh tournament. Archived results remain available in the selector. Delete removes only the selected completed tournament after owner confirmation. Both restrictions are enforced by PostgreSQL. The controls repaint after saving so they cannot remain accidentally disabled by the save-in-progress flag.
+
+## All-round checkmarks and large image uploads
+
+Owner controls show why a match is unavailable: unrevealed chits, unfinished feeder matches, or next-round draw pending. OPEN ALL REMAINING CHITS reveals the remaining initial chits without reshuffling assignments. All twelve matches of an eight-player event, including Grand Final, third and fourth place, are confirmed through browser checkboxes in tests. Decorative arrows no longer intercept clicks.
+
+Active player photos/logos can be edited/restored and saved through an owner-checked profiles action; names/order, group pairings, scores, draws and original dates cannot change through that action. Existing saved media is reused by exact player name, and Prepare cannot accidentally replace a running event.
+
+New file rock-tdm-media.js converts images locally in the browser using object URLs/native resized decoding instead of loading the full file as base64 first. Common native formats plus HEIC/HEIF and TIFF are supported. Logos retain transparency. HEIC conversion lazily loads heic-to 1.6.7; TIFF conversion uses UTIF 3.1.0 and pako 1.0.11, pinned with SHA-384 integrity checks. Original images are not posted to those services. Output is normalized to JPEG/WebP/PNG and bounded so 32 player portraits/logos fit the existing database media limit. Invalid images and browser decoder/resource failures are reported instead of silently storing empty fields.
+
+New test tests/tdm-media.cjs verifies a 36 MB JPEG, HEIC, TIFF, SVG, AVIF, GIF and WebP, successful decoding, output size and logo transparency. Its HEIC fixture comes from the public libheif example and stays in the local test runtime.

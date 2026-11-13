@@ -132,6 +132,16 @@ begin
    if s->>'archivedAt' is not null then raise exception 'Tournament already reset to archive';end if;
    s:=s||jsonb_build_object('archivedAt',at_time);
    s:=jsonb_set(s,'{events}',s->'events'||jsonb_build_array(jsonb_build_object('at',at_time,'type','COMPLETED TOURNAMENT RESET TO ARCHIVE')));
+  elsif p_action='profiles' then
+   ps:=p_payload->'players';if jsonb_typeof(ps) is distinct from 'array' or jsonb_array_length(ps)<>n then raise exception 'Every player profile is required';end if;
+   if exists(select 1 from jsonb_array_elements(ps) with ordinality item(p,idx) where p->>'name' is distinct from s->'participants'->(idx::integer-1)->>'name') then raise exception 'Player names/order cannot change during a photo update';end if;
+   if exists(select 1 from jsonb_array_elements(ps) p cross join lateral (values(p->>'photo'),(p->>'logo')) u(url) where coalesce(url,'')<>'' and url!~* '^(https://|data:image/(png|jpeg|webp);base64,)') then raise exception 'Invalid image URL';end if;
+   if octet_length(ps::text)>15000000 then raise exception 'Player media too large';end if;
+   select jsonb_agg((s->'participants'->(idx::integer-1))||jsonb_build_object('photo',coalesce(p->>'photo',''),'logo',coalesce(p->>'logo','')) order by idx) into ps from jsonb_array_elements(ps) with ordinality item(p,idx);
+   s:=jsonb_set(s,'{participants}',ps);s:=jsonb_set(s,'{events}',s->'events'||jsonb_build_array(jsonb_build_object('at',at_time,'type','PLAYER PHOTOS AND LOGOS UPDATED')));
+  elsif p_action='reveal_all' then
+   if (s->>'revealed')::integer>=n then raise exception 'All chits are open';end if;
+   s:=jsonb_set(s,'{revealed}',to_jsonb(n));s:=jsonb_set(s,'{events}',s->'events'||jsonb_build_array(jsonb_build_object('at',at_time,'type','ALL REMAINING CHITS REVEALED')));
   elsif p_action='reveal' then
    if (s->>'revealed')::integer>=n then raise exception 'All chits are open';end if;
    s:=jsonb_set(s,'{revealed}',to_jsonb((s->>'revealed')::integer+1));
