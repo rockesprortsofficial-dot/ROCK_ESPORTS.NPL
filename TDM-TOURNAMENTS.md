@@ -71,3 +71,11 @@ Active player photos/logos can be edited/restored and saved through an owner-che
 New file rock-tdm-media.js converts images locally in the browser using object URLs/native resized decoding instead of loading the full file as base64 first. Common native formats plus HEIC/HEIF and TIFF are supported. Logos retain transparency. HEIC conversion lazily loads heic-to 1.6.7; TIFF conversion uses UTIF 3.1.0 and pako 1.0.11, pinned with SHA-384 integrity checks. Original images are not posted to those services. Output is normalized to JPEG/WebP/PNG and bounded so 32 player portraits/logos fit the existing database media limit. Invalid images and browser decoder/resource failures are reported instead of silently storing empty fields.
 
 New test tests/tdm-media.cjs verifies a 36 MB JPEG, HEIC, TIFF, SVG, AVIF, GIF and WebP, successful decoding, output size and logo transparency. Its HEIC fixture comes from the public libheif example and stays in the local test runtime.
+
+## Simultaneous first draw, automatic rounds and FP before Grand Final
+
+For an unscheduled tournament, the first saved draw publishes every initial match at once: 4/8/12/16 match pairs for 8/16/24/32 players. All entered names, photos and logos appear immediately in their group matches. Scheduled draws still wait until their chosen time and then reveal the entire field together. The one-at-a-time reveal control is hidden.
+
+Confirming the final outstanding match in a stage automatically appends the next eligible stage without changing prior pairings, results or timestamps. The old manual next-round control is only a fallback for historical records. Fourth place (FP) must be confirmed before an unplayed Grand Final (GF) can be drawn or confirmed; the owner checkbox explains this dependency. Existing historical GF results are retained rather than silently erased or replayed. Pre-drawn but unplayed legacy GF entries do not deadlock the FP route.
+
+All 8/16/24/32 sizes are tested for immediate first-round availability, original within-group pairing, automatic route progression and FP-before-GF order. Browser tests exercise the per-player checkboxes and confirm all 12/24/36/48 matches, with all initial photos and logos present together.

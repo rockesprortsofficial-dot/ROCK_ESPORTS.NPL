@@ -34,16 +34,15 @@ const {graph,model,groupCount}=require('../rock-tdm.js');
    assert.equal(groupCount(n),n===8?4:n/4);
    await db.exec('reset role');const sqlGraph=await scalar('select rock_tdm_graph($1,$2::jsonb)',[n,JSON.stringify(t.state.order)]);
    await db.exec('set role authenticated');assert.deepEqual(t.state.bracket,sqlGraph,'complete graph is persisted');assert.deepEqual(sqlGraph,graph(n,t.state.order).matches,'browser and server graph must agree');
-   await fail(rpc(t.id,t.revision,'confirm',{match:'M1',winner:0,scores:[10,1]}),/not ready/);
+   assert.equal(t.state.revealed,n,'all initial players appear together');await fail(rpc(t.id,t.revision,'confirm',{match:'GF',winner:0,scores:[10,1]}),/FOURTH PLACE/);
    await fail(rpc(t.id,t.revision,'draw'),/Finish current round/);
-   for(let i=0;i<n;i++){if(run===0&&i===4){t=await rpc(t.id,t.revision,'reveal_all');break;}t=await rpc(t.id,t.revision,'reveal');}assert.equal(t.state.revealed,n);
    await fail(rpc(t.id,t.revision,'reveal'),/All chits/);
    const initial=model(t.state).initial;
    const groupSize=n===8?2:4;
    for(const m of initial){const [a,b]=model(t.state).pair(m);assert.equal(Math.floor(a/groupSize),Math.floor(b/groupSize));}
    const graphSize=model(t.state).matches.length;let played=0;
    while(Object.keys(t.state.results).length<graphSize){
-    let progress=false;
+    let progress=false;const previousDraws=structuredClone(t.state.draws),previousResults=structuredClone(t.state.results);
     for(const m of model(t.state).matches){
      if(t.state.results[m.id]||!t.state.draws.some(d=>d.matches.includes(m.id)))continue;
      const pair=model(t.state).pair(m);if(!pair.every(Number.isInteger))continue;
@@ -56,11 +55,9 @@ const {graph,model,groupCount}=require('../rock-tdm.js');
      await fail(rpc(t.id,t.revision,'confirm',{match:m.id,winner,scores}),/immutable/);
     }
     if(Object.keys(t.state.results).length===graphSize)break;
-    const previous=structuredClone(t.state.draws),oldResults=structuredClone(t.state.results);
-    t=await rpc(t.id,t.revision,'draw');
-    assert.deepEqual(t.state.draws.slice(0,-1),previous);assert.deepEqual(t.state.results,oldResults);
-    assert.ok(progress||t.state.draws.length>1,'must always make progress');
+    assert.deepEqual(t.state.draws.slice(0,previousDraws.length),previousDraws);for(const [id,result] of Object.entries(previousResults))assert.deepEqual(t.state.results[id],result);assert.ok(progress,'automatic advancement must make progress');
    }
+   const ordered=t.state.events.filter(e=>e.type==='MATCH CONFIRMED').map(e=>e.match);assert.ok(ordered.indexOf('FP')<ordered.indexOf('GF'),'FP must finish before GF');
    const m=model(t.state);assert.equal(played,n*1.5);assert.equal(new Set(m.places).size,4);assert.ok(m.places.every(Number.isInteger));
    assert.equal(m.out.length,n-4);assert.equal(new Set([...m.out.map(x=>x.player),...m.places]).size,n,'every player retained exactly once in final placements or eliminated history');
    const initialLosers=new Set(m.initial.map(x=>m.resolve({match:x.id,out:'lose'})));
@@ -77,6 +74,7 @@ const {graph,model,groupCount}=require('../rock-tdm.js');
  const list=await scalar('select rock_tdm_list()');assert.equal(list.length,12,'new tournament never replaces an old tournament');
  const legacy=await scalar('select rock_tdm_legacy_list()');assert.equal(legacy.length,1);assert.deepEqual(legacy[0].state.history,['old result']);
  const scheduled=await rpc(null,0,'create',{title:'Scheduled',participants:Array.from({length:8},(_,i)=>({name:'P'+i})),prizes:['','','',''],scheduledAt:new Date(Date.now()+100000).toISOString()});
+ assert.equal(scheduled.state.revealed,0,'scheduled first draw waits for its time');
  await db.exec('reset role');await query("update rock_tdm_tournaments set state=jsonb_set(state,'{scheduledAt}',to_jsonb('2000-01-01T00:00:00Z'::text)) where id=$1",[scheduled.id]);
  await db.exec('set role anon');let scheduledPublic=(await scalar('select rock_tdm_list()')).find(t=>t.id===scheduled.id);assert.equal(scheduledPublic.state.revealed,8);await scalar('select rock_tdm_list()');scheduledPublic=(await scalar('select rock_tdm_list()')).find(t=>t.id===scheduled.id);assert.equal(scheduledPublic.state.events.filter(e=>e.type==='SCHEDULED REVEAL').length,1);
  await fail(query('update rock_tdm_tournaments set revision=0'),/permission denied/);

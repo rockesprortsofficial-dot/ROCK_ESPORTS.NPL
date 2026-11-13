@@ -69,15 +69,25 @@ create or replace function public.rock_tdm_draw(s jsonb)
 returns jsonb language plpgsql volatile set search_path=public,pg_temp as $$
 declare g jsonb; ids jsonb; m jsonb; already boolean;
 begin
- if exists(select 1 from jsonb_array_elements(s->'draws') d cross join lateral jsonb_array_elements_text(d->'matches') mid where not (s->'results' ? mid)) then raise exception 'Finish current round matches before drawing the next round.';end if;
+ if exists(select 1 from jsonb_array_elements(s->'draws') d cross join lateral jsonb_array_elements_text(d->'matches') mid where not (s->'results' ? mid) and not (mid='GF' and not (s->'results' ? 'FP'))) then raise exception 'Finish current round matches before drawing the next round.';end if;
  g:=coalesce(s->'bracket',public.rock_tdm_graph(jsonb_array_length(s->'participants'),s->'order'));ids:='[]';
  for m in select value from jsonb_array_elements(g) loop
   select exists(select 1 from jsonb_array_elements(s->'draws') d where d->'matches' ? (m->>'id')) into already;
-  if not already and public.rock_tdm_resolve(s,g,m->'a') is not null and public.rock_tdm_resolve(s,g,m->'b') is not null then ids:=ids||jsonb_build_array(m->>'id');end if;
+  if not already and (m->>'id'<>'GF' or s->'results' ? 'FP') and public.rock_tdm_resolve(s,g,m->'a') is not null and public.rock_tdm_resolve(s,g,m->'b') is not null then ids:=ids||jsonb_build_array(m->>'id');end if;
  end loop;
  if jsonb_array_length(ids)=0 then raise exception 'No new round is ready. Finish the current matches first.';end if;
  s:=jsonb_set(s,'{draws}',s->'draws'||jsonb_build_array(jsonb_build_object('at',clock_timestamp(),'matches',ids)));
  return jsonb_set(s,'{events}',s->'events'||jsonb_build_array(jsonb_build_object('at',clock_timestamp(),'type','ROUND DRAW','matches',ids)));
+end $$;
+create or replace function public.rock_tdm_advance_ready(s jsonb)
+returns jsonb language plpgsql volatile set search_path=public,pg_temp as $$
+declare g jsonb;
+begin
+ if s->>'archivedAt' is not null then return s;end if;
+ if exists(select 1 from jsonb_array_elements(s->'draws') d cross join lateral jsonb_array_elements_text(d->'matches') pending_id where not (s->'results' ? pending_id) and not (pending_id='GF' and not (s->'results' ? 'FP'))) then return s;end if;
+ g:=coalesce(s->'bracket',public.rock_tdm_graph(jsonb_array_length(s->'participants'),s->'order'));
+ if not exists(select 1 from jsonb_array_elements(g) ready_match where not (s->'results' ? (ready_match->>'id')) and (ready_match->>'id'<>'GF' or s->'results' ? 'FP') and public.rock_tdm_resolve(s,g,ready_match->'a') is not null and public.rock_tdm_resolve(s,g,ready_match->'b') is not null and not exists(select 1 from jsonb_array_elements(s->'draws') d where d->'matches' ? (ready_match->>'id'))) then return s;end if;
+ return public.rock_tdm_draw(s);
 end $$;
 create or replace function public.rock_tdm_list()
 returns jsonb language plpgsql security definer set search_path=public,pg_temp as $$
@@ -114,7 +124,7 @@ begin
   select jsonb_agg(i order by case when n=24 then random() else i::float end) into ord from generate_series(0,n/2-1) i;
   starts:=(p_payload->>'scheduledAt')::timestamptz;
   if starts is not null and starts<at_time then raise exception 'Schedule must be in the future';end if;
-  s:=jsonb_build_object('version',3,'title',p_payload->>'title','createdAt',at_time,'scheduledAt',starts,'participants',ps,'order',ord,'prizes',p_payload->'prizes','revealed',0,'results','{}'::jsonb,'events',jsonb_build_array(jsonb_build_object('at',at_time,'type','INITIAL DRAW')),'draws','[]'::jsonb);
+  s:=jsonb_build_object('version',3,'title',p_payload->>'title','createdAt',at_time,'scheduledAt',starts,'participants',ps,'order',ord,'prizes',p_payload->'prizes','revealed',case when starts is null then n else 0 end,'results','{}'::jsonb,'events',jsonb_build_array(jsonb_build_object('at',at_time,'type','INITIAL DRAW')),'draws','[]'::jsonb);
   g:=public.rock_tdm_graph(n,ord);s:=jsonb_set(s,'{bracket}',g);select jsonb_agg(value->>'id') into ids from jsonb_array_elements(g) where value->>'lane'='group';
   s:=jsonb_set(s,'{draws}',jsonb_build_array(jsonb_build_object('at',at_time,'matches',ids)));
   insert into public.rock_tdm_tournaments(state) values(s) returning * into t;
@@ -150,6 +160,7 @@ begin
   elsif p_action='confirm' then
    select value into m from jsonb_array_elements(g) where value->>'id'=p_payload->>'match';
    if m is null then raise exception 'Unknown match';end if;
+   if m->>'id'='GF' and not (s->'results' ? 'FP') then raise exception 'Complete FP / FOURTH PLACE before the Grand Final';end if;
    if s->'results' ? (m->>'id') then raise exception 'Confirmed results are immutable';end if;
    select exists(select 1 from jsonb_array_elements(s->'draws') d where d->'matches' ? (m->>'id')) into drawn;
    if not drawn then raise exception 'Draw this round first';end if;
@@ -160,12 +171,13 @@ begin
    if (w=a and (scores->>0)::integer<=(scores->>1)::integer) or (w=b and (scores->>1)::integer<=(scores->>0)::integer) then raise exception 'Winner must have the higher score';end if;
    s:=jsonb_set(s,array['results',m->>'id'],jsonb_build_object('winner',w,'scores',scores,'at',at_time));
    s:=jsonb_set(s,'{events}',s->'events'||jsonb_build_array(jsonb_build_object('at',at_time,'type','MATCH CONFIRMED','match',m->>'id','winner',w,'loser',case when w=a then b else a end,'scores',scores)));
+   s:=public.rock_tdm_advance_ready(s);
   else raise exception 'Unknown action';end if;
   update public.rock_tdm_tournaments set state=s,revision=revision+1,updated_at=at_time where id=p_id returning * into t;
  end if;
  return jsonb_build_object('id',t.id,'revision',t.revision,'state',t.state);
 end $$;
-revoke all on function public.rock_tdm_graph(integer,jsonb),public.rock_tdm_resolve(jsonb,jsonb,jsonb),public.rock_tdm_draw(jsonb),public.rock_tdm_list(),public.rock_tdm_legacy_list(),public.rock_tdm_owner(uuid,bigint,text,jsonb) from public,anon,authenticated;
+revoke all on function public.rock_tdm_graph(integer,jsonb),public.rock_tdm_resolve(jsonb,jsonb,jsonb),public.rock_tdm_draw(jsonb),public.rock_tdm_advance_ready(jsonb),public.rock_tdm_list(),public.rock_tdm_legacy_list(),public.rock_tdm_owner(uuid,bigint,text,jsonb) from public,anon,authenticated;
 grant execute on function public.rock_tdm_list(),public.rock_tdm_legacy_list() to anon,authenticated;
 grant execute on function public.rock_tdm_owner(uuid,bigint,text,jsonb) to authenticated;
 
