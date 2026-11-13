@@ -1,0 +1,17 @@
+# CLASSIC GROUP DIVISION
+
+The original #group-division tab and its links are now labelled CLASSIC GROUP DIVISION. TDM and WOW links and engines are unchanged. Only Published tournaments with type Classic, Squad, Duo, Solo or Scrim appear in this tab; an absent Classic event produces an honest empty state rather than showing a TDM tournament or draft.
+
+Owner workflow: Admin → Tournament → select a Classic tournament type → group slots A–D → SELECT / CHANGE REGISTERED CLASSIC TEAM. The picker reads all existing registrations, regardless of their original TDM/CLASSIC label, because the owner explicitly requested existing teams as well as future teams. It uses team_name and team_logo_path only; player photos are never used as team logos. The source event/type/status are shown to help choose the correct team. Search, Refresh and SHOW MORE are available. Every open and Refresh fetches fresh data in pages of 100; no roster is hard-coded. Repeated registrations with the same normalized team name show the latest registration once.
+
+Selecting a registered team downloads its private team logo through an owner-authorized 15-minute signed URL, converts it locally using the existing image converter and atomically fills the selected slot's name and durable logo image. A missing registered logo clears the prior slot logo; a logo conversion/download failure leaves both previous values intact. Cancelling or signing out prevents late writes. The existing manual name/logo upload controls remain available. A team cannot occupy two slots in the same tournament. Team selection can be changed before Save.
+
+Use SAVE ALL CHANGES to persist through the original tournament save. Only name/logo snapshots enter the existing groupDivision groups; registration IDs, contact details, private file paths and expiring signed links are not copied into public groups. Existing registration/storage owner policies are reused without broader read grants.
+
+Setting a group slot or schedule selects that Classic tournament as the public default (classicGroupTournamentId in the existing site JSON). Owner settings display automatically after successful Save/reload. Visitors can also choose between multiple published Classic events. A visitor's explicit selection is retained while browsing. The 32-team, 4-group, 8-teams-per-group format and match schedule are preserved.
+
+The narrow rock_classic_group_owner_guard database trigger protects Classic tournament group-publication fields and the default selector against anonymous or other-account modifications, while allowing the verified owner UID/email and service role. It does not change unrelated site policies or TDM/WOW data. Its function has no anon/authenticated direct EXECUTE grants. This protects the new group feature despite pre-existing permissive update rules on the shared site row.
+
+Files: rock-classic-groups.js, rock-pwa.js (loader only), supabase/rock-classic-groups.sql, tests/classic-groups.cjs, tests/classic-permissions.cjs and this document. index.html is unchanged.
+
+Tests cover current TDM and Classic registrations, more than 100 records, duplicate registration/team slots, replacement, later additions on reopen/Refresh, stable logo snapshots, save/reload and public display, multiple tournaments, draft/TDM exclusion, desktop/mobile overflow, logout/owner guards and database owner enforcement. Existing event/CONNECT tests and the integrated TDM FP control test are also checked. Production tests do not register real teams, save fake groups or send notifications.

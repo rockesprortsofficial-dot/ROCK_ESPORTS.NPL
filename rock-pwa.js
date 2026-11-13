@@ -119,3 +119,5 @@ if($('connect')&&!document.querySelector('script[src*="rock-connect.js"]')){
 })();
 // Publication notifications are separate from TDM, WOW and private calls.
 (()=>{const s=document.createElement('script');s.src=new URL('rock-event-notifications.js?v=1',document.baseURI).href;document.head.appendChild(s);})();
+// Classic team selection uses the existing Tournament group editor and saved groups.
+(()=>{const s=document.createElement('script');s.src=new URL('rock-classic-groups.js?v=1',document.baseURI).href;document.head.appendChild(s);})();
