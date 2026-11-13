@@ -122,20 +122,31 @@ Deno.serve(async(req:Request)=>{
    if(saved.error){if(saved.error.code==='23505')return json({error:'Subscription changed. Reload the App and retry.'},409);throw saved.error;}
    return json({success:true,member_linked:b.member_opt_in===true?true:b.member_opt_in===false?false:!!existing?.member_opt_in});
   }
-  if(!['preview','publish'].includes(action))return json({error:'Unknown notification action'},400);
+  if(!['preview','publish','publish_event'].includes(action))return json({error:'Unknown notification action'},400);
   if(!jwt)return json({error:'Owner login required'},401);
   const authClient=createClient(url,anon,{auth:{persistSession:false,autoRefreshToken:false}});const {data:auth,error:authError}=await authClient.auth.getUser(jwt);
   if(authError||auth.user?.email?.toLowerCase()!==ownerEmail||!auth.user.email_confirmed_at)return json({error:'Only the verified ROCK ESPORTS Owner may publish notifications'},403);
   if(action==='preview'){const counts=await checked(db.rpc('rock_app_push_counts'));return json({counts,configured:!!(publicKey&&privateKey&&subject),sends_notifications:false});}
+  // Automatic publications derive content and real/test status from saved data, never caller text.
+  if(action==='publish_event'){
+   if(!uuid(b.notification_id)||!['tournament','registration'].includes(b.kind))return json({error:'Invalid publication'},400);
+   const event=await checked(db.rpc('rock_event_notice',{p_kind:b.kind,p_id:b.notification_id}));
+   if(!event)return json({success:true,skipped:true,sent:0,failed:0,pending:0,has_more:false});
+   Object.assign(b,event);
+   const prior=await checked(db.from('rock_event_announcements').select('completed').eq('id',b.notification_id).maybeSingle());
+   if(prior?.completed)return json({success:true,already_published:true,sent:0,failed:0,pending:0,has_more:false});
+  }
   const audience=String(b.audience||''),title=String(b.title||'').trim(),message=String(b.message||'').trim(),section=audience==='members'?'rock-meeting-room':String(b.section||'notifications');
   if(!['public','members'].includes(audience)||!uuid(b.notification_id)||!title||title.length>120||!message||message.length>1200||!sections.has(section))return json({error:'Check the audience, title, message and target section'},400);
   if(!publicKey||!privateKey||!subject)return json({error:'Push is not configured; nothing was published'},503);
   const published=await checked(db.rpc('rock_app_publish',{p_id:b.notification_id,p_audience:audience,p_title:title,p_message:message,p_section:section,p_owner:ownerEmail}));const notice=Array.isArray(published)?published[0]:published;if(!notice?.id)throw Error('Publication was not returned');
+  if(action==='publish_event')await checked(db.from('rock_event_announcements').upsert({id:notice.id},{onConflict:'id',ignoreDuplicates:true}));
   const targets=await checked(db.rpc('rock_app_push_targets',{p_notice:notice.id,p_limit:100}));
   webpush.setVapidDetails(subject,publicKey,privateKey);
-  let offset=0;const payload=JSON.stringify({title,body:Array.from(message).slice(0,300).join('')+(Array.from(message).length>300?'…':''),data:{audience,notice_id:notice.id,section}});
+  let offset=0;const payload=JSON.stringify({title,body:Array.from(message).slice(0,action==='publish_event'?900:300).join('')+(Array.from(message).length>(action==='publish_event'?900:300)?'…':''),data:{audience,notice_id:notice.id,section}});
   await Promise.all(Array.from({length:Math.min(8,targets.length)},async()=>{while(offset<targets.length){const item=targets[offset++];const claimed=await checked(db.rpc('rock_app_claim_push',{p_notice:notice.id,p_endpoint_hash:item.endpoint_hash}));if(!claimed)continue;let state='failed';try{if(!pushEndpoint(item.endpoint))throw Error('Unsupported push provider');await webpush.sendNotification({endpoint:item.endpoint,keys:{p256dh:item.p256dh,auth:item.auth}},payload,{TTL:3600,urgency:'high',timeout:5000});state='sent';}catch(error){const status=(error as {statusCode?:number}).statusCode;if(status===404||status===410){await db.from('rock_app_devices').delete().eq('endpoint',item.endpoint);await db.from('rock_push_subscriptions').delete().eq('endpoint',item.endpoint);}}await checked(db.from('rock_app_push_deliveries').update({state}).eq('notice_id',notice.id).eq('endpoint_hash',item.endpoint_hash));}}));
   const remaining=await checked(db.rpc('rock_app_push_targets',{p_notice:notice.id,p_limit:1}));const logs=await checked(db.from('rock_app_push_deliveries').select('state').eq('notice_id',notice.id));
+  if(action==='publish_event'&&!remaining.length&&!logs.some((x:any)=>x.state==='pending'))await checked(db.from('rock_event_announcements').update({completed:true}).eq('id',notice.id));
   return json({success:true,notification_id:notice.id,audience,has_more:remaining.length>0,sent:logs.filter((x:any)=>x.state==='sent').length,failed:logs.filter((x:any)=>x.state==='failed').length,pending:logs.filter((x:any)=>x.state==='pending').length});
  }catch(error){console.error('ROCK App notification request failed',error instanceof Error?error.name:'Error');return json({error:'Notification request could not be completed. Retry with the same publication.'},500);}
 });
