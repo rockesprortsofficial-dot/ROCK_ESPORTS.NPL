@@ -123,9 +123,15 @@ begin
   if not found then raise exception 'Tournament not found';end if;
   if t.revision<>p_revision then raise exception 'Another session changed this tournament. Refresh and retry.' using errcode='40001';end if;
   s:=t.state;n:=jsonb_array_length(s->'participants');g:=coalesce(s->'bracket',public.rock_tdm_graph(n,s->'order'));
+  if p_action in ('delete','archive') and exists(select 1 from jsonb_array_elements(g) bracket_entry where not (s->'results' ? (bracket_entry->>'id'))) then raise exception 'Finish all tournament matches before deleting or resetting.';end if;
   if p_action='delete' then
    if p_payload->>'confirmation' is distinct from p_id::text then raise exception 'Deletion confirmation required';end if;
    delete from public.rock_tdm_tournaments where id=p_id;return jsonb_build_object('deleted',p_id);
+  elsif p_action='archive' then
+   if p_payload->>'confirmation' is distinct from p_id::text then raise exception 'Reset confirmation required';end if;
+   if s->>'archivedAt' is not null then raise exception 'Tournament already reset to archive';end if;
+   s:=s||jsonb_build_object('archivedAt',at_time);
+   s:=jsonb_set(s,'{events}',s->'events'||jsonb_build_array(jsonb_build_object('at',at_time,'type','COMPLETED TOURNAMENT RESET TO ARCHIVE')));
   elsif p_action='reveal' then
    if (s->>'revealed')::integer>=n then raise exception 'All chits are open';end if;
    s:=jsonb_set(s,'{revealed}',to_jsonb((s->>'revealed')::integer+1));
@@ -152,4 +158,24 @@ end $$;
 revoke all on function public.rock_tdm_graph(integer,jsonb),public.rock_tdm_resolve(jsonb,jsonb,jsonb),public.rock_tdm_draw(jsonb),public.rock_tdm_list(),public.rock_tdm_legacy_list(),public.rock_tdm_owner(uuid,bigint,text,jsonb) from public,anon,authenticated;
 grant execute on function public.rock_tdm_list(),public.rock_tdm_legacy_list() to anon,authenticated;
 grant execute on function public.rock_tdm_owner(uuid,bigint,text,jsonb) to authenticated;
+
+-- One-time cleanup for the preserved old TDM draw; never touches a newer/different draw.
+create or replace function public.rock_tdm_delete_legacy(p_id text,p_confirmation text)
+returns jsonb language plpgsql security definer set search_path=public,pg_temp as $$
+declare archived public.rock_tdm_legacy_snapshots; cleared jsonb; did_clear boolean:=false;
+begin
+ if auth.uid() is null or lower(coalesce(auth.jwt()->>'email',''))<>'rockesprorts.official@gmail.com' then raise exception 'Owner login required' using errcode='42501';end if;
+ if p_confirmation is distinct from p_id then raise exception 'Deletion confirmation required';end if;
+ select * into archived from public.rock_tdm_legacy_snapshots where id=p_id for update;
+ if not found then raise exception 'Old draw not found. Refresh and retry.';end if;
+ cleared:=jsonb_build_object('stage','','stageLabel','Waiting for Admin','participants','[]'::jsonb,'chits','[]'::jsonb,'revealed',0,'status','idle','history','[]'::jsonb);
+ update public.rock_esports_live_draw set state=cleared,updated_at=clock_timestamp()
+ where state->>'stage'='tdmGroups' and id::text||':'||md5(state::text)=p_id;
+ did_clear:=found;
+ delete from public.rock_tdm_legacy_snapshots where id=p_id;
+ return jsonb_build_object('deleted',p_id,'currentReset',did_clear,'clearedState',case when did_clear then cleared else null end);
+end $$;
+revoke all on function public.rock_tdm_delete_legacy(text,text) from public,anon,authenticated;
+grant execute on function public.rock_tdm_delete_legacy(text,text) to authenticated;
+
 commit;

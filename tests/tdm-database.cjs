@@ -9,7 +9,7 @@ const {graph,model,groupCount}=require('../rock-tdm.js');
  create function auth.uid() returns uuid language sql stable as $$ select nullif(current_setting('test.uid',true),'')::uuid $$;
  create function auth.jwt() returns jsonb language sql stable as $$ select jsonb_build_object('email',current_setting('test.email',true)) $$;
  grant usage on schema auth to anon,authenticated; grant execute on all functions in schema auth to anon,authenticated;
- create table public.rock_esports_live_draw(id text primary key,state jsonb);
+ create table public.rock_esports_live_draw(id text primary key,state jsonb,updated_at timestamptz default now());
  insert into public.rock_esports_live_draw values ('rock-esports-main','{"stage":"tdmGroups","tdmFormat":2,"participants":["Legacy"],"history":["old result"],"tdmPlayers":[{"photo":"https://example.org/old.jpg"}]}');`);
  await db.exec('alter default privileges grant execute on functions to anon,authenticated');
  const sql=fs.readFileSync(require('node:path').join(__dirname,'../supabase/rock-tdm-setup.sql'),'utf8');
@@ -30,7 +30,7 @@ const {graph,model,groupCount}=require('../rock-tdm.js');
  for(const n of [8,16,24,32]){
   for(let run=0;run<3;run++){
    const payload={title:`Test ${n} ${run}`,participants:Array.from({length:n},(_,i)=>({name:`Player ${i}`,photo:'https://example.org/p.jpg',logo:'https://example.org/l.jpg'})),prizes:['','','',''],scheduledAt:null};
-   let t=await rpc(null,0,'create',payload),original=t.state.createdAt;
+   let t=await rpc(null,0,'create',payload),original=t.state.createdAt;await fail(rpc(t.id,t.revision,'delete',{confirmation:t.id}),/Finish all tournament/);await fail(rpc(t.id,t.revision,'archive',{confirmation:t.id}),/Finish all tournament/);
    assert.equal(groupCount(n),n===8?4:n/4);
    await db.exec('reset role');const sqlGraph=await scalar('select rock_tdm_graph($1,$2::jsonb)',[n,JSON.stringify(t.state.order)]);
    await db.exec('set role authenticated');assert.deepEqual(t.state.bracket,sqlGraph,'complete graph is persisted');assert.deepEqual(sqlGraph,graph(n,t.state.order).matches,'browser and server graph must agree');
@@ -70,6 +70,7 @@ const {graph,model,groupCount}=require('../rock-tdm.js');
    await fail(rpc(t.id,t.revision,'draw'),/No new round/);
    await fail(rpc(t.id,t.revision,'delete',{confirmation:'wrong'}),/confirmation/);
    await auth('intruder@example.org');await fail(rpc(t.id,t.revision,'delete',{confirmation:t.id}),/Owner login/);await auth();
+   if(run===0){const results=structuredClone(t.state.results),draws=structuredClone(t.state.draws);await fail(rpc(t.id,t.revision,'archive',{confirmation:'wrong'}),/confirmation/);t=await rpc(t.id,t.revision,'archive',{confirmation:t.id});assert.ok(t.state.archivedAt);assert.deepEqual(t.state.results,results);assert.deepEqual(t.state.draws,draws);assert.equal(t.state.createdAt,original);await fail(rpc(t.id,t.revision,'archive',{confirmation:t.id}),/already reset/);}
    totals.push({players:n,matches:played,podium:m.places,history:t.state.events.length});
   }
  }
@@ -81,6 +82,12 @@ const {graph,model,groupCount}=require('../rock-tdm.js');
  await fail(query('update rock_tdm_tournaments set revision=0'),/permission denied/);
  await db.exec('reset role;set role authenticated');await auth();
  const doomed=list[0];await rpc(doomed.id,doomed.revision,'delete',{confirmation:doomed.id});assert.equal((await scalar('select rock_tdm_list()')).length,12);
+ const deleteLegacy=(id,confirmation=id)=>scalar('select rock_tdm_delete_legacy($1,$2)',[id,confirmation]);
+ await db.exec('reset role;set role anon');await fail(deleteLegacy(legacy[0].id),/permission denied/);
+ await db.exec('reset role;set role authenticated');await auth('intruder@example.org');await fail(deleteLegacy(legacy[0].id),/Owner login/);await auth();
+ await fail(deleteLegacy(legacy[0].id,'wrong'),/confirmation/);const removed=await deleteLegacy(legacy[0].id);assert.equal(removed.currentReset,true);assert.equal((await scalar('select rock_tdm_legacy_list()')).length,0);
+ await db.exec('reset role');assert.equal(await scalar("select state->>'stage' from rock_esports_live_draw where id='rock-esports-main'"),'');
+ await query('insert into rock_tdm_legacy_snapshots(id,state) values($1,$2::jsonb)',[legacy[0].id,JSON.stringify(legacy[0].state)]);await query("update rock_esports_live_draw set state='{\"stage\":\"round1\",\"participants\":[]}'::jsonb");await db.exec('set role authenticated');const protectedDraw=await deleteLegacy(legacy[0].id);assert.equal(protectedDraw.currentReset,false);await db.exec('reset role');assert.equal(await scalar("select state->>'stage' from rock_esports_live_draw where id='rock-esports-main'"),'round1');
  console.log(JSON.stringify({passed:true,tournaments:totals,permissions:'anonymous and non-owner writes blocked; owner-only confirmed deletion',history:'immutable results, original dates, prior draws, media and legacy snapshot retained',scheduled:'server reveal exactly once'},null,2));
  await db.close();
 })().catch(e=>{console.error(e);process.exit(1);});

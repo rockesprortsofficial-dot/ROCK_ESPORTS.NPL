@@ -55,3 +55,9 @@ To run the database tests, install `@electric-sql/pglite` and point `TDM_PGLITE_
 4. After explicit release confirmation, merge/publish the website files and check the two TDM tabs on desktop and mobile.
 
 No production SQL, tournament mutations, deletion, merge or deployment was executed during this work. The new code intentionally refuses to create a tournament when its required RPC setup is missing.
+
+## Completed reset/delete and old-system removal
+
+Only the new TDM Live Draw controls are shown. Obsolete live-draw modes, legacy public cards and their reset control are hidden. WOW code and data are untouched. Old snapshots remain protected in storage; an owner-only, twice-confirmed cleanup button can delete an old snapshot and clear the shared legacy row only when its exact ID/content hash still matches. A changed or non-TDM shared draw is preserved.
+
+New tournaments cannot be reset or deleted before every bracket match has a confirmed result. After completion, Reset archives the tournament, keeps every result/draw/player image and clears the active selection/form for a fresh tournament. Archived results remain available in the selector. Delete removes only the selected completed tournament after owner confirmation. Both restrictions are enforced by PostgreSQL. The controls repaint after saving so they cannot remain accidentally disabled by the save-in-progress flag.
