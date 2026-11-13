@@ -79,3 +79,13 @@ For an unscheduled tournament, the first saved draw publishes every initial matc
 Confirming the final outstanding match in a stage automatically appends the next eligible stage without changing prior pairings, results or timestamps. The old manual next-round control is only a fallback for historical records. Fourth place (FP) must be confirmed before an unplayed Grand Final (GF) can be drawn or confirmed; the owner checkbox explains this dependency. Existing historical GF results are retained rather than silently erased or replayed. Pre-drawn but unplayed legacy GF entries do not deadlock the FP route.
 
 All 8/16/24/32 sizes are tested for immediate first-round availability, original within-group pairing, automatic route progression and FP-before-GF order. Browser tests exercise the per-player checkboxes and confirm all 12/24/36/48 matches, with all initial photos and logos present together.
+
+## Registered-player selection for new TDM draws
+
+Owner-only registered-player selection is lazy-loaded from rock-tdm-registration.js. Opening the name entry or SELECT REGISTERED PLAYERS lists TDM registrations, including Pending registrations and registrations added later. Every reopening reloads the latest database rows; REFRESH also reloads while the picker stays open. Search and SHOW MORE support larger lists, and database reads page in batches of 100. No fixed roster is embedded.
+
+Selecting a player atomically fills real_full_name (PUBG name fallback), player_photo_path into PLAYER PHOTO, and team_logo_path into TEAM LOGO, then advances to the next empty slot. CHANGE PLAYER replaces all three fields before the draw. Duplicate registrations/names cannot occupy two slots. Existing published names and match pairings remain immutable. Manual entry and photo/logo correction remain available.
+
+The picker uses the existing authenticated owner policies on rock_esports_registrations and private rock-player-documents storage; no database grants or registration records are changed. It reads no contact details. Short-lived signed URLs are used only for private previews/downloads; selected pictures are converted into durable image snapshots. Public tournament payloads contain only name/photo/logo, never registration IDs, private storage paths, or expiring signed links. Sign-out clears the private chooser and unsaved registered roster.
+
+Tests in tests/tdm-registration.cjs cover distinct photo/logo colors, replacement, duplicate prevention, cancellation, all four roster sizes, new records on reopening/Refresh, public payload fields and sign-out. Existing all-round browser regression still confirms all 120 matches across 8/16/24/32 players.
