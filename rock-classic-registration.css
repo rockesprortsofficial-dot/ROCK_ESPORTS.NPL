@@ -22,3 +22,5 @@
 #rockPlayerRegistrationForm.rock-classic-active>.rock-reg-submit{color:#001722!important}#rockPlayerRegistrationForm.rock-classic-active .rock-reg-consent{display:flex;align-items:flex-start;gap:12px;text-align:left}#rockPlayerRegistrationForm.rock-classic-active .rock-reg-consent input{width:18px;height:18px;flex:0 0 18px;margin:2px 0}#rockPlayerRegistrationForm.rock-classic-active .rock-reg-consent span{flex:1}
 @media print{.rock-classic-file input[readonly]{color:#10243a;background:white;border-color:#789}}
 .rock-classic-file .cr-owner-logo{border:2px solid #80e6f5;border-radius:12px;padding:10px;text-align:center;align-self:start}.rock-classic-file .cr-owner-logo img{width:100%;height:125px;object-fit:contain}.rock-classic-file .cr-owner-logo small{font-weight:800}
+
+#rockRegTypeChoices[hidden]{display:none!important}
