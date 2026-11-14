@@ -20,3 +20,10 @@ const build=window.buildTournamentEditor;window.buildTournamentEditor=function(.
 try{sb.auth.onAuthStateChange((event,session)=>{if(!session)clear();});}catch(_){}
 renderGroupDivisionTab();
 })();
+
+/* Additive broadcast bootstrap. Existing Classic group behavior above is unchanged. */
+(()=>{if(window.__rockBroadcastLoader)return;window.__rockBroadcastLoader=true;
+ const link=document.createElement('link');link.rel='stylesheet';link.href=new URL('rock-live-broadcast.css?v=1',document.baseURI).href;document.head.append(link);
+ const load=src=>new Promise((resolve,reject)=>{const script=document.createElement('script');script.src=new URL(src,document.baseURI).href;script.onload=resolve;script.onerror=reject;document.head.append(script);});
+ load('rock-broadcast-core.js?v=1').then(()=>load('rock-broadcast-audio.js?v=1')).then(()=>load('rock-broadcast-compositor.js?v=1')).then(()=>load('rock-broadcast-studio.js?v=1')).then(()=>load('rock-broadcast-export.js?v=1')).then(()=>load('rock-live-broadcast.js?v=1')).catch(()=>console.warn('LIVE BROADCAST assets unavailable; existing tabs remain available.'));
+})();

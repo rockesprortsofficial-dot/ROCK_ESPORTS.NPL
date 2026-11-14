@@ -1,0 +1,2 @@
+const fs=require('node:fs'),C=require('../rock-broadcast-core'),X=require('../rock-broadcast-export');
+const s=C.blank();s.teams.forEach((t,i)=>t.placement=i+1);s.teams[0].name='नेपाली & <ROCK>';s.teams[0].players[0].name='=SUM(1,2)';s.teams[0].players[0].kills=4;s.teams[0].players[0].realName='Private real name';fs.writeFileSync(process.env.BROADCAST_EXPORT_TEST_FILE||'../broadcast-export-validation.xlsx',X.xlsx(s,C));console.log('Generated native XLSX validation fixture');

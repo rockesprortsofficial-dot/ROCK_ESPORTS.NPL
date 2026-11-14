@@ -1,0 +1,23 @@
+const {chromium}=require('playwright'),assert=require('node:assert/strict'),path=require('node:path');
+(async()=>{const b=await chromium.launch({channel:'chrome',headless:true,args:['--use-fake-device-for-media-stream','--use-fake-ui-for-media-stream']});try{
+ const p=await b.newPage({viewport:{width:1920,height:1080}});await p.goto((process.env.BROADCAST_TEST_URL||'http://127.0.0.1:61013')+'/offline.html');
+ await p.setContent('<div id="live-broadcast"></div>');for(const f of ['rock-broadcast-core.js','rock-broadcast-audio.js','rock-broadcast-studio.js','rock-broadcast-compositor.js'])await p.addScriptTag({url:'/'+f});
+ const r=await p.evaluate(async()=>{
+  const calls=[],rooms=[];class Room{constructor(){this.events={};this.localParticipant={identity:'owner',publishTrack:async(track,options)=>{calls.push({publish:options.name,source:options.source,kind:track.kind});},unpublishTrack:async()=>{}};rooms.push(this);}on(e,f){this.events[e]=f;return this;}async connect(url,token){calls.push({connect:token});}async startAudio(){}async disconnect(){this.closed=true;}}
+  window.LivekitClient={Room,RoomEvent:{TrackSubscribed:'track',TrackUnsubscribed:'untrack',Disconnected:'left',Reconnecting:'retry',Reconnected:'back'},Track:{Source:{Microphone:'microphone',Camera:'camera',ScreenShare:'screen_share',ScreenShareAudio:'screen_share_audio'}}};
+  const api=async(action,body)=>{calls.push({action,...body});return {id:'11111111-1111-1111-1111-111111111111',token:action,server_url:'wss://test.invalid'};};
+  const audio=new RockBroadcastAudio();await audio.enableMic();
+  const context=new AudioContext(),osc=context.createOscillator(),destination=context.createMediaStreamDestination();osc.connect(destination);osc.start();
+  const source=document.createElement('canvas');source.width=1280;source.height=720;source.getContext('2d').fillRect(0,0,1280,720);const screen=source.captureStream(30);screen.addTrack(destination.stream.getAudioTracks()[0]);await audio.setScreen(screen);
+  const studio=new RockBroadcastStudio({api,audio});await studio.connect('owner','11111111-1111-1111-1111-111111111111');await studio.sync({screen,mic:audio.mic});const afterFirst=calls.filter(c=>c.publish).length;await studio.sync({screen,mic:audio.mic});const afterSecond=calls.filter(c=>c.publish).length;
+  const remoteTrack=destination.stream.getAudioTracks()[0].clone(),fakeTrack={sid:'remote-mic',kind:'audio',mediaStreamTrack:remoteTrack,attach(){const e=document.createElement('audio');e.srcObject=new MediaStream([remoteTrack]);this.element=e;return e;},detach(){return [this.element];}};
+  studio.receive(fakeTrack,{source:'microphone'},{identity:'cohost'});await new Promise(r=>setTimeout(r,50));const outgoingHasCohost=audio.remote.size===1;
+  studio.receive({...fakeTrack,sid:'self-mic'},{source:'microphone'},{identity:'owner'});const ownPlayback=document.querySelector('[data-broadcast-audio="self-mic"]')!==null;
+  const state=RockBroadcastCore.blank();state.teams[0].players[0].name='VISIBLE P1';const compositor=new RockBroadcastCompositor(()=>state,()=>({game:null,hosts:[]}));let redraws=0;const rebuild=compositor.rebuild.bind(compositor);compositor.rebuild=s=>{redraws++;rebuild(s);};
+  await studio.startOutput(compositor);await new Promise(r=>setTimeout(r,1200));const canvas={width:compositor.canvas.width,height:compositor.canvas.height,frames:compositor.frames,redraws};
+  await studio.stopOutput(true);studio.remove('remote-mic');const removed=audio.remote.size===0&&document.querySelector('[data-broadcast-audio="remote-mic"]')===null;await studio.disconnect();await audio.stop();screen.getTracks().forEach(t=>t.stop());remoteTrack.stop();osc.stop();await context.close();
+  return {calls,afterFirst,afterSecond,outgoingHasCohost,ownPlayback,canvas,removed,roomsClosed:rooms.every(r=>r.closed)};
+ });
+ assert.equal(r.afterFirst,3);assert.equal(r.afterSecond,3);assert.equal(r.outgoingHasCohost,true);assert.equal(r.ownPlayback,false);assert.equal(r.removed,true);assert.equal(r.roomsClosed,true);assert.equal(r.canvas.width,1920);assert.equal(r.canvas.height,1080);assert.ok(r.canvas.frames>3);assert.ok(r.canvas.redraws<r.canvas.frames);assert.ok(r.calls.some(c=>c.publish==='broadcast-mix'));assert.ok(r.calls.some(c=>c.publish==='broadcast-composite'));assert.ok(r.calls.some(c=>c.action==='pause'));
+ console.log('PASS: studio track routing, no self-monitor, co-host included once in output, unchanged sources not republished, 1080p compositor frame/cache, output start/pause/cleanup. LiveKit transport mocked; audio/canvas browser APIs real.');
+}finally{await b.close();}})().catch(e=>{console.error(e);process.exit(1)});
