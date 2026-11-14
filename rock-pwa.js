@@ -121,3 +121,5 @@ if($('connect')&&!document.querySelector('script[src*="rock-connect.js"]')){
 (()=>{const s=document.createElement('script');s.src=new URL('rock-event-notifications.js?v=1',document.baseURI).href;document.head.appendChild(s);})();
 // Classic team selection uses the existing Tournament group editor and saved groups.
 (()=>{const s=document.createElement('script');s.src=new URL('rock-classic-groups.js?v=1',document.baseURI).href;document.head.appendChild(s);})();
+// Classic registration keeps the existing TDM form and uses local image compression.
+(()=>{const s=document.createElement('script');s.src=new URL('rock-classic-registration.js?v=1',document.baseURI).href;document.head.appendChild(s);})();
