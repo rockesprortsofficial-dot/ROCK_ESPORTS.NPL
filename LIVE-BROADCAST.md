@@ -1,6 +1,6 @@
 # LIVE BROADCAST — implementation and activation status
 
-Adds one navigation item named exactly **LIVE BROADCAST**. `index.html` is unchanged. An additive bootstrap at the end of the existing Classic group addon loads the new stylesheet and six isolated scripts. All existing website content, branding, navigation and feature logic is preserved; the original Classic addon content is retained verbatim before its new bootstrap. No deployment, production database change, real streaming session or notification has been performed. A read-only production preflight confirmed no broadcast-specific tables currently exist; existing LiveKit meeting services are present and unchanged.
+Adds one navigation item named exactly **LIVE BROADCAST**. `index.html` is unchanged. An additive bootstrap at the end of the existing Classic group addon loads the new stylesheet and six isolated scripts. All existing website content, branding, navigation and feature logic is preserved; the original Classic addon content is retained verbatim before its new bootstrap. Activation was explicitly authorized by the owner. On 15 November 2026 (Asia/Tokyo), the broadcast-only foundation/studio SQL and the new rock-broadcast-studio function were activated. Existing LiveKit meeting services are unchanged. Website release is tracked in PR #10. No real studio session, public video stream, YouTube/TikTok stream or notification was started.
 
 ## Working locally
 
@@ -16,7 +16,7 @@ Adds one navigation item named exactly **LIVE BROADCAST**. `index.html` is uncha
 - Separate broadcast header and monitoring name/logo preview, upload, publish and restore-last-published. PNG/JPEG/WebP up to 2 MB input, resized to 256 px. No generated replacement logo. Original site branding remains unchanged. Host 1 and Host 2 also have independent neon/blue/gold/clean frame themes, an uploaded frame backdrop, brightness, contrast and framing zoom. These appear in the outgoing canvas. This frames the real camera; it does not perform person segmentation or remove the physical room background. SVG and advanced logo transforms remain deferred.
 - Optional non-obstructive promotion area below gameplay: every 900 seconds from match start, shown for 34 seconds; editable HTTPS links, off by default. No fake official links.
 - Local screen/camera previews with cleanup. Screen requests up to 1080p/60; actual resolution, frame rate and system audio depend on browser/OS. No recording.
-- Game/system audio plus owner mic and remote co-host mix for composed output. Private studio publishes separate raw game/microphone tracks and subscribes only to remote hosts, providing mix-minus without intentionally returning a host’s own mic. Independent game/owner mic volumes, level meter, mic/camera toggles and optional headphone sound check. Echo cancellation/noise suppression are requested; monitoring defaults off. Only game-tab/window audio should be captured: whole-system audio can capture host playback and reintroduce echo outside the routing graph. All remote transport code awaits deployment and two-device verification.
+- Game/system audio plus owner mic and remote co-host mix for composed output. Private studio publishes separate raw game/microphone tracks and subscribes only to remote hosts, providing mix-minus without intentionally returning a host’s own mic. Independent game/owner mic volumes, level meter, mic/camera toggles and optional headphone sound check. Echo cancellation/noise suppression are requested; monitoring defaults off. Only game-tab/window audio should be captured: whole-system audio can capture host playback and reintroduce echo outside the routing graph. The new server function is deployed; physical two-device verification still requires an owner studio session.
 
 ## Backend activation required
 
@@ -24,7 +24,7 @@ Review and test `supabase/rock-live-broadcast.sql`, and `supabase/rock-broadcast
 
 Public visitors read only the current sanitized snapshot. Owner history has no public read, update or delete permissions. Publishing uses an optimistic revision check to reject stale writes. Public projection omits real names, PUBG UID, contacts, registration storage paths and private match history. Public refresh polls every 30 seconds; ranking recalculates immediately after each explicit owner publish. This is not a telemetry-driven realtime service.
 
-Draft edits live in memory until published or saved as a verified result. Refresh/closing the page loses unsaved edits. History currently loads the newest 100 saved revisions. Public snapshots are not a substitute for private history backup. Match history storage is ready for reviewed setup but has not been enabled in production.
+Draft edits live in memory until published or saved as a verified result. Refresh/closing the page loses unsaved edits. History currently loads the newest 100 saved revisions. Public snapshots are not a substitute for private history backup. Match history storage is now enabled in production after authorization; no demo results were inserted.
 
 ## Streaming implementation ready for staged activation
 
@@ -32,7 +32,7 @@ The new `rock-broadcast-studio` Edge Function and browser adapter implement a de
 
 The outgoing 1920×1080 canvas includes gameplay, both host cameras, all 64 player portraits/status, PMWC ranking, owner branding and promotions. Static graphics/images are cached; video redraw defaults to 30 FPS, with an optional 60 FPS output setting for capable devices/connections. Host camera settings and game audio must be selected correctly. Keep the broadcaster tab visible: background-tab canvas throttling, network, device/GPU and platform transcoding can affect smoothness and latency. There is no claim of zero latency, guaranteed 60 FPS or zero acoustic echo.
 
-The server uses existing project-level LiveKit configuration names, but deployment, egress service availability and actual platform permissions are not yet verified. No real stream was started. Local tests cover role grants, invitation security, API authorization/start/stop/revoke, outgoing track routing, own-mic exclusion, remote co-host mix, native browser canvas/audio and mocked LiveKit calls. They do not prove real Internet transport performance. A private/unlisted end-to-end test on two physical devices plus a separate viewer is required after activation.
+The new server function is deployed using existing project-level LiveKit configuration. Its status endpoint returned HTTP 200/offline, unauthenticated studio creation returned 403, and anonymous private results/studio reads were denied. Actual LiveKit room/egress availability and platform permissions still require an owner session test. No real stream was started. Local tests cover role grants, invitation security, API authorization/start/stop/revoke, outgoing track routing, own-mic exclusion, remote co-host mix, native browser canvas/audio and mocked LiveKit calls. They do not prove real Internet transport performance. A private/unlisted end-to-end test on two physical devices plus a separate viewer is required after activation.
 
 ROCK MONITORING currently shows owner-entered status and computed scores. Automatic health/knock/revive detection, kill attribution, automatic elimination placement, kill feed, damage, survival, circle timeline, MVP and replay need authorized reliable game telemetry or an explicitly validated spectator-data integration. Unknown values display `—`, never invented metrics. No fake viewer count or LIVE video badge is shown.
 
@@ -69,16 +69,16 @@ ROCK MONITORING currently shows owner-entered status and computed scores. Automa
 
 `node tests/broadcast-audio.cjs` uses synthetic game sound and browser fake microphones, not user hardware. Confirms mixing, individual gain controls, default monitoring off and cleanup. It cannot establish real remote echo or stream quality. `broadcast-studio.cjs` adds mocked-SDK track routing, native 1080p canvas capture/cache and output cleanup checks; `broadcast-studio-service.cjs` verifies the server handler with mocked database/LiveKit services; `broadcast-studio-policy.cjs` checks isolated role grants and invitation hashing. `broadcast-export.cjs` plus `broadcast-export.py` independently inspect native XLSX ZIP/CRC/XML output.
 
-`node tests/broadcast-database.cjs` uses local PGlite (`PGLITE_PATH` optional) to test the SQL, anonymous/non-owner access denial, owner publication, stale revision rejection, private field rejection and append-only private history. No production access.
+`node tests/broadcast-database.cjs` uses local PGlite (`PGLITE_PATH` optional) to test the SQL, anonymous/non-owner access denial, owner publication, stale revision rejection, private field rejection and append-only private history. Local test suites do not access production; separate authorized production checks used only public status and anonymous-access denial tests.
 
 Existing Classic group browser regression is also run against the modified full page using `tests/run-existing-regression.cjs`; original test source is not changed.
 
-## Concrete activation checklist — authorization required
+## Operator setup and end-to-end checks
 
-1. Review/apply `supabase/rock-live-broadcast.sql`, then `supabase/rock-broadcast-studio.sql` to the intended project. Both have been exercised in local Postgres/PGlite. Confirm the verified owner UUID is correctly allowlisted.
+1. Review/apply `supabase/rock-live-broadcast.sql`, then `supabase/rock-broadcast-studio.sql` to the intended project. Both passed local Postgres/PGlite checks and were applied after explicit owner approval. Confirm the verified owner UUID is correctly allowlisted.
 2. Deploy only the new `rock-broadcast-studio` function; `verify_jwt=false` is intentional for public viewers/co-host invitations. Owner actions separately verify Supabase user JWT and the database owner allowlist. Do not change existing meeting/token functions.
 3. Confirm existing server secrets `LIVEKIT_URL`, `LIVEKIT_API_KEY`, `LIVEKIT_API_SECRET` and Supabase defaults. For platforms configure `BROADCAST_YOUTUBE_RTMP_URL` and/or `BROADCAST_TIKTOK_RTMP_URL` using each platform’s approved RTMP destination/key, never chat or frontend fields.
-4. Approve the website PR and Pages release separately. No merge or website deployment has been performed.
+4. Website activation was explicitly authorized. PR #10 tracks the website merge/Pages release; its current GitHub status is authoritative.
 5. In Owner Dashboard publish real roster/branding, create studio, share its invitation privately, connect owner/co-host and select game-only sound. Verify both hosts hear one another once, own mic is absent from return, camera themes appear, and no clipping/echo is heard.
 6. Start website output, verify from a separate viewer, then explicitly select/start platform streams. Test pause/end/reconnect and confirm platform dashboards stop. No automatic notification is sent.
 
@@ -88,3 +88,5 @@ Host video orientation is intentionally unmirrored in preview and composed outpu
 
 
 USB webcams: Owner and co-host both have camera selectors and Refresh buttons. Browser `enumerateDevices` lists USB and built-in video inputs; a selected device is requested explicitly by device ID at an ideal 1280×720/30 FPS. Device-change refresh and unplug/reconnect handling are included. Camera switching requests `audio:false` and preserves the active microphone. New camera access is cancelled if the studio/page is stopped while permission is pending. Labels appear after browser permission; USB camera/driver/OS/browser support and permissions must still be verified on the physical PC/laptop. Synthetic browser tests cover discovery, exact selection, unplug, reconnect and microphone preservation. No device IDs are published in the scoreboard or stored in server branding.
+
+Production activation checks: one verified owner allowlisted; one empty public snapshot slot; zero saved demo matches and zero studios. Existing advisory warnings were not changed. New no-policy INFO notices on the server-only studio table/private allowlist reflect intentional default-deny access. No private data was made public.
