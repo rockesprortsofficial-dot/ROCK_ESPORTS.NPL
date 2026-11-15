@@ -34,7 +34,7 @@ class BroadcastStudio {
     const wanted=new Map([['mic',{track:mic?.getAudioTracks()[0],source:S.Microphone}],['camera',{track:camera?.getVideoTracks()[0],source:S.Camera}]]);
     if(this.role==='owner'){wanted.set('game',{track:screen?.getVideoTracks()[0],source:S.ScreenShare});wanted.set('game-audio',{track:screen?.getAudioTracks()[0],source:S.ScreenShareAudio});}
     for(const [name,sent] of this.sent){if(wanted.get(name)?.track?.id!==sent.original){await this.room.localParticipant.unpublishTrack(sent.track);sent.track.stop();this.sent.delete(name);}}
-    for(const [name,value] of wanted){if(!value.track||this.sent.has(name))continue;const clone=value.track.clone();try{await this.room.localParticipant.publishTrack(clone,{name,source:value.source,simulcast:clone.kind==='video',videoEncoding:{maxBitrate:name==='game'?6000000:1200000,maxFramerate:30}});this.sent.set(name,{original:value.track.id,track:clone});}catch(e){clone.stop();throw e;}}
+    for(const [name,value] of wanted){if(!value.track||this.sent.has(name))continue;const clone=value.track.clone();try{await this.room.localParticipant.publishTrack(clone,{name,source:value.source,simulcast:clone.kind==='video',videoEncoding:{maxBitrate:name==='game'?6000000:1200000,maxFramerate:30},screenShareEncoding:{maxBitrate:6000000,maxFramerate:30},stream:name.startsWith('game')?'gameplay':'host',...(name==='game-audio'?{audioPreset:{maxBitrate:192000},forceStereo:true,dtx:false,red:true}:{})});this.sent.set(name,{original:value.track.id,track:clone});}catch(e){clone.stop();throw e;}}
   }
   async startOutput(compositor,fps=30){
     if(this.role!=='owner'||!this.room)throw Error('Owner studio connection required');if(this.output||this.starting)throw Error('Output already connected or starting');
@@ -42,8 +42,8 @@ class BroadcastStudio {
     if(!this.audio.mic?.getAudioTracks().length)throw Error('Enable the owner microphone first.');
     fps=fps===60?60:30;this.starting=true;const generation=this.generation;let room;
     try{const response=await this.api('output-token',{id:this.id}),sdk=await this.sdk();if(generation!==this.generation)throw Error('Output cancelled');room=new sdk.Room({dynacast:true});this.output=room;this.compositor=compositor;await room.connect(response.server_url,response.token,{autoSubscribe:false});if(generation!==this.generation)throw Error('Output cancelled');const stream=compositor.start(fps),video=stream.getVideoTracks()[0],mixed=this.audio.getMixedTrack();
-      await room.localParticipant.publishTrack(video.clone(),{source:sdk.Track.Source.ScreenShare,name:'broadcast-composite',simulcast:true,videoEncoding:{maxBitrate:fps===60?12000000:8000000,maxFramerate:fps}});
-      await room.localParticipant.publishTrack(mixed.clone(),{source:sdk.Track.Source.ScreenShareAudio,name:'broadcast-mix'});
+      await room.localParticipant.publishTrack(video.clone(),{source:sdk.Track.Source.ScreenShare,name:'broadcast-composite',simulcast:true,videoEncoding:{maxBitrate:fps===60?12000000:8000000,maxFramerate:fps},screenShareEncoding:{maxBitrate:fps===60?12000000:8000000,maxFramerate:fps},degradationPreference:'balanced',stream:'broadcast-composite'});
+      await room.localParticipant.publishTrack(mixed.clone(),{source:sdk.Track.Source.ScreenShareAudio,name:'broadcast-mix',stream:'broadcast-composite',audioPreset:{maxBitrate:192000},forceStereo:true,dtx:false,red:true});
       if(generation!==this.generation)throw Error('Output cancelled');await this.api('live',{id:this.id});this.onState('live');
     }catch(e){if(this.output===room)await this.stopOutput(false);else await room?.disconnect();throw e;}finally{this.starting=false;}
   }
