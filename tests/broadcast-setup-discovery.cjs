@@ -1,0 +1,11 @@
+const assert=require('node:assert/strict');
+module.exports=async function setupDiscovery(page){
+ assert.equal(await page.locator('#lb-setup-teams').isVisible(),true);assert.equal(await page.locator('#lb-setup-channels').isVisible(),true);
+ const gameVideo=await page.locator('#lb-game-video').elementHandle();await page.click('#lb-setup-channels');await page.waitForSelector('#lb-youtube-channel');await page.fill('#lb-youtube-channel','https://www.youtube.com/@RockTest?tracking=discard');await page.fill('#lb-tiktok-channel','@rocktest');await page.click('#lb-save-channels');await page.waitForFunction(()=>document.getElementById('lb-status').textContent.includes('Channel/profile links saved'));assert.equal(await page.evaluate(node=>document.getElementById('lb-game-video')===node,gameVideo),true);
+ assert.equal(await page.locator('#lb-channel-links a').count(),2);assert.equal(await page.locator('#lb-channel-links a').first().getAttribute('href'),'https://www.youtube.com/@RockTest');assert.equal(await page.locator('#lb-channel-links a').last().getAttribute('href'),'https://www.tiktok.com/@rocktest');
+ assert.equal(await page.evaluate(()=>window.published.teams[0].name),'TEAM 1'); // Saving links must not publish the selected private roster.
+ assert.equal(await page.evaluate(()=>window.__studioRooms===undefined),true);assert.equal(await page.evaluate(()=>window.published.phase),'setup');
+ await page.fill('#lb-tiktok-channel','https://evil.example/@rock');await page.click('#lb-save-channels');await page.waitForFunction(()=>document.getElementById('lb-status').textContent.includes('official HTTPS'));assert.equal(await page.evaluate(()=>window.published.channels.tiktok),'https://www.tiktok.com/@rocktest');
+ await page.click('#lb-setup-teams');await page.waitForSelector('#lb-team-name');assert.equal(await page.inputValue('#lb-team-name'),'REGISTERED ROCK');assert.equal(await page.locator('[data-roster-preview] .lb-player img').count(),4);assert.match(await page.locator('[data-roster-preview]').textContent(),/REGISTERED P4/);
+ console.log('PASS: obvious team/channel shortcuts, selected four-player roster preview, canonical channel links, unsafe-link rejection, and channel save isolated from private roster/stream start.');
+};
