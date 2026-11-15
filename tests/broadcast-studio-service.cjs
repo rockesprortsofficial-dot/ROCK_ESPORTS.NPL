@@ -19,6 +19,11 @@ const outputRoom=policy.grantFor('output',id).room;participants.set(outputRoom,[
 const viewer=await call('viewer-token',{id});assert.equal(viewer.status,200);assert.equal(JSON.parse(viewer.body.token).grant.canPublish,false);assert.ok(!JSON.stringify((await call('status')).body).includes(password));
 assert.equal((await call('simulcast',{id,platforms:['youtube','tiktok']},true)).status,200);assert.equal(egresses.length,1);assert.equal(egresses[0].out.urls.length,2);assert.equal((await call('simulcast',{id,platforms:['youtube']},true)).status,409);assert.ok(!JSON.stringify((await call('status')).body).includes('PRIVATE_KEY'));
 assert.equal((await call('stop-simulcast',{id},true)).status,200);assert.deepEqual(stopped,['EGRESS1']);assert.equal(rows[0].live,true);
+env.BROADCAST_YOUTUBE_RTMP_URL='';env.BROADCAST_TIKTOK_RTMP_URL='';
+const credentials={youtube:{server:'rtmps://a.rtmps.youtube.com/live2',key:'TEST_PRIVATE_KEY'}};
+assert.equal((await call('simulcast',{id,platforms:['youtube'],destinations:credentials})).status,403);
+for(const server of ['https://a.rtmps.youtube.com/live2','rtmp://127.0.0.1/live','rtmp://a.rtmp.youtube.com.evil.test/live','rtmp://user:pass@a.rtmp.youtube.com/live'])assert.equal((await call('simulcast',{id,platforms:['youtube'],destinations:{youtube:{server,key:'TEST_PRIVATE_KEY'}}},true)).status,400);
+const direct=await call('simulcast',{id,platforms:['youtube'],destinations:credentials},true);assert.equal(direct.status,200);assert.equal(egresses.at(-1).out.urls[0],'rtmps://a.rtmps.youtube.com/live2/TEST_PRIVATE_KEY');assert.ok(!JSON.stringify(direct.body).includes('TEST_PRIVATE_KEY'));assert.ok(!JSON.stringify(rows).includes('TEST_PRIVATE_KEY'));assert.ok(!JSON.stringify((await call('status')).body).includes('TEST_PRIVATE_KEY'));await call('stop-simulcast',{id},true);
 assert.equal((await call('revoke-cohost',{id},true)).status,200);assert.equal((await call('cohost-token',{id,password})).status,403);
 assert.equal((await call('pause',{id},true)).status,200);assert.equal(rows[0].live,false);assert.equal((await call('viewer-token',{id})).status,409);
 assert.equal((await call('stop',{id},true)).status,200);assert.equal((await call('owner-token',{id},true)).status,404);
