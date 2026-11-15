@@ -25,5 +25,5 @@ renderGroupDivisionTab();
 (()=>{if(window.__rockBroadcastLoader)return;window.__rockBroadcastLoader=true;
  const link=document.createElement('link');link.rel='stylesheet';link.href=new URL('rock-live-broadcast.css?v=1',document.baseURI).href;document.head.append(link);
  const load=src=>new Promise((resolve,reject)=>{const script=document.createElement('script');script.src=new URL(src,document.baseURI).href;script.onload=resolve;script.onerror=reject;document.head.append(script);});
- load('rock-broadcast-core.js?v=1').then(()=>load('rock-broadcast-audio.js?v=2')).then(()=>load('rock-broadcast-compositor.js?v=1')).then(()=>load('rock-broadcast-studio.js?v=2')).then(()=>load('rock-broadcast-export.js?v=1')).then(()=>load('rock-live-broadcast.js?v=4')).catch(()=>console.warn('LIVE BROADCAST assets unavailable; existing tabs remain available.'));
+ load('rock-broadcast-core.js?v=1').then(()=>load('rock-broadcast-audio.js?v=2')).then(()=>load('rock-broadcast-compositor.js?v=1')).then(()=>load('rock-broadcast-studio.js?v=2')).then(()=>load('rock-broadcast-export.js?v=1')).then(()=>load('rock-live-broadcast.js?v=5')).catch(()=>console.warn('LIVE BROADCAST assets unavailable; existing tabs remain available.'));
 })();
