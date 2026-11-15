@@ -1,7 +1,7 @@
 import 'jsr:@supabase/functions-js/edge-runtime.d.ts';
 import {createClient} from 'npm:@supabase/supabase-js@2.95.0';
 import {AccessToken,RoomServiceClient,EgressClient,StreamOutput,StreamProtocol} from 'npm:livekit-server-sdk@2.13.3';
-import {grantFor,allowedAction,invitationHash,safeStatus} from './policy.ts';
+import {grantFor,allowedAction,invitationHash,safeStatus,streamDestination} from './policy.ts';
 
 const cors={'Access-Control-Allow-Origin':'*','Access-Control-Allow-Headers':'authorization,apikey,x-client-info,content-type','Access-Control-Allow-Methods':'POST,OPTIONS','Cache-Control':'no-store'};
 const reply=(body:unknown,status=200)=>new Response(JSON.stringify(body),{status,headers:{...cors,'Content-Type':'application/json'}});
@@ -102,7 +102,7 @@ Deno.serve(async req=>{
       if(!row.live)return reply({error:'Start website broadcast first'},409);
       const targets=Array.isArray(body.platforms)?body.platforms:[];
       if(!targets.length||targets.some(p=>!['youtube','tiktok'].includes(p)))return reply({error:'Choose YouTube and/or TikTok'},400);
-      const urls=[...new Set(targets)].map(p=>p==='youtube'?youtube:tiktok);
+      let urls:string[];try{urls=[...new Set(targets)].map(p=>body.destinations?.[p]?streamDestination(p,body.destinations[p]):p==='youtube'?youtube:tiktok);}catch(_){return reply({error:'Enter a valid official YouTube/TikTok RTMP server and stream key in private stream setup.'},400);}
       if(urls.some(u=>!/^rtmps?:\/\//.test(u)))return reply({error:'Selected platform stream destination is not configured on the server'},503);
       // Atomic claim prevents duplicate paid egress starts from double clicks or two owner windows.
       const claim=await db.from('rock_broadcast_studios').update({egress_state:'starting'}).eq('id',id).eq('egress_state','idle').select('id').maybeSingle();
