@@ -766,9 +766,9 @@
     finally { submit.disabled = false; }
   });
 
-  const routeIds = new Set([...nav.querySelectorAll('a[href^="#"]')].map((a) => a.hash.slice(1)).filter((id) => document.getElementById(id)));
-  routeIds.add("rockCommunityFeed");
   function showSelectedTab() {
+    const routeIds = new Set([...nav.querySelectorAll('a[href^="#"]')].map((a) => a.hash.slice(1)).filter((id) => document.getElementById(id)));
+    routeIds.add("rockCommunityFeed");
     let raw = "";
     try { raw = decodeURIComponent(location.hash.slice(1)); } catch (_) {}
     const selected = routeIds.has(raw) ? raw : "rockCommunityFeed";
@@ -791,6 +791,7 @@
     });
   }
   window.addEventListener("hashchange", showSelectedTab);
+  window.addEventListener("rock-navigation-updated", showSelectedTab);
   applyLanguage();
   showSelectedTab();
   // Guest reading must not wait for authentication to initialize.
