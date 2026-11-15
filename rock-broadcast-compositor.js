@@ -15,6 +15,7 @@ class BroadcastCompositor {
   text(text,x,y,size=20,color='#fff',max=1000){const h=this.h;h.fillStyle=color;h.font=`bold ${size}px Arial`;h.fillText(String(text??''),x,y,max);}
   panel(x,y,w,h,color='#19baff'){const c=this.h;c.fillStyle='#030a19';c.fillRect(x,y,w,h);c.strokeStyle=color;c.lineWidth=3;c.shadowColor=color;c.shadowBlur=10;c.strokeRect(x,y,w,h);c.shadowBlur=0;}
   picture(url,x,y,w,h,out=false){const i=this.image(url),c=this.h;c.fillStyle='#17324c';c.fillRect(x,y,w,h);if(i){c.save();if(out)c.filter='grayscale(1)';c.drawImage(i,x,y,w,h);c.restore();}else{c.fillStyle='#60849d';c.beginPath();c.arc(x+w/2,y+h*.3,Math.min(w,h)*.2,0,Math.PI*2);c.fill();c.fillRect(x+w*.2,y+h*.6,w*.6,h*.4);}}
+  monitorLogo(url,cx,cy,diameter=88){const image=this.image(url),c=this.h,r=diameter/2;c.save();c.fillStyle='#fff';c.strokeStyle='#54eaff';c.lineWidth=3;c.shadowColor='#00cfff';c.shadowBlur=12;c.beginPath();c.arc(cx,cy,r,0,2*Math.PI);c.fill();c.stroke();c.shadowBlur=0;c.clip();if(image){const scale=Math.min(diameter/image.naturalWidth,diameter/image.naturalHeight),w=image.naturalWidth*scale,h=image.naturalHeight*scale;c.drawImage(image,cx-w/2,cy-h/2,w,h);}c.restore();}
   rebuild(s){
     const C=RockBroadcastCore,h=this.h;h.clearRect(0,0,1920,1080);h.fillStyle='#020614';h.fillRect(0,0,1920,1080);
     this.panel(8,8,1904,74);this.picture(s.branding.headerLogo,18,14,62,62);
@@ -32,7 +33,7 @@ class BroadcastCompositor {
     const ended=s.phase==='ended';this.gameRect=ended?[368,100,1184,360]:[368,100,1184,654];this.hostRects=ended?[[370,485,465,425],[1085,485,465,425]]:[[370,780,350,130],[1200,780,350,130]];this.ringY=ended?695:843;
     this.hostRects.forEach((r,i)=>{const style=s.hostStyles?.[i]||{},color=({neon:'#ff2454',blue:'#15bfff',gold:'#ffc83b',clean:'#c9dbea'})[style.theme]||'#ff2454';this.panel(r[0]-4,r[1]-4,r[2]+8,r[3]+8,color);const background=this.image(style.background);if(background)this.h.drawImage(background,r[0],r[1],r[2],r[3]);this.text(s.hosts[i],r[0]+15,r[1]+r[3]-12,22,'#fff',r[2]-30);});
     h.strokeStyle='#1ec8ff';h.lineWidth=5;h.beginPath();h.ellipse(960,this.ringY,ended?110:215,65,0,0,2*Math.PI);h.stroke();
-    this.picture(s.branding.monitorLogo,923,this.ringY-53,74,62);this.text(s.branding.monitorName,ended?865:790,this.ringY+47,ended?15:24,'#fff',ended?190:340);
+    this.monitorLogo(s.branding.monitorLogo,960,this.ringY-13,88);this.text(s.branding.monitorName,ended?865:790,this.ringY+47,ended?15:24,'#fff',ended?190:340);
     this.panel(364,930,460,91);this.text('LIVE RANKING · PROVISIONAL',376,950,16,'#9be6ff');
     C.ranking(s.teams).slice(0,4).forEach((t,i)=>this.text(`${i+1}   ${t.short||t.name}    K ${t.kills}    PTS ${t.total}`,378,966+i*16,14,i===0?'#ffd94a':'#fff',430));
     this.panel(836,930,345,91);this.text(`MAP ${s.map}`,849,955,18);this.text(`MATCH ${s.match} · GROUP ${s.group}`,849,982,18);this.text('PMWC 10/6/5/4/3/2/1/1 + ELIMS',849,1007,14,'#9be6ff');
