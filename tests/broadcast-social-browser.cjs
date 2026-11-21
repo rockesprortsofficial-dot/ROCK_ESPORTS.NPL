@@ -38,7 +38,33 @@ await page.evaluate(()=>{window.testDisplayMedia=navigator.mediaDevices.getDispl
 await page.click('#rbs-share');
 await page.waitForFunction(()=>document.querySelector('#rbs-status').textContent.includes('mirroring window'));
 await page.evaluate(()=>{navigator.mediaDevices.getDisplayMedia=()=>{if(!navigator.userActivation.isActive)throw Error('Missing click activation');return window.testDisplayMedia();};});
-await page.click('#rbs-share');await page.waitForFunction(()=>document.querySelector('#rbs-game').srcObject?.getVideoTracks().length===1);const proportions=await page.evaluate(()=>{const s=document.querySelector('#rbs-screen').getBoundingClientRect(),g=document.querySelector('.rbs-shared').getBoundingClientRect(),t=document.querySelector('.rbs-tile').getBoundingClientRect();return {fraction:g.height/s.height,noOverlap:g.bottom<t.top};});assert.ok(proportions.fraction>.75);assert.equal(proportions.noOverlap,true);await page.locator('#rbs-screen').screenshot({path:path.resolve(__dirname,'../../../outputs/social-gameplay-preview.png')});await page.locator('summary').filter({hasText:'YouTube / TikTok'}).click();
+await page.click('#rbs-share');await page.waitForFunction(()=>document.querySelector('#rbs-game').srcObject?.getVideoTracks().length===1);
+await page.evaluate(()=>{
+ const room=window.__rooms.findLast(r=>r.token==='owner-token');
+ const canvas=document.createElement('canvas');canvas.width=640;canvas.height=360;
+ const ctx=canvas.getContext('2d');ctx.fillStyle='#a0f';ctx.fillRect(0,0,640,360);
+ const mediaStreamTrack=canvas.captureStream(30).getVideoTracks()[0];
+ const camera={sid:'remote-cohost-camera',kind:'video',mediaStreamTrack,detach:()=>[],attach:video=>{
+  if(video.hidden)throw Error('Remote camera must be visible before attachment');
+  video.srcObject=new MediaStream([mediaStreamTrack]);
+ }};
+ window.testRemoteCamera=camera;
+ room.handlers.track(camera,{source:'camera'},{identity:'cohost',name:'Remote Co-host'});
+});
+const remoteVideo=page.locator('.rbs-tile').filter({hasText:'CO-HOST'}).locator('video');
+await remoteVideo.waitFor({state:'visible'});
+await page.waitForFunction(()=>[...document.querySelectorAll('.rbs-tile')].some(tile=>tile.textContent==='CO-HOST'&&tile.querySelector('video').videoWidth===640));
+await page.evaluate(()=>{
+ const room=window.__rooms.findLast(r=>r.token==='owner-token');
+ room.handlers.untrack(window.testRemoteCamera);
+});
+assert.equal(await remoteVideo.isHidden(),true);
+await page.evaluate(()=>{
+ const room=window.__rooms.findLast(r=>r.token==='owner-token');
+ room.handlers.track(window.testRemoteCamera,{source:'camera'},{identity:'cohost',name:'Remote Co-host'});
+});
+await remoteVideo.waitFor({state:'visible'});
+const proportions=await page.evaluate(()=>{const s=document.querySelector('#rbs-screen').getBoundingClientRect(),g=document.querySelector('.rbs-shared').getBoundingClientRect(),t=document.querySelector('.rbs-tile').getBoundingClientRect();return {fraction:g.height/s.height,noOverlap:g.bottom<t.top};});assert.ok(proportions.fraction>.75);assert.equal(proportions.noOverlap,true);await page.locator('#rbs-screen').screenshot({path:path.resolve(__dirname,'../../../outputs/social-gameplay-preview.png')});await page.locator('summary').filter({hasText:'YouTube / TikTok'}).click();
 await page.fill('#rbs-youtube-key','MOCK_YOUTUBE_KEY');
 await page.click('#rbs-save-youtube');
 await page.waitForFunction(()=>document.querySelector('#rbs-status').textContent.includes('YouTube settings saved'));
