@@ -6,3 +6,10 @@ export function grant(role:string,id:string){
 }
 export const digest=async(s:string)=>Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(s)))).map(x=>x.toString(16).padStart(2,'0')).join('');
 export const publicStatus=(r:any)=>({id:r?.id||null,mode:r?.mode||null,live:!!r?.live&&!r?.ended,join_open:!!r?.join_open});
+
+export async function gameplayInviteHash(secret:string,id:string,password:string){
+ const encoder=new TextEncoder();
+ const key=await crypto.subtle.importKey('raw',encoder.encode(secret),{name:'HMAC',hash:'SHA-256'},false,['sign']);
+ const hash=await crypto.subtle.sign('HMAC',key,encoder.encode('rock-gameplay-invite:'+id+':'+password));
+ return Array.from(new Uint8Array(hash),byte=>byte.toString(16).padStart(2,'0')).join('');
+}

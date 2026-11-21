@@ -26,7 +26,7 @@ assert.equal((await call('cohost-token',{id:gid,password:'a'.repeat(48)},false,'
 assert.equal((await call('cohost-token',{id:gid,login:'ROCK',password:'a'.repeat(48)},false,'gameplay')).status,403);
 await call('stop',{id:gid},true,'gameplay');
 assert.equal((await call('create',{password:'weak'},true,'gameplay')).status,400);
-const chosen='74d0c68d76e0e27ac208969599dc36dee83a36140a543f87';
+const chosen='RockCup27';
 const createdGameplay=await call('create',{password:chosen},true,'gameplay');
 assert.equal(createdGameplay.status,201);
 assert.equal((await call('cohost-token',{id:createdGameplay.body.id,login:'BAD',password:chosen},false,'gameplay')).status,403);
@@ -34,6 +34,10 @@ const cohost=await call('cohost-token',{id:createdGameplay.body.id,login:'ROCK',
 assert.equal(cohost.status,200);
 assert.deepEqual(JSON.parse(cohost.body.token).video.canPublishSources,[1,2]);
 assert.equal(JSON.stringify(rows).includes(chosen),false);
+const updated=await call('create',{password:'RockCup28'},true,'gameplay');
+assert.equal(updated.body.id,createdGameplay.body.id);
+assert.equal((await call('cohost-token',{id:updated.body.id,login:'ROCK',password:chosen},false,'gameplay')).status,403);
+assert.equal((await call('cohost-token',{id:updated.body.id,login:'ROCK',password:'RockCup28'},false,'gameplay')).status,200);
 const newOut=policy.grant('output',createdGameplay.body.id).room;
 participants.set(newOut,[{identity:'output',tracks:[{type:0},{type:1}]},{identity:'viewer-a'},{identity:'viewer-b'}]);
 await call('live',{id:createdGameplay.body.id},true,'gameplay');
