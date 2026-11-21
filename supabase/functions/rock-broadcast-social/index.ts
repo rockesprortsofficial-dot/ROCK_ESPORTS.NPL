@@ -1,7 +1,7 @@
 import 'jsr:@supabase/functions-js/edge-runtime.d.ts';
 import {createClient} from 'npm:@supabase/supabase-js@2.95.0';
 import {AccessToken,TokenVerifier,RoomServiceClient,EgressClient,StreamOutput,StreamProtocol} from 'npm:livekit-server-sdk@2.13.3';
-import {modes,actions,grant,digest,publicStatus,gameplayInviteHash} from './policy.ts';
+import {modes,actions,grant,digest,publicStatus,gameplayInviteHash,sealYoutubeSettings,openYoutubeSettings} from './policy.ts';
 import {streamDestination} from './destinations.ts';
 const cors={'Access-Control-Allow-Origin':'*','Access-Control-Allow-Headers':'authorization,apikey,content-type','Access-Control-Allow-Methods':'POST,OPTIONS','Cache-Control':'no-store'};
 const reply=(v:unknown,status=200)=>new Response(JSON.stringify(v),{status,headers:{...cors,'Content-Type':'application/json'}});
@@ -27,6 +27,15 @@ Deno.serve(async req=>{
    }catch(_){viewers=null;}
   }
   return reply({...status,viewers});
+ }
+ if(action==='save-youtube'){
+  if(mode!=='gameplay')return reply({error:'Gameplay only'},404);
+  const ownerId=await owner();
+  let destination:string;
+  try{destination=streamDestination('youtube',b.destination);}catch(_){return reply({error:'Enter a valid YouTube RTMP server and stream key'},400);}
+  const encrypted=await sealYoutubeSettings(secret,ownerId,destination);
+  await checked(db.from('rock_gameplay_youtube_settings').upsert({owner_id:ownerId,encrypted}));
+  return reply({saved:true});
  }
  if(action==='create'){
   const ownerId=await owner();
@@ -144,7 +153,16 @@ Deno.serve(async req=>{
  if(action==='simulcast'){
   if(!row.live)return reply({error:'Start website output first'},409);
   const selected=Array.isArray(b.platforms)?[...new Set<string>(b.platforms)]:[];if(!selected.length||selected.some(p=>!['youtube','tiktok'].includes(p)))return reply({error:'Select YouTube/TikTok'},400);
-  let urls:string[];try{urls=selected.map(p=>b.destinations?.[p]?streamDestination(p,b.destinations[p]):Deno.env.get(p==='youtube'?'BROADCAST_YOUTUBE_RTMP_URL':'BROADCAST_TIKTOK_RTMP_URL')||'');}catch(_){return reply({error:'Invalid private platform RTMP settings'},400);}
+  let savedYoutube='';
+  if(mode==='gameplay'&&selected.includes('youtube')&&!b.destinations?.youtube){
+   const saved=await checked(db.from('rock_gameplay_youtube_settings').select('encrypted').eq('owner_id',ownerId).maybeSingle());
+   if(saved)try{savedYoutube=await openYoutubeSettings(secret,ownerId,saved.encrypted);}
+   catch(_){return reply({error:'Save your YouTube settings again before starting.'},409);}
+  }
+  let urls:string[];
+  try{urls=selected.map(p=>b.destinations?.[p]?streamDestination(p,b.destinations[p]):
+   (p==='youtube'?savedYoutube||Deno.env.get('BROADCAST_YOUTUBE_RTMP_URL'):Deno.env.get('BROADCAST_TIKTOK_RTMP_URL'))||'');}
+  catch(_){return reply({error:'Invalid private platform RTMP settings'},400);}
   if(urls.some(u=>!/^rtmps?:\/\//.test(u)))return reply({error:'Enter platform RTMP server/key; a channel link is not a streaming destination'},503);
   const claim=await checked(db.from('rock_broadcast_social_sessions').update({egress_state:'starting'}).eq('id',id).eq('egress_state','idle').select('id').maybeSingle());if(!claim)return reply({error:'Platform output is already starting/running'},409);
   try{const result=await egress.startRoomCompositeEgress(outRoom,new StreamOutput({protocol:StreamProtocol.RTMP,urls}),{layout:'speaker'});const saved=await checked(db.from('rock_broadcast_social_sessions').update({egress_id:result.egressId,egress_state:'running'}).eq('id',id).eq('live',true).eq('ended',false).eq('egress_state','starting').select('id').maybeSingle());if(!saved){await egress.stopEgress(result.egressId);throw Error();}return reply({started:true,platforms:selected});}
