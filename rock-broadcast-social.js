@@ -186,7 +186,48 @@ function showInvite(password){const url=new URL(location.pathname,location.origi
 async function leave(){if(leaving)return;leaving=true;epoch++;try{if(role&&ticket)await api('leave',{id:sessionId,call_token:ticket}).catch(()=>{});await studio.disconnect();source?.getTracks().forEach(t=>t.stop());camera?.getTracks().forEach(t=>t.stop());source=camera=null;await audio.stop();role=null;ticket=null;joinResponse=null;people.clear();videoNodes.clear();$('rbs-tiles').replaceChildren();$('rbs-game').srcObject=null;$('rbs-game').hidden=true;$('rbs-empty').hidden=false;renderPeople();renderAccess();}finally{leaving=false;}}
 async function enableCamera(){if(!role)throw Error('Join the call first');const gen=epoch,id=$('rbs-camera-device').value;const next=await navigator.mediaDevices.getUserMedia({audio:false,video:{...(id?{deviceId:{exact:id}}:{}),width:{ideal:640},height:{ideal:360},frameRate:{ideal:20,max:30},facingMode:'user'}});if(gen!==epoch||!role){next.getTracks().forEach(t=>t.stop());throw Error('Camera request cancelled');}camera?.getTracks().forEach(t=>t.stop());camera=next;camera.getVideoTracks()[0].onended=()=>{if(camera!==next)return;camera=null;attachLocal();};attachLocal();await studio.sync({camera,mic:audio.mic,screen:source});await devices();say(mode==='gameplay'?'Camera connected.':'Camera connected. Original orientation; no mirror.');}
 async function enableMic(){if(!role)throw Error('Join the call first');const gen=epoch;await audio.enableMic($('rbs-mic-device').value);if(gen!==epoch||!role){await audio.stop();throw Error('Mic request cancelled');}await studio.sync({camera,mic:audio.mic,screen:source});await devices();say('Microphone connected to the website call.');}
-async function share(){await requireOwner();if(role!=='owner')throw Error('Create / reconnect this mode first');const gen=epoch;let next;try{if($('rbs-source').value==='capture'){const id=$('rbs-capture-video').value;if(!id)throw Error('Select the capture card video device');next=await navigator.mediaDevices.getUserMedia({video:{deviceId:{exact:id},width:{ideal:1920},height:{ideal:1080},frameRate:{ideal:60,max:60}},audio:false});const aid=$('rbs-capture-audio').value;if(aid){const sound=await navigator.mediaDevices.getUserMedia({video:false,audio:{deviceId:{exact:aid},echoCancellation:false,noiseSuppression:false,autoGainControl:false,sampleRate:{ideal:48000},channelCount:{ideal:2}}});sound.getAudioTracks().forEach(t=>next.addTrack(t));}}else next=await navigator.mediaDevices.getDisplayMedia({video:{width:{ideal:1920},height:{ideal:1080},frameRate:{ideal:60,max:60}},audio:true});if(gen!==epoch||role!=='owner')throw Error('Source request cancelled');source?.getTracks().forEach(t=>t.stop());source=next;await audio.setScreen(source);source.getVideoTracks()[0].onended=()=>{if(source!==next)return;source=null;audio.setScreen(null);attachLocal();studio.sync({camera,mic:audio.mic,screen:null}).catch(()=>{});};attachLocal();await studio.sync({screen:source,camera,mic:audio.mic});say(source.getAudioTracks().length?'Game/video and its audio shared with the call.':'Video shared without game audio. Select capture audio or share tab audio to include game sound.');}catch(e){if(next!==source)next?.getTracks().forEach(t=>t.stop());throw e;}}
+async function shareGameplayWindow(){
+ if(!owner||role!=='owner')throw Error('Create / reconnect this mode first');
+ const devices=navigator.mediaDevices;
+ if(typeof devices?.getDisplayMedia!=='function'){
+  throw Error('Screen sharing is unavailable in this browser. Mirror the phone to a computer and share the mirroring window, or use a USB / HDMI capture card.');
+ }
+ const gen=epoch;
+ let next;
+ try{
+  // Open the browser picker before awaiting any network or auth work.
+  next=await devices.getDisplayMedia({video:{width:{ideal:1920},height:{ideal:1080},frameRate:{ideal:60,max:60}},audio:true});
+  if(gen!==epoch||role!=='owner'||mode!=='gameplay')return;
+  const video=next.getVideoTracks()[0];
+  if(!video||video.readyState!=='live')throw Error('The selected window sent no live video.');
+  source?.getTracks().forEach(track=>track.stop());
+  source=next;
+  video.onended=()=>{
+   if(source!==next)return;
+   source=null;
+   next.getTracks().forEach(track=>track.stop());
+   attachLocal();
+   audio.setScreen(null).catch(()=>{});
+   studio.sync({camera,mic:audio.mic,screen:null}).catch(()=>{});
+   say('Screen sharing ended. Click Connect / replace game or video to share again.');
+  };
+  attachLocal();
+  await audio.setScreen(next);
+  await studio.sync({screen:next,camera,mic:audio.mic});
+  if(gen!==epoch||source!==next)return;
+  say(next.getAudioTracks().length?'Gameplay video and sound connected.':'Gameplay video connected without shared sound.');
+ }catch(error){
+  if(gen!==epoch)return;
+  if(error.name==='NotAllowedError')throw Error('Screen sharing was cancelled or blocked. Click Connect again and choose the phone mirroring window.');
+  if(error.name==='InvalidStateError')throw Error('Open GAMEPLAY in an active browser window, then click Connect again.');
+  throw error;
+ }finally{
+  if(next&&source!==next)next.getTracks().forEach(track=>track.stop());
+ }
+}
+async function share(){
+ if(mode==='gameplay'&&$('rbs-source').value==='screen')return shareGameplayWindow();
+await requireOwner();if(role!=='owner')throw Error('Create / reconnect this mode first');const gen=epoch;let next;try{if($('rbs-source').value==='capture'){const id=$('rbs-capture-video').value;if(!id)throw Error('Select the capture card video device');next=await navigator.mediaDevices.getUserMedia({video:{deviceId:{exact:id},width:{ideal:1920},height:{ideal:1080},frameRate:{ideal:60,max:60}},audio:false});const aid=$('rbs-capture-audio').value;if(aid){const sound=await navigator.mediaDevices.getUserMedia({video:false,audio:{deviceId:{exact:aid},echoCancellation:false,noiseSuppression:false,autoGainControl:false,sampleRate:{ideal:48000},channelCount:{ideal:2}}});sound.getAudioTracks().forEach(t=>next.addTrack(t));}}else next=await navigator.mediaDevices.getDisplayMedia({video:{width:{ideal:1920},height:{ideal:1080},frameRate:{ideal:60,max:60}},audio:true});if(gen!==epoch||role!=='owner')throw Error('Source request cancelled');source?.getTracks().forEach(t=>t.stop());source=next;await audio.setScreen(source);source.getVideoTracks()[0].onended=()=>{if(source!==next)return;source=null;audio.setScreen(null);attachLocal();studio.sync({camera,mic:audio.mic,screen:null}).catch(()=>{});};attachLocal();await studio.sync({screen:source,camera,mic:audio.mic});say(source.getAudioTracks().length?'Game/video and its audio shared with the call.':'Video shared without game audio. Select capture audio or share tab audio to include game sound.');}catch(e){if(next!==source)next?.getTracks().forEach(t=>t.stop());throw e;}}
 async function syncViewer(){if(viewerBusy||mode==='tournament'||(role&&mode!=='gameplay'))return;viewerBusy=true;const gen=epoch;try{if(document.hidden||location.hash!=='#live-broadcast'){await viewer.disconnect();viewerId=null;closeFeed();return;}const status=await api('status');if(gen!==epoch)return;showViewers(status);syncFeed(status);if(role)return;if(!status.live){if(viewer.role)await viewer.disconnect();viewerId=null;$('rbs-view-stage').hidden=true;$('rbs-screen').hidden=false;return;}if(viewerId!==status.id||!viewer.room||viewer.room.state==='disconnected'){await viewer.connect('viewer',status.id);if(gen!==epoch||role){await viewer.disconnect();return;}viewerId=status.id;}$('rbs-view-stage').hidden=false;$('rbs-screen').hidden=true;}catch(_){/* Quiet public retry; visitors never get member/admin controls. */}finally{viewerBusy=false;}}
 async function select(next){if(switching||next===mode)return;switching=true;tabs.querySelectorAll('button').forEach(b=>b.disabled=true);try{if(mode==='tournament')await window.RockTournamentBroadcast?.suspend();else{if(studio.output)await studio.stopOutput(true);await leave();await viewer.disconnect();viewerId=null;}for(const p of ['youtube','tiktok']){$('rbs-'+p+'-key').value='';$('rbs-'+p+'-server').value='';}$('rbs-invite').replaceChildren();closeFeed();mode=next;viewerCount.hidden=true;$('rbs-owner-password').value='';invited=query.get('broadcastMode')===mode&&!!query.get('socialCohost');window.rockBroadcastSelectedMode=mode;tournament.hidden=mode!=='tournament';panel.hidden=mode==='tournament';panel.setAttribute('aria-labelledby','rbs-tab-'+mode);tabs.querySelectorAll('button').forEach(b=>b.setAttribute('aria-selected',String(b.dataset.mode===mode)));const u=new URL(location.href);if(!invited){u.searchParams.delete('socialCohost');u.searchParams.delete('socialStudio');}if(mode==='tournament')u.searchParams.delete('broadcastMode');else u.searchParams.set('broadcastMode',mode);history.replaceState(null,'',u);if(mode!=='tournament'){renderPeople();await access();await syncViewer();}window.dispatchEvent(new Event('rock-broadcast-mode-changed'));}catch(e){say(e.message,true);}finally{switching=false;tabs.querySelectorAll('button').forEach(b=>b.disabled=false);}}
 tabs.querySelectorAll('button').forEach(b=>b.onclick=()=>select(b.dataset.mode));
