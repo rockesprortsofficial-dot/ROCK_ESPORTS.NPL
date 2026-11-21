@@ -19,6 +19,12 @@ const c=new AudioContext(),o=c.createOscillator(),audio=c.createMediaStreamDesti
 for(const file of ['rock-broadcast-core.js','rock-broadcast-audio.js','rock-broadcast-compositor.js','rock-broadcast-studio.js','rock-live-broadcast.js','rock-broadcast-social-layout.js','rock-broadcast-social-compositor.js','rock-broadcast-social.js'])await page.addScriptTag({url:'/'+file});await page.waitForTimeout(150);assert.equal(await page.locator('.lb-player').count(),64);assert.equal(await page.locator('.rbs-tabs button').count(),3);
 await page.click('#rbs-tab-gameplay');await page.waitForSelector('#rbs-create');assert.equal(await page.locator('#lb-tournament-panel').isHidden(),true);assert.equal(await page.locator('#rbs-screen .lb-card').count(),0);await page.click('#rbs-generate-password');
 assert.match(await page.locator('#rbs-owner-password').inputValue(),/^[a-f0-9]{48}$/);
+assert.equal(await page.locator('#rbs-game-fit').inputValue(),'fill');
+await page.locator('#rbs-game-zoom').fill('135');
+assert.equal(await page.locator('#rbs-game-zoom-value').textContent(),'135%');
+assert.equal(await page.locator('#rbs-game').evaluate(v=>v.style.transform),'scale(1.35)');
+await page.selectOption('#rbs-game-fit','fit');
+assert.equal(await page.locator('#rbs-game-zoom').isDisabled(),true);
 await page.selectOption('#rbs-game-fit','fill');
 assert.equal(await page.locator('#rbs-game').evaluate(v=>getComputedStyle(v).objectFit),'cover');
 assert.notEqual(await page.locator('#rbs-title strong').evaluate(v=>getComputedStyle(v).animationName),'none');

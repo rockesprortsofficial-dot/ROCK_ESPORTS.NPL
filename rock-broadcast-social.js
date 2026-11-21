@@ -14,7 +14,8 @@ gameplayOptions.hidden=true;
 gameplayOptions.innerHTML=`<legend>Gameplay setup</legend>
  <label>Co-host password for a new call (optional)<input type="password" id="rbs-owner-password" maxlength="48" autocomplete="new-password" placeholder="48 random hex characters"></label>
  <button type="button" id="rbs-generate-password">Generate co-host password</button>
- <label>Gameplay framing<select id="rbs-game-fit"><option value="fit">Fit · show the entire game</option><option value="fill">Fill · crop edges</option></select></label>
+ <label>Gameplay framing<select id="rbs-game-fit"><option value="fit">Fit · show the entire game</option><option value="fill" selected>Fill · crop edges</option></select></label>
+ <label>Shared video zoom <output id="rbs-game-zoom-value">100%</output><input type="range" id="rbs-game-zoom" min="100" max="175" step="1" value="100"></label>
  ${['owner','cohost'].map((id,i)=>`<label>${i?'Co-host':'Host'} camera filter<select id="rbs-filter-${id}">${Object.keys(RockBroadcastSocialLayout.filters).map(f=>`<option value="${f}">${f[0].toUpperCase()+f.slice(1)}</option>`).join('')}</select></label><label><span><input type="checkbox" id="rbs-mirror-${id}"> Mirror ${i?'co-host':'host'} camera</span></label>`).join('')}`;
 $('rbs-owner').prepend(gameplayOptions);
 $('rbs-generate-password').onclick=()=>{
@@ -126,6 +127,7 @@ $('rbs-comment-form').onsubmit=event=>{
  event.preventDefault();
  sendReaction($('rbs-send-comment'),'comment',{name:$('rbs-guest-name').value,message:$('rbs-comment').value});
 };
+$('rbs-game-zoom').oninput=()=>{if(mode==='gameplay'&&owner)renderPeople();};
 const people=new Map(),videoNodes=new Map(),audio=new RockBroadcastAudio();
 const say=(text,bad=false)=>{$('rbs-status').textContent=text;$('rbs-status').classList.toggle('lb-danger',bad);};
 async function api(action,body={}){const requestMode=mode;const {data:{session}}=await sb.auth.getSession();const response=await fetch(SUPABASE_URL+'/functions/v1/rock-broadcast-social',{method:'POST',cache:'no-store',headers:{'Content-Type':'application/json',apikey:SUPABASE_KEY,...(session?.access_token?{Authorization:'Bearer '+session.access_token}:{})},body:JSON.stringify({action,mode:requestMode,...body})});const data=await response.json().catch(()=>({}));if(!response.ok)throw Error(data.error||'Broadcast call unavailable');return data;}
@@ -153,6 +155,11 @@ function renderPeople(){const list=ordered(),display=mode==='gameplay'?[{id:'own
  frameState={mode,branding:brand,people:actual};
  if(gameplay){
   frameState.gameFit=$('rbs-game-fit').value;
+  const zoom=$('rbs-game-zoom');
+  zoom.disabled=frameState.gameFit!=='fill';
+  frameState.gameZoom=zoom.disabled?1:Number(zoom.value)/100;
+  $('rbs-game-zoom-value').textContent=Math.round(frameState.gameZoom*100)+'%';
+  $('rbs-game').style.transform='scale('+frameState.gameZoom+')';
   frameState.cameraStyles=actual.map(({id})=>({mirror:$('rbs-mirror-'+id).checked,filter:$('rbs-filter-'+id).value}));
   $('rbs-game').style.objectFit=frameState.gameFit==='fill'?'cover':'contain';
   actual.forEach(({id},i)=>{
@@ -160,7 +167,10 @@ function renderPeople(){const list=ordered(),display=mode==='gameplay'?[{id:'own
    v.style.transform=style.mirror?'scaleX(-1)':'';
    v.style.filter=RockBroadcastSocialLayout.filters[style.filter];
   });
- }else $('rbs-game').style.removeProperty('object-fit');
+ }else{
+  $('rbs-game').style.removeProperty('object-fit');
+  $('rbs-game').style.removeProperty('transform');
+ }
  renderModeration();}
 function renderModeration(){const list=$('rbs-moderation');list.replaceChildren();if(!owner)return;for(const p of ordered()){if(p.id==='owner')continue;const item=document.createElement('div');item.className='rbs-person';item.textContent=p.label;for(const action of ['mute','remove']){const b=document.createElement('button');b.textContent=action==='mute'?'Mute':'Remove';b.onclick=run(async()=>{await api(action,{id:sessionId,identity:p.id});say(action==='mute'?'Participant microphone muted.':'Participant removed from this call.');});item.append(b);}list.append(item);}}
 function renderAccess(){if(mode==='tournament')return;$('rbs-owner').hidden=!owner;const eligible=mode==='watchparty'?!!member:invited;$('rbs-entry').hidden=!!role||owner||!eligible;$('rbs-private').hidden=!(owner||eligible||role);$('rbs-call-controls').hidden=!role;$('rbs-code-label').hidden=!invited;cohostLogin.hidden=mode!=='gameplay'||!invited;$('rbs-join').textContent=invited?'Join as invited co-host': 'Join with Meeting Room login';$('rbs-member-note').textContent=mode==='watchparty'?'Existing Meeting Room member login is required. Your on-screen name, camera and voice may appear to website viewers and on platform LIVE.':'Use the private co-host invitation. Your camera and voice may appear in the broadcast.';}
