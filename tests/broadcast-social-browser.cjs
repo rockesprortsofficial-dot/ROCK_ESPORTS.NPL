@@ -6,7 +6,7 @@ await page.route('https://social.test/**',async route=>{const b=route.request().
  if(b.operation==='like'){feed.likes=1;feed.liked=true;}
  if(b.operation==='comment'){feed.comments.push({id:1,name:b.name,message:b.message,state:'visible'});feed.comment_count=1;}
  result=feed;
-}else if(b.action.endsWith('-token'))result={id:row.id,identity:b.action==='member-token'?'member-33333333-3333-3333-3333-333333333333':b.action==='viewer-token'?'viewer':'owner',name:'Verified Member',token:b.action,renew_token:'ticket',server_url:'wss://social.test'};else if(b.action==='live'){row.live=true;}else if(b.action==='pause'){row.live=false;}return route.fulfill({contentType:'application/json',headers:{'Access-Control-Allow-Origin':'*','Access-Control-Allow-Headers':'*'},body:JSON.stringify(result)});});
+}else if(b.action.endsWith('-token'))result={id:row.id,identity:b.action==='member-token'?'member-33333333-3333-3333-3333-333333333333':b.action==='viewer-token'?'viewer':b.action==='cohost-token'?'cohost':'owner',name:'Verified Member',token:b.action,renew_token:'ticket',server_url:'wss://social.test'};else if(b.action==='live'){row.live=true;}else if(b.action==='pause'){row.live=false;}return route.fulfill({contentType:'application/json',headers:{'Access-Control-Allow-Origin':'*','Access-Control-Allow-Headers':'*'},body:JSON.stringify(result)});});
 await page.goto((process.env.BROADCAST_TEST_URL||'http://127.0.0.1:55361')+'/offline.html');await page.setContent('<link rel="stylesheet" href="/rock-live-broadcast.css"><link rel="stylesheet" href="/rock-broadcast-social.css"><nav class="nav-inner"><a href="#existing">EXISTING</a></nav><section id="group-division"></section>');
 await page.evaluate(()=>{location.hash='live-broadcast';window.SUPABASE_URL='https://social.test';window.SUPABASE_KEY='test';window.testOwner=true;window.testMember=null;window.rockGetMemberSession=async()=>window.testMember;window.auths=[];window.__rooms=[];window.feedListeners=new Set();
 window.sb={
@@ -32,6 +32,7 @@ await page.click('#rbs-create');await page.waitForSelector('#rbs-camera');await 
 await page.check('#rbs-mirror-owner');
 await page.selectOption('#rbs-filter-owner','warm');
 assert.equal(await page.locator('.rbs-tile video').first().evaluate(v=>getComputedStyle(v).transform),'matrix(-1, 0, 0, 1, 0, 0)');
+assert.equal(await page.locator('.rbs-tile video').first().evaluate(v=>getComputedStyle(v).objectFit),'cover');
 assert.match(await page.locator('.rbs-tile video').first().evaluate(v=>getComputedStyle(v).filter),/sepia/);await page.click('#rbs-mic');
 await page.evaluate(()=>{window.testDisplayMedia=navigator.mediaDevices.getDisplayMedia;navigator.mediaDevices.getDisplayMedia=undefined;});
 await page.click('#rbs-share');
@@ -55,5 +56,24 @@ await page.evaluate(()=>window.feedListeners.forEach(channel=>channel.handler())
 await page.waitForFunction(()=>document.querySelector('#rbs-live-counts').textContent.startsWith('7 likes'));
 assert.equal(await page.evaluate(()=>window.feedListeners.size),1);
 await page.evaluate(()=>{const room=window.__rooms.findLast(r=>r.token==='viewer-token'),canvas=document.createElement('canvas');canvas.width=640;canvas.height=360;canvas.getContext('2d').fillRect(0,0,640,360);const video=canvas.captureStream(30).getVideoTracks()[0],sound=window.testAudio.createMediaStreamDestination(),tone=window.testAudio.createOscillator();tone.connect(sound);tone.start();const v={sid:'output-video',kind:'video',mediaStreamTrack:video,attach:el=>{el.srcObject=new MediaStream([video]);},detach:()=>[document.querySelector('#rbs-view')]},a={sid:'output-audio',kind:'audio',mediaStreamTrack:sound.stream.getAudioTracks()[0],attach:()=>{throw Error('Viewer audio must use video controls');},detach:()=>[]};room.handlers.track(v,{source:'screen'},{identity:'output'});room.handlers.track(a,{source:'screen-audio'},{identity:'output'});});await page.waitForFunction(()=>document.querySelector('#rbs-view').srcObject?.getAudioTracks().length===1);assert.equal(await page.locator('audio[data-broadcast-audio]').count(),0);await page.click('#rbs-view-sound');assert.equal(await page.locator('#rbs-view').evaluate(v=>v.muted),false);await page.click('#rbs-tab-tournament');assert.equal(await page.locator('#rbs-view').count(),1);assert.equal(await page.evaluate(()=>window.feedListeners.size),0);
-await page.evaluate(()=>{document.querySelector('#lb-watch-stage').hidden=false;document.querySelector('#lb-board').hidden=true;});await page.click('#rbs-tab-gameplay');await page.click('#rbs-tab-tournament');assert.equal(await page.locator('#lb-board').isVisible(),true);assert.equal(await page.locator('#lb-watch-stage').isHidden(),true);assert.deepEqual(errors,[]);console.log('PASS: three inner tabs, original 16×4 preserved, large gameplay, owner source/camera/mic and website output without platforms, existing Meeting Room token reuse, 15→10 adaptive member tiles, guest read-only controls and mobile overflow. Synthetic media and mock transport.');
+await page.evaluate(()=>{document.querySelector('#lb-watch-stage').hidden=false;document.querySelector('#lb-board').hidden=true;});await page.click('#rbs-tab-gameplay');await page.click('#rbs-tab-tournament');assert.equal(await page.locator('#lb-board').isVisible(),true);assert.equal(await page.locator('#lb-watch-stage').isHidden(),true);await page.click('#rbs-tab-gameplay');
+await page.waitForSelector('#rbs-open-cohost');
+assert.equal(await page.locator('#rbs-code').isHidden(),true);
+await page.click('#rbs-open-cohost');
+assert.equal(await page.locator('#rbs-cohost-login').inputValue(),'ROCK');
+assert.equal(await page.locator('#rbs-owner').isHidden(),true);
+await page.fill('#rbs-code','a'.repeat(48));
+await page.click('#rbs-join');
+await page.waitForSelector('#rbs-call-controls',{state:'visible'});
+assert.ok(requests.some(b=>b.action==='cohost-token'&&b.mode==='gameplay'&&b.login==='ROCK'&&b.id===sessions.gameplay.id));
+await page.click('#rbs-camera');
+await page.click('#rbs-mic');
+const cohostVideo=page.locator('.rbs-tile').filter({hasText:'CO-HOST'}).locator('video');
+await cohostVideo.waitFor({state:'visible'});
+assert.equal(await cohostVideo.evaluate(v=>getComputedStyle(v).objectFit),'cover');
+assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
+await page.click('#rbs-leave');
+await page.click('#rbs-tab-watchparty');
+assert.equal(await page.locator('#rbs-open-cohost').isHidden(),true);
+assert.deepEqual(errors,[]);console.log('PASS: three inner tabs, original 16×4 preserved, large gameplay, owner source/camera/mic and website output without platforms, existing Meeting Room token reuse, 15→10 adaptive member tiles, guest read-only controls and mobile overflow. Synthetic media and mock transport.');
 }finally{await browser.close();}})().catch(e=>{console.error(e);process.exit(1)});

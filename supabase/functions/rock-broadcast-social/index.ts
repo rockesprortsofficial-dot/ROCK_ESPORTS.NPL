@@ -1,7 +1,7 @@
 import 'jsr:@supabase/functions-js/edge-runtime.d.ts';
 import {createClient} from 'npm:@supabase/supabase-js@2.95.0';
 import {AccessToken,TokenVerifier,RoomServiceClient,EgressClient,StreamOutput,StreamProtocol} from 'npm:livekit-server-sdk@2.13.3';
-import {modes,actions,grant,digest,publicStatus} from './policy.ts';
+import {modes,actions,grant,digest,publicStatus,gameplayInviteHash} from './policy.ts';
 import {streamDestination} from './destinations.ts';
 const cors={'Access-Control-Allow-Origin':'*','Access-Control-Allow-Headers':'authorization,apikey,content-type','Access-Control-Allow-Methods':'POST,OPTIONS','Cache-Control':'no-store'};
 const reply=(v:unknown,status=200)=>new Response(JSON.stringify(v),{status,headers:{...cors,'Content-Type':'application/json'}});
@@ -29,12 +29,21 @@ Deno.serve(async req=>{
   return reply({...status,viewers});
  }
  if(action==='create'){
-  const ownerId=await owner();const active=await latest();if(active)return reply({...publicStatus(active),existing:true,capacity});
-  await checked(db.from('rock_broadcast_social_sessions').update({ended:true,live:false}).eq('mode',mode).eq('ended',false).lt('expires_at',new Date().toISOString()));
+  const ownerId=await owner();
   const supplied=mode==='gameplay'?String(b.password||''):'';
-  if(supplied&&(!/^[0-9a-f]{48}$/.test(supplied)||new Set(supplied).size<10))return reply({error:'Use a randomly generated 48-character hexadecimal password'},400);
+  if(supplied&&(supplied.length<8||supplied.length>48))return reply({error:'Choose a password of 8 to 48 characters'},400);
+  const active=await latest();
+  if(active){
+   if(!supplied)return reply({...publicStatus(active),existing:true,capacity});
+   if(active.owner_id!==ownerId)return reply({error:'Owner access required'},403);
+   const invite_hash=await gameplayInviteHash(secret,active.id,supplied);
+   const updated=await checked(db.from('rock_broadcast_social_sessions').update({invite_hash}).eq('id',active.id).eq('ended',false).select('id').maybeSingle());
+   if(!updated)return reply({error:'Gameplay call ended. Create a new call.'},409);
+   return reply({...publicStatus(active),existing:true,capacity,password:supplied});
+  }
+  await checked(db.from('rock_broadcast_social_sessions').update({ended:true,live:false}).eq('mode',mode).eq('ended',false).lt('expires_at',new Date().toISOString()));
   const id=crypto.randomUUID(),password=supplied||Array.from(crypto.getRandomValues(new Uint8Array(24))).map(x=>x.toString(16).padStart(2,'0')).join('');
-  await checked(db.from('rock_broadcast_social_sessions').insert({id,mode,owner_id:ownerId,invite_hash:await digest(id+':'+password)}));return reply({id,mode,password,capacity},201);
+  await checked(db.from('rock_broadcast_social_sessions').insert({id,mode,owner_id:ownerId,invite_hash:mode==='gameplay'?await gameplayInviteHash(secret,id,password):await digest(id+':'+password)}));return reply({id,mode,password,capacity},201);
  }
  let id=String(b.id||'');if(!id&&['member-token','viewer-token'].includes(action))id=(await latest())?.id||'';
  if(!/^[0-9a-f-]{36}$/i.test(id))return reply({error:'Owner must start this mode first'},404);
@@ -78,7 +87,18 @@ Deno.serve(async req=>{
    }catch(_){return reply({error:'Sign in through the existing ROCK ESPORTS Meeting Room. Active membership is required.'},403);}
   }
   if(action==='cohost-token'&&mode==='gameplay'&&b.login!=='ROCK')return reply({error:'Invalid co-host invitation'},403);
-  if(action==='cohost-token'&&(!/^[0-9a-f]{48}$/.test(String(b.password||''))||await digest(id+':'+b.password)!==row.invite_hash))return reply({error:'Invalid co-host invitation'},403);
+  if(action==='cohost-token'){
+   const password=String(b.password||'');
+   if(mode==='gameplay'){
+    if(password.length<8||password.length>48)return reply({error:'Invalid co-host invitation'},403);
+    if(!await checked(db.rpc('rock_gameplay_cohost_attempt',{p_session:id})))return reply({error:'Too many sign-in attempts. Try again in a minute.'},429);
+    const valid=await gameplayInviteHash(secret,id,password)===row.invite_hash||
+     (/^[0-9a-f]{48}$/.test(password)&&await digest(id+':'+password)===row.invite_hash);
+    if(!valid)return reply({error:'Invalid co-host invitation'},403);
+   }else if(!/^[0-9a-f]{48}$/.test(password)||await digest(id+':'+password)!==row.invite_hash){
+    return reply({error:'Invalid co-host invitation'},403);
+   }
+  }
   const identity=action==='cohost-token'?'cohost':'member-'+member.id;
   if(row.blocked.includes(identity))return reply({error:'Owner has removed this participant'},403);
   const present=await rooms.listParticipants(callRoom).catch(()=>[]);if(present.length>=capacity&&!present.some(p=>p.identity===identity))return reply({error:'Call capacity reached. Owner can increase server capacity.'},409);
