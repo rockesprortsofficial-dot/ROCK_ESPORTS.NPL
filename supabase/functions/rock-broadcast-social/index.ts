@@ -17,17 +17,47 @@ Deno.serve(async req=>{
  const checked=async(q:any)=>{const r=await q;if(r.error)throw Error('DATABASE');return r.data;};
  const owner=async()=>{const jwt=(req.headers.get('Authorization')||'').replace(/^Bearer\s+/i,'');if(!jwt)throw Error('OWNER');const scoped=createClient(url,anon,{global:{headers:{Authorization:'Bearer '+jwt}},auth:{persistSession:false}});const {data,error}=await scoped.auth.getUser(jwt);if(error||!data.user||(await scoped.rpc('rock_broadcast_is_owner')).data!==true)throw Error('OWNER');return data.user.id;};
  const latest=()=>checked(db.from('rock_broadcast_social_sessions').select('*').eq('mode',mode).eq('ended',false).gt('expires_at',new Date().toISOString()).order('created_at',{ascending:false}).limit(1).maybeSingle());
- if(action==='status')return reply(publicStatus(await latest()));
+ if(action==='status'){
+  const row=await latest(),status=publicStatus(row);
+  if(mode!=='gameplay')return reply(status);
+  let viewers:number|null=0;
+  if(status.live){
+   try{const participants=await rooms.listParticipants(grant('viewer',row.id).room);
+    viewers=participants.filter(p=>p.identity.startsWith('viewer-')).length;
+   }catch(_){viewers=null;}
+  }
+  return reply({...status,viewers});
+ }
  if(action==='create'){
   const ownerId=await owner();const active=await latest();if(active)return reply({...publicStatus(active),existing:true,capacity});
   await checked(db.from('rock_broadcast_social_sessions').update({ended:true,live:false}).eq('mode',mode).eq('ended',false).lt('expires_at',new Date().toISOString()));
-  const id=crypto.randomUUID(),password=Array.from(crypto.getRandomValues(new Uint8Array(24))).map(x=>x.toString(16).padStart(2,'0')).join('');
+  const supplied=mode==='gameplay'?String(b.password||''):'';
+  if(supplied&&(!/^[0-9a-f]{48}$/.test(supplied)||new Set(supplied).size<10))return reply({error:'Use a randomly generated 48-character hexadecimal password'},400);
+  const id=crypto.randomUUID(),password=supplied||Array.from(crypto.getRandomValues(new Uint8Array(24))).map(x=>x.toString(16).padStart(2,'0')).join('');
   await checked(db.from('rock_broadcast_social_sessions').insert({id,mode,owner_id:ownerId,invite_hash:await digest(id+':'+password)}));return reply({id,mode,password,capacity},201);
  }
  let id=String(b.id||'');if(!id&&['member-token','viewer-token'].includes(action))id=(await latest())?.id||'';
  if(!/^[0-9a-f-]{36}$/i.test(id))return reply({error:'Owner must start this mode first'},404);
  const row=await checked(db.from('rock_broadcast_social_sessions').select('*').eq('id',id).eq('mode',mode).maybeSingle());
  if(!row||row.ended||Date.parse(row.expires_at)<=Date.now())return reply({error:'This call has ended or expired'},404);
+ if(action==='engagement'){
+  if(mode!=='gameplay')return reply({error:'Gameplay only'},404);
+  const operation=String(b.operation||'');
+  if(!['read','like','comment','approve','hide','block'].includes(operation))return reply({error:'Invalid interaction'},400);
+  const moderating=['approve','hide','block'].includes(operation);
+  const ownerId=moderating||b.moderator===true?await owner():null;
+  if(ownerId&&ownerId!==row.owner_id)return reply({error:'Owner access required'},403);
+  const visitor=String(b.visitor||'');
+  if(!/^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(visitor))return reply({error:'Invalid visitor ID'},400);
+  if(moderating&&(!Number.isSafeInteger(b.event)||b.event<=0))return reply({error:'Invalid comment'},400);
+  const result=await checked(db.rpc('rock_gameplay_interact',{
+   p_session:id,p_action:operation,p_visitor:visitor,
+   p_name:operation==='comment'?String(b.name||'').trim():null,
+   p_message:operation==='comment'?String(b.message||'').trim():null,
+   p_event:moderating?b.event:null,p_owner:ownerId
+  }));
+  return reply(result,result.error?400:200);
+ }
  const callRoom=grant('owner',id).room,outRoom=grant('output',id).room;
  const activeMember=async(memberId:string)=>checked(db.from('rock_meeting_members').select('id,real_name,is_active').eq('id',memberId).eq('team_slug','rock-esports').eq('is_active',true).maybeSingle());
  const token=async(role:string,identity:string,name:string)=>{const t=new AccessToken(key,secret,{identity,name,ttl:'60s',metadata:JSON.stringify({rock_social:true,role,session:id})});t.addGrant(grant(role,id));const ticket=new AccessToken(key,secret,{identity,name,ttl:'6h',metadata:JSON.stringify({rock_social:true,role,session:id,purpose:'heartbeat'})});ticket.addGrant({room:grant('owner',id).room,roomJoin:false,canPublish:false,canSubscribe:false});return {id,mode,token:await t.toJwt(),renew_token:await ticket.toJwt(),server_url:lk,identity,role,name,capacity};};
@@ -47,6 +77,7 @@ Deno.serve(async req=>{
     deviceSession=meta.device_session_id||null;member=await activeMember(String(claims.sub));if(!member)throw Error();
    }catch(_){return reply({error:'Sign in through the existing ROCK ESPORTS Meeting Room. Active membership is required.'},403);}
   }
+  if(action==='cohost-token'&&mode==='gameplay'&&b.login!=='ROCK')return reply({error:'Invalid co-host invitation'},403);
   if(action==='cohost-token'&&(!/^[0-9a-f]{48}$/.test(String(b.password||''))||await digest(id+':'+b.password)!==row.invite_hash))return reply({error:'Invalid co-host invitation'},403);
   const identity=action==='cohost-token'?'cohost':'member-'+member.id;
   if(row.blocked.includes(identity))return reply({error:'Owner has removed this participant'},403);
