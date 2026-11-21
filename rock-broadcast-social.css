@@ -29,3 +29,25 @@
 #live-broadcast #rbs-like[aria-pressed=true] { background: #005e87; }
 #live-broadcast #rbs-comments { max-height: 20rem; overflow: auto; }
 #live-broadcast #rbs-comments li { padding: 5px 0; }
+
+#live-broadcast #rbs-open-cohost {
+  display: flex; width: fit-content; align-items: center; gap: 8px; min-height: 44px;
+  margin: 0 0 10px auto; border-color: #28eaff; color: #bffaff; font-weight: bold;
+}
+#live-broadcast #rbs-cohost-dialog {
+  box-sizing: border-box; width: min(420px, calc(100% - 20px)); padding: 18px;
+  border: 1px solid #28eaff; border-radius: 14px; color: #fff; background: #071324;
+}
+#live-broadcast #rbs-cohost-dialog::backdrop { background: #020613ba; }
+#live-broadcast .rbs-cohost-heading { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+#live-broadcast #rbs-cohost-dialog label { display: grid; gap: 5px; margin-bottom: 10px; }
+#live-broadcast #rbs-cohost-dialog input { width: 100%; }
+#live-broadcast #rbs-cohost-dialog label:has(#rbs-cohost-login) input { max-width: 100px; }
+#live-broadcast #rbs-cohost-status { margin-top: 10px; }
+#live-broadcast #rbs-panel[data-mode="gameplay"] .rbs-tile {
+  --rbs-led: #28eaff; border-color: var(--rbs-led); box-shadow: 0 0 11px var(--rbs-led);
+}
+#live-broadcast #rbs-panel[data-mode="gameplay"] .rbs-tile:nth-child(2) { --rbs-led: #ff56ca; }
+@media(max-width:600px) {
+  #live-broadcast #rbs-cohost-dialog { margin: auto auto 0; border-radius: 14px 14px 0 0; }
+}

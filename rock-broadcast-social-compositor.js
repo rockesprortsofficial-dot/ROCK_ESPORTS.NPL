@@ -32,7 +32,12 @@ class SocialCompositor extends RockBroadcastCompositor{
    }else this.video(v.game,this.geometry.game);
    this.geometry.tiles.forEach((r,i)=>{
     const rect=[r[0]+2,r[1]+2,r[2]-4,Math.max(1,r[3]*.8-3)];
-    if(gameplay)this.gameplayVideo(v.people[i],rect,{...s.cameraStyles?.[i],fill:true});
+    if(gameplay){
+     this.gameplayVideo(v.people[i],rect,{...s.cameraStyles?.[i],fill:true});
+     const ctx=this.ctx,led=i?'#ff56ca':'#28eaff';
+     ctx.save();ctx.strokeStyle=led;ctx.lineWidth=4;ctx.shadowColor=led;ctx.shadowBlur=14;
+     ctx.strokeRect(r[0]+2,r[1]+2,r[2]-4,r[3]-4);ctx.restore();
+    }
     else this.video(v.people[i],rect);
    });
    this.frames++;

@@ -1,7 +1,12 @@
 const assert=require('node:assert/strict'),fs=require('node:fs'),{stripTypeScriptTypes}=require('node:module');
 const policy=require('../supabase/functions/rock-broadcast-social/policy.ts'),dest=require('../supabase/functions/rock-broadcast-social/destinations.ts');
-(async()=>{let handler;const rows=[],members=[{id:'22222222-2222-2222-2222-222222222222',real_name:'Member One',team_slug:'rock-esports',is_active:true}],participants=new Map(),egresses=[];let deviceValid=true;
-function query(table){let op='read',value,filters=[],one=false;const q=new Proxy({},{get(_,k){if(k==='then')return done=>{const all=table==='rock_meeting_members'?members:rows;let selected=all.filter(r=>filters.every(f=>f(r)));if(op==='insert'){const r={ended:false,live:false,join_open:true,blocked:[],egress_state:'idle',expires_at:new Date(Date.now()+21600000).toISOString(),...value};all.push(r);selected=[r];}if(op==='update')selected.forEach(r=>Object.assign(r,value));done({data:one?selected[0]||null:selected,error:null});};if(k==='eq')return (name,v)=>{filters.push(r=>r[name]===v);return q;};if(k==='gt')return (name,v)=>{filters.push(r=>r[name]>v);return q;};if(k==='lt')return (name,v)=>{filters.push(r=>r[name]<v);return q;};if(k==='insert'||k==='update')return v=>{op=k;value=v;return q;};if(k==='maybeSingle')return ()=>{one=true;return q;};return ()=>q;}});return q;}
+(async()=>{let handler;const rows=[],members=[{id:'22222222-2222-2222-2222-222222222222',real_name:'Member One',team_slug:'rock-esports',is_active:true}],participants=new Map(),egresses=[];let deviceValid=true;const youtubeSettings=new Map();
+function query(table){
+ if(table==='rock_gameplay_youtube_settings')return {
+  upsert:async row=>{youtubeSettings.set(row.owner_id,row);return {data:null};},
+  select:()=>({eq:(_,id)=>({maybeSingle:async()=>({data:youtubeSettings.get(id)||null})})})
+ };
+let op='read',value,filters=[],one=false;const q=new Proxy({},{get(_,k){if(k==='then')return done=>{const all=table==='rock_meeting_members'?members:rows;let selected=all.filter(r=>filters.every(f=>f(r)));if(op==='insert'){const r={ended:false,live:false,join_open:true,blocked:[],egress_state:'idle',expires_at:new Date(Date.now()+21600000).toISOString(),...value};all.push(r);selected=[r];}if(op==='update')selected.forEach(r=>Object.assign(r,value));done({data:one?selected[0]||null:selected,error:null});};if(k==='eq')return (name,v)=>{filters.push(r=>r[name]===v);return q;};if(k==='gt')return (name,v)=>{filters.push(r=>r[name]>v);return q;};if(k==='lt')return (name,v)=>{filters.push(r=>r[name]<v);return q;};if(k==='insert'||k==='update')return v=>{op=k;value=v;return q;};if(k==='maybeSingle')return ()=>{one=true;return q;};return ()=>q;}});return q;}
 const createClient=(url,key,opt)=>key==='service'?{from:query,rpc:async()=>({data:deviceValid})}:{auth:{getUser:async()=>({data:{user:opt?.global?.headers?.Authorization==='Bearer OWNER'?{id:'OWNER'}:null}})},rpc:async()=>({data:opt?.global?.headers?.Authorization==='Bearer OWNER'})};
 class AccessToken{constructor(k,s,o){this.o=o;}addGrant(g){this.g=g;}async toJwt(){return JSON.stringify({...this.o,sub:this.o.identity,video:this.g});}}
 class TokenVerifier{async verify(t){const c=JSON.parse(t);if(c.forged)throw Error('signature');return c;}}
@@ -42,6 +47,15 @@ const newOut=policy.grant('output',createdGameplay.body.id).room;
 participants.set(newOut,[{identity:'output',tracks:[{type:0},{type:1}]},{identity:'viewer-a'},{identity:'viewer-b'}]);
 await call('live',{id:createdGameplay.body.id},true,'gameplay');
 assert.equal((await call('status',{},false,'gameplay')).body.viewers,2);
+const savedDest={server:'rtmps://a.rtmps.youtube.com/live2',key:'SAVED_TEST_KEY'};
+assert.equal((await call('save-youtube',{destination:savedDest},false,'gameplay')).status,403);
+assert.equal((await call('save-youtube',{destination:savedDest},true,'watchparty')).status,404);
+const saved=await call('save-youtube',{destination:savedDest},true,'gameplay');
+assert.deepEqual(saved.body,{saved:true});
+assert.equal(JSON.stringify([...youtubeSettings.values()]).includes(savedDest.key),false);
+const savedStream=await call('simulcast',{id:createdGameplay.body.id,platforms:['youtube']},true,'gameplay');
+assert.equal(savedStream.status,200);
+assert.ok(egresses.at(-1).urls[0].endsWith('/SAVED_TEST_KEY'));
 assert.equal((await call('engagement',{id:createdGameplay.body.id,operation:'approve',event:1},false,'gameplay')).status,403);
 console.log('PASS: existing Meeting Room signed login, revoked device/inactive/new members, visitor denial/read-only playback, co-host membership, owner lock/remove, isolated modes, website output independent from platforms, key privacy (mock SDK/database).');
 })().catch(e=>{console.error(e);process.exit(1)});
