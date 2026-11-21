@@ -6,8 +6,8 @@ function layout(count,mode='watchparty'){
  const columns=Math.min(count,Math.max(1,Math.ceil(Math.sqrt(count*8)))),rows=Math.ceil(count/columns),w=1740/columns,h=160/rows;
  return {game:[6,54,1908,828],logo:[82,980,126],columns,rows,tiles:Array.from({length:count},(_,i)=>[166+(i%columns)*w,900+Math.floor(i/columns)*h,w-6,h-6])};
 }
-function videoRect([x,y,w,h],width,height,fill=false){
- const scale=(fill?Math.max:Math.min)(w/width,h/height);
+function videoRect([x,y,w,h],width,height,fill=false,zoom=1){
+ const scale=(fill?Math.max:Math.min)(w/width,h/height)*zoom;
  const dw=width*scale,dh=height*scale;
  return [x+(w-dw)/2,y+(h-dh)/2,dw,dh];
 }

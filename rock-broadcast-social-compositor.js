@@ -2,14 +2,14 @@
 (()=>{'use strict';
 class SocialCompositor extends RockBroadcastCompositor{
  rebuild(s){const h=this.h;h.clearRect(0,0,1920,1080);h.fillStyle='#010611';h.fillRect(0,0,1920,1080);this.text(s.branding.headerName+' · '+(s.mode==='gameplay'?'GAMEPLAY':'MEMBERS WATCH PARTY'),470,34,27,s.mode==='gameplay'?'#20e9ff':'#ff38b3',1400);h.strokeStyle='#ff1ab5';h.lineWidth=3;h.strokeRect(2,2,1916,1076);this.geometry=RockBroadcastSocialLayout.layout(s.people.length,s.mode);this.panel(...this.geometry.game);this.text('Waiting for shared gameplay / video',600,460,28,'#83bddd');for(let i=0;i<this.geometry.tiles.length;i++){const r=this.geometry.tiles[i];this.panel(...r,i%2?'#fc1cb6':'#12d7ff');this.text(s.people[i]?.label||'Camera off',r[0]+4,r[1]+r[3]-3,Math.min(19,Math.max(7,r[3]*.18)),'#fff',r[2]-8);}this.monitorLogo(s.branding.monitorLogo,...this.geometry.logo);this.text(s.branding.monitorName,this.geometry.logo[0]-100,1074,13,'#b5edff',200);}
- gameplayVideo(video,rect,{fill=false,mirror=false,filter='natural'}={}){
+ gameplayVideo(video,rect,{fill=false,zoom=1,mirror=false,filter='natural'}={}){
   if(!(video?.readyState>=2&&video.videoWidth&&video.videoHeight))return;
   const ctx=this.ctx,[x,y,w,h]=rect;
   ctx.save();ctx.beginPath();ctx.rect(x,y,w,h);ctx.clip();
   ctx.fillStyle='#000';ctx.fillRect(x,y,w,h);
   ctx.filter=RockBroadcastSocialLayout.filters[filter];
   if(mirror){ctx.translate(2*x+w,0);ctx.scale(-1,1);}
-  ctx.drawImage(video,...RockBroadcastSocialLayout.videoRect(rect,video.videoWidth,video.videoHeight,fill));
+  ctx.drawImage(video,...RockBroadcastSocialLayout.videoRect(rect,video.videoWidth,video.videoHeight,fill,zoom));
   ctx.restore();
  }
  frame(time){
@@ -28,7 +28,7 @@ class SocialCompositor extends RockBroadcastCompositor{
     this.ctx.fillStyle='#20e9ff';this.ctx.textAlign='center';
     this.ctx.fillText(title,960+offset,34,1400);
     this.ctx.restore();
-    this.gameplayVideo(v.game,this.geometry.game,{fill:s.gameFit==='fill'});
+    this.gameplayVideo(v.game,this.geometry.game,{fill:s.gameFit==='fill',zoom:s.gameZoom});
    }else this.video(v.game,this.geometry.game);
    this.geometry.tiles.forEach((r,i)=>{
     const rect=[r[0]+2,r[1]+2,r[2]-4,Math.max(1,r[3]*.8-3)];

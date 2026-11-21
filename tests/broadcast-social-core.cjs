@@ -4,4 +4,5 @@ assert.equal(layout(12).tiles.length,12);assert.equal(layout(2,'gameplay').tiles
 assert.deepEqual(videoRect([0,0,200,100],100,100),[50,0,100,100]);
 assert.deepEqual(videoRect([0,0,200,100],100,100,true),[0,-50,200,200]);
 assert.deepEqual(videoRect([10,20,200,100],400,100),[10,45,200,50]);
+assert.deepEqual(videoRect([0,0,200,100],200,100,true,1.5),[-50,-25,300,150]);
 console.log('PASS: adaptive 1–200 participant layout, no overlap/game obstruction, isolated viewer/member grants and public status privacy. Capacity is configured separately by the server.');
