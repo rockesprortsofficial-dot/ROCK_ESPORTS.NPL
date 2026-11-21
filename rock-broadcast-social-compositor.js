@@ -55,7 +55,7 @@ class SocialStudio extends RockBroadcastStudio{
  async startOutput(compositor,fps=30){
   if(this.role!=='owner'||!this.room)throw Error('Connect the owner call first');if(this.output||this.starting)throw Error('Website output is already starting/running');
   if(!this.audio.mic)throw Error('Enable your microphone first');this.starting=true;const generation=this.generation;let room;try{await this.audio.init();const response=await this.api('output-token',{id:this.id}),sdk=await this.sdk();if(generation!==this.generation)throw Error('Output cancelled');room=new sdk.Room({dynacast:true});this.output=room;this.compositor=compositor;await room.connect(response.server_url,response.token,{autoSubscribe:false});if(generation!==this.generation)throw Error('Output cancelled');const stream=compositor.start(fps),S=sdk.Track.Source;
-   await room.localParticipant.publishTrack(stream.getVideoTracks()[0].clone(),{source:S.ScreenShare,name:'social-composite',simulcast:true,screenShareEncoding:{maxBitrate:8000000,maxFramerate:30},stream:'social-output'});
+   await room.localParticipant.publishTrack(stream.getVideoTracks()[0].clone(),{source:S.ScreenShare,name:'social-composite',simulcast:true,screenShareEncoding:{maxBitrate:8000000,maxFramerate:fps===60?60:30},stream:'social-output'});
    await room.localParticipant.publishTrack(this.audio.getMixedTrack().clone(),{source:S.ScreenShareAudio,name:'social-audio',forceStereo:true,audioPreset:{maxBitrate:192000},dtx:false,stream:'social-output'});
    if(generation!==this.generation)throw Error('Output cancelled');await this.api('live',{id:this.id});this.onState('live');
   }catch(e){if(this.output===room)await this.stopOutput(false);else await room?.disconnect();throw e;}finally{this.starting=false;}
