@@ -46,6 +46,19 @@ await page.selectOption('#rbs-capture-profile','720-30');
 await page.click('#rbs-share');
 await page.waitForFunction(()=>window.lastMediaRequest?.video?.height?.ideal===720);
 assert.equal(await page.evaluate(()=>window.lastMediaRequest.video.frameRate.max),30);
+await page.evaluate(()=>{
+ const video=document.querySelector('#rbs-game');
+ window.previousHDMI=video.srcObject.getVideoTracks()[0];
+ const acquire=navigator.mediaDevices.getUserMedia;
+ navigator.mediaDevices.getUserMedia=constraints=>{
+  if(constraints.video?.frameRate?.ideal===60&&window.previousHDMI.readyState!=='ended')throw Error('Previous capture still open');
+  return acquire(constraints);
+ };
+});
+await page.selectOption('#rbs-capture-profile','1080-60');
+await page.click('#rbs-share');
+await page.waitForFunction(()=>window.lastMediaRequest?.video?.frameRate?.ideal===60);
+assert.equal(await page.evaluate(()=>window.previousHDMI.readyState),'ended');
 await page.selectOption('#rbs-source','screen');
 assert.equal(await page.locator('#rbs-capture-profile').isHidden(),true);
 await page.click('#rbs-share');
