@@ -283,6 +283,7 @@ function showGameplayCamera(video,stream,track){
  video.playsInline=true;
  if(track?.attach)track.attach(video);
  else video.srcObject=stream;
+ if(mode==='watchparty'&&!video.srcObject?.getVideoTracks().some(item=>item.id===stream.getVideoTracks()[0]?.id))video.srcObject=stream;
  backgroundProcessor.update();
  video.play().catch(()=>{
   if(!video.hidden&&video.srcObject)video.addEventListener('loadeddata',()=>video.play().catch(()=>{}),{once:true});
@@ -338,10 +339,10 @@ function connectCohostBackground(room){
  if(event)room.on(event,read);
  read(room.metadata);
 }
-const studio=new RockBroadcastSocialStudio({audio,api:(action,b)=>action==='cohost-token'&&joinResponse?Promise.resolve(joinResponse):api(action,b),onState:value=>{if(mode==='tournament')return;say('CALL · '+value);if(value==='disconnected'&&!joining&&!leaving&&role){const current=epoch;setTimeout(()=>{if(epoch===current&&!joining&&!leaving&&role)leave().catch(()=>{});},0);}},onTrack:(track,pub,p,added)=>{
+const studio=new RockBroadcastSocialStudio({audio,getMode:()=>mode,api:(action,b)=>action==='cohost-token'&&joinResponse?Promise.resolve(joinResponse):api(action,b),onState:value=>{if(mode==='tournament')return;say('CALL · '+value);if(value==='disconnected'&&!joining&&!leaving&&role){const current=epoch;setTimeout(()=>{if(epoch===current&&!joining&&!leaving&&role)leave().catch(()=>{});},0);}},onTrack:(track,pub,p,added)=>{
  const S=window.LivekitClient.Track.Source;if(track.kind==='audio'&&role==='owner')audio.setRemote(track.sid,added?track.mediaStreamTrack:null).catch(()=>{});
  if(pub.source===S.ScreenShare&&track.kind==='video'){const v=$('rbs-game');v.srcObject=added?new MediaStream([track.mediaStreamTrack]):null;if(added&&track.attach)track.attach(v);v.hidden=!added;$('rbs-empty').hidden=added;return;}
- if(track.kind==='video'){ensurePerson(p.identity,p.name||'Member');const v=videoNodes.get(p.identity);const stream=added?new MediaStream([track.mediaStreamTrack]):null;showGameplayCamera(v,stream,track);}
+ if(track.kind==='video'){ensurePerson(p.identity,p.name||'Member');const v=videoNodes.get(p.identity);if(mode==='watchparty'&&!added&&v.srcObject?.getVideoTracks().some(item=>item.id!==track.mediaStreamTrack.id))return;const stream=added?new MediaStream([track.mediaStreamTrack]):null;showGameplayCamera(v,stream,track);}
  }});
 let viewerVideo=null,viewerAudio=null;const viewer=new RockBroadcastSocialStudio({audio:null,api,onState:()=>{},onTrack:(track,pub,p,added)=>{if(track.kind==='video'){viewerVideo=added?track.mediaStreamTrack:null;if(added&&track.attach)track.attach($('rbs-view'));}if(track.kind==='audio'){track.detach().forEach(el=>el.remove());viewerAudio=added?track.mediaStreamTrack:null;}const tracks=[viewerVideo,viewerAudio].filter(Boolean);$('rbs-view').srcObject=tracks.length?new MediaStream(tracks):null;}});
 function branding(){return window.RockTournamentBroadcast?.branding()||RockBroadcastCore.blank().branding;}
@@ -504,7 +505,7 @@ async function enableCohostMedia(){
  await devices();
  say('Camera and microphone are on.');
 }
-async function enableCamera(){if(!role)throw Error('Join the call first');const gen=epoch,id=$('rbs-camera-device').value;const next=await navigator.mediaDevices.getUserMedia({audio:false,video:mode==='gameplay'?gameplayCameraConstraints(id):{...(id?{deviceId:{exact:id}}:{}),width:{ideal:640},height:{ideal:360},frameRate:{ideal:20,max:30},facingMode:'user'}});if(gen!==epoch||!role){next.getTracks().forEach(t=>t.stop());throw Error('Camera request cancelled');}camera?.getTracks().forEach(t=>t.stop());camera=next;camera.getVideoTracks()[0].onended=()=>{if(camera!==next)return;camera=null;attachLocal();};attachLocal();await studio.sync({camera,mic:audio.mic,screen:source});await devices();say('Camera connected.');}
+async function enableCamera(){if(!role)throw Error('Join the call first');const gen=epoch,id=$('rbs-camera-device').value;const next=await navigator.mediaDevices.getUserMedia({audio:false,video:(mode==='gameplay'||role==='member')?gameplayCameraConstraints(id):{...(id?{deviceId:{exact:id}}:{}),width:{ideal:640},height:{ideal:360},frameRate:{ideal:20,max:30},facingMode:'user'}});if(gen!==epoch||!role){next.getTracks().forEach(t=>t.stop());throw Error('Camera request cancelled');}camera?.getTracks().forEach(t=>t.stop());camera=next;camera.getVideoTracks()[0].onended=()=>{if(camera!==next)return;camera=null;attachLocal();};attachLocal();await studio.sync({camera,mic:audio.mic,screen:source});await devices();say('Camera connected.');}
 async function enableMic(){if(!role)throw Error('Join the call first');const gen=epoch;await audio.enableMic($('rbs-mic-device').value);if(gen!==epoch||!role){await audio.stop();throw Error('Mic request cancelled');}await studio.sync({camera,mic:audio.mic,screen:source});await devices();say('Microphone connected to the website call.');}
 async function shareGameplayWindow(){
  if(!owner||role!=='owner')throw Error('Create / reconnect this mode first');
