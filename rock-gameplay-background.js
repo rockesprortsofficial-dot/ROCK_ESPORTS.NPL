@@ -3,6 +3,33 @@
  'use strict';
  const bundle='https://cdn.jsdelivr.net/npm/@mediapipe/selfie_segmentation@0.1.1675465747/';
  let loading;
+ const imageCache=new Map();
+ const rooms={cyan:[0,0],violet:[1,0],red:[0,1],warm:[1,1]};
+ function getStudio(name){
+  const path=name==='rock'?'assets/rock-studio.jpg':'assets/rock-studio-options.jpg';
+  if(!imageCache.has(path)){
+   const image=new Image();
+   const ready=new Promise((resolve,reject)=>{
+    image.onload=()=>resolve(image);
+    image.onerror=()=>{imageCache.delete(path);reject(Error('Studio image unavailable'));};
+   });
+   image.src=new URL(path,document.baseURI).href;
+   imageCache.set(path,ready);
+  }
+  return imageCache.get(path);
+ }
+ function paintStudio(ctx,studio,name,w,h){
+  let x=0,y=0,sw=studio.naturalWidth,sh=studio.naturalHeight;
+  if(rooms[name]){
+   const [col,row]=rooms[name],halfW=sw/2,halfH=sh/2;
+   x=col*halfW+4;y=row*halfH+4;sw=halfW-8;sh=halfH-60;
+  }
+  // Draw the full studio without stretching it or cutting off the logo.
+  const fit=Math.min(w/sw,h/sh),dw=sw*fit,dh=sh*fit;
+  ctx.drawImage(studio,x,y,sw,sh,(w-dw)/2,(h-dh)/2,dw,dh);
+  ctx.fillStyle='#141523';ctx.fillRect(0,0,w,h);
+ }
+
  async function createSegmenter(){
   if(!window.SelfieSegmentation){
    loading??=new Promise((resolve,reject)=>{
@@ -17,7 +44,7 @@
   segmenter.setOptions({modelSelection:0});
   return segmenter;
  }
- function draw(canvas,{image,segmentationMask},accent){
+ function draw(canvas,{image,segmentationMask},target){
   const scale=Math.min(1,480/Math.max(image.width,image.height));
   const w=Math.round(image.width*scale),h=Math.round(image.height*scale);
   if(!w||!h)return;
@@ -25,20 +52,15 @@
   const ctx=canvas.getContext('2d');
   ctx.save();
   ctx.clearRect(0,0,w,h);
-  ctx.drawImage(segmentationMask,0,0,w,h);
+  const {style,studio,background}=target;
+  ctx.save();ctx.translate(w/2,h/2);ctx.scale(style.mirror?-style.zoom:style.zoom,style.zoom);
+  ctx.drawImage(segmentationMask,-w/2,-h/2,w,h);
   ctx.globalCompositeOperation='source-in';
-  ctx.drawImage(image,0,0,w,h);
+  ctx.filter=style.filter;
+  ctx.drawImage(image,-w/2,-h/2,w,h);
+  ctx.restore();
   ctx.globalCompositeOperation='destination-over';
-  ctx.strokeStyle=accent;ctx.shadowColor=accent;ctx.shadowBlur=15;
-  ctx.lineWidth=Math.max(2,w/110);
-  ctx.beginPath();
-  ctx.moveTo(-5,h*.35);ctx.lineTo(w*.41,h*.07);ctx.lineTo(w*.72,h*.07);ctx.lineTo(w+5,h*.34);
-  ctx.stroke();
-  ctx.beginPath();ctx.moveTo(w*.06,h);ctx.lineTo(w*.06,h*.46);ctx.stroke();
-  ctx.shadowBlur=0;
-  const wall=ctx.createLinearGradient(0,0,w,h);
-  wall.addColorStop(0,'#17284c');wall.addColorStop(.55,'#10192c');wall.addColorStop(1,'#32183c');
-  ctx.fillStyle=wall;ctx.fillRect(0,0,w,h);
+  paintStudio(ctx,studio,background,w,h);
   ctx.restore();
  }
  window.RockGameplayBackground=class{
@@ -67,11 +89,14 @@
      this.segmenter.onResults(result=>{
       const target=this.current;
       if(!target||!target.active())return;
-      draw(target.canvas,result,target.accent);
+      draw(target.canvas,result,target);
       target.canvas.hidden=false;
      });
     }
-    if(camera.active()&&camera.video.readyState>=2&&!document.hidden)await this.segmenter.send({image:camera.video});
+    if(camera.active()&&camera.video.readyState>=2&&!document.hidden){
+     camera.studio=await getStudio(camera.background);
+     if(camera.active())await this.segmenter.send({image:camera.video});
+    }
    }catch(error){this.failed(error);}
    finally{this.current=null;this.running=false;this.update();}
   }

@@ -68,3 +68,5 @@
   background: #02040a;
 }
 #live-broadcast .rbs-clip { border-color: #28a8cf; box-shadow: none; }
+
+#live-broadcast .rbs-clip video { object-fit: cover; }

@@ -18,14 +18,18 @@ gameplayOptions.innerHTML=`<legend>Gameplay setup</legend>
  <label>Gameplay framing<select id="rbs-game-fit"><option value="fit">Fit · show the entire game</option><option value="fill" selected>Fill · crop edges</option></select></label>
  <label>Broadcast frame rate<select id="rbs-game-fps"><option value="60">60 FPS target</option><option value="30">30 FPS target</option></select></label>
  <label>Shared video zoom <output id="rbs-game-zoom-value">100%</output><input type="range" id="rbs-game-zoom" min="100" max="175" step="1" value="100"></label>
- ${['owner','cohost'].map((id,i)=>`<label>${i?'Co-host':'Host'} camera filter<select id="rbs-filter-${id}">${Object.keys(RockBroadcastSocialLayout.filters).map(f=>`<option value="${f}">${f[0].toUpperCase()+f.slice(1)}</option>`).join('')}</select></label><label><span><input type="checkbox" id="rbs-mirror-${id}"> Mirror ${i?'co-host':'host'} camera</span></label><label>${i?'Co-host':'Host'} camera zoom <input type="range" id="rbs-camera-zoom-${id}" min="70" max="160" value="100"></label><label><span><input type="checkbox" id="rbs-background-${id}"> ${i?'Co-host':'Host'} LED background</span></label>`).join('')}`;
+ ${['owner','cohost'].map((id,i)=>`<label>${i?'Co-host':'Host'} camera filter<select id="rbs-filter-${id}">${Object.keys(RockBroadcastSocialLayout.filters).map(f=>`<option value="${f}">${f[0].toUpperCase()+f.slice(1)}</option>`).join('')}</select></label><label><span><input type="checkbox" id="rbs-mirror-${id}"> Mirror ${i?'co-host':'host'} camera</span></label><label>${i?'Co-host':'Host'} camera zoom <input type="range" id="rbs-camera-zoom-${id}" min="70" max="160" value="100"></label><label>${i?'Co-host':'Host'} background<select id="rbs-background-${id}">
+ <option value="">Original room</option><option value="rock">ROCK LED Studio</option>
+ <option value="cyan">Cyan Studio</option><option value="violet">Violet Studio</option>
+ <option value="red">Red Arena</option><option value="warm">Warm Lounge</option>
+ </select></label>`).join('')}`;
 $('rbs-owner').prepend(gameplayOptions);
 const gameplayClips=['Host video','Co-host video'].map((name,index)=>{
  const box=document.createElement('figure');
  box.className='rbs-tile rbs-clip';
  box.hidden=true;
  const video=document.createElement('video');
- video.muted=true;video.playsInline=true;
+ video.muted=true;video.playsInline=true;video.loop=true;
  const caption=document.createElement('figcaption');
  caption.textContent=name;
  box.append(video,caption);
@@ -56,7 +60,14 @@ const gameplayClips=['Host video','Co-host video'].map((name,index)=>{
  remove.onclick=clear;
  return {box,video,clear};
 });
-gameplayOptions.addEventListener('input',event=>{
+gameplayOptions.addEventListener('change',event=>{
+ if(event.target.matches('[id^="rbs-background-"]')){
+  const id=event.target.id.slice('rbs-background-'.length);
+  const canvas=videoNodes.get(id)?.parentElement.querySelector('.rbs-camera-background');
+  if(canvas)canvas.hidden=true;
+ }
+},true);
+ gameplayOptions.addEventListener('input',event=>{
  if(event.target.matches('[id^="rbs-camera-zoom-"]')&&mode==='gameplay'&&owner)renderPeople();
 });
 const saveYoutube=document.createElement('button');
@@ -241,15 +252,16 @@ function showGameplayCamera(video,stream,track){
 }
 const backgroundProcessor=new RockGameplayBackground(()=>{
  if(mode!=='gameplay'||role!=='owner')return [];
- return ['owner','cohost'].flatMap((id,i)=>{
+ return ['owner','cohost'].flatMap(id=>{
   const video=videoNodes.get(id);
   if(!video)return [];
   const canvas=video.parentElement.querySelector('.rbs-camera-background');
-  const active=()=>mode==='gameplay'&&role==='owner'&&video.isConnected&&!video.hidden&&$('rbs-background-'+id).checked;
-  return active()&&canvas?[{video,canvas,active,accent:i?'#ff56ca':'#28eaff'}]:[];
+  const background=$('rbs-background-'+id).value;
+  const active=()=>!!background&&mode==='gameplay'&&role==='owner'&&video.isConnected&&!video.hidden&&$('rbs-background-'+id).value===background;
+  return active()&&canvas?[{video,canvas,active,background,style:{zoom:Number($('rbs-camera-zoom-'+id).value)/100,mirror:$('rbs-mirror-'+id).checked,filter:RockBroadcastSocialLayout.filters[$('rbs-filter-'+id).value]}}]:[];
  });
 },()=>{
- for(const id of ['owner','cohost'])$('rbs-background-'+id).checked=false;
+ for(const id of ['owner','cohost'])$('rbs-background-'+id).value='';
  renderPeople();
  say('LED background is unavailable on this browser. Original cameras are still on.',true);
 });
@@ -296,9 +308,7 @@ function renderPeople(){const list=ordered(),display=mode==='gameplay'?[{id:'own
     canvas=document.createElement('canvas');canvas.className='rbs-camera-background';canvas.hidden=true;
     v.after(canvas);
    }
-   if(role!=='owner'||!$('rbs-background-'+id).checked||v.hidden)canvas.hidden=true;
-   canvas.style.transform=v.style.transform;
-   canvas.style.filter=v.style.filter;
+   if(role!=='owner'||!$('rbs-background-'+id).value||v.hidden)canvas.hidden=true;
   });
  }else{
   $('rbs-game').style.removeProperty('object-fit');
@@ -343,6 +353,11 @@ async function join(asOwner=false){if(joining||role)return;joining=true;const st
  }catch(e){await leave();throw e;}finally{joining=false;}}
 function showInvite(password){const url=new URL(location.pathname,location.origin);url.searchParams.set('broadcastMode',mode);url.searchParams.set('socialStudio',sessionId);url.searchParams.set('socialCohost','1');url.hash='live-broadcast';const area=$('rbs-invite');area.replaceChildren();const text=document.createElement('textarea');text.className='rbs-invite';text.readOnly=true;text.setAttribute('aria-label','Private co-host invitation');text.value='Join: '+url.href+(mode==='gameplay'?'\nID: ROCK':'')+'\nPassword: '+password+(mode==='watchparty'?'\nUse your existing approved Meeting Room login.':'');const copy=document.createElement('button');copy.textContent='COPY PRIVATE CO-HOST INVITATION';copy.onclick=run(async()=>{try{await navigator.clipboard.writeText(text.value);say('Private invitation copied; share only with your co-host.');}catch(_){text.focus();text.select();say('Invitation selected; copy and share privately.');}});area.append(text,copy);}
 async function leave(){if(leaving)return;leaving=true;epoch++;try{if(role&&ticket)await api('leave',{id:sessionId,call_token:ticket}).catch(()=>{});await studio.disconnect();source?.getTracks().forEach(t=>t.stop());camera?.getTracks().forEach(t=>t.stop());source=camera=null;await audio.stop();if(mode==='gameplay')gameplayClips.forEach(clip=>clip.clear());role=null;ticket=null;joinResponse=null;people.clear();videoNodes.clear();$('rbs-tiles').replaceChildren();$('rbs-game').srcObject=null;$('rbs-game').hidden=true;$('rbs-empty').hidden=false;renderPeople();renderAccess();}finally{leaving=false;}}
+function gameplayCameraConstraints(deviceId){
+ const camera=deviceId?{deviceId:{exact:deviceId}}:{facingMode:{ideal:'user'}};
+ return {...camera,frameRate:{ideal:24,max:30},
+  ...(navigator.mediaDevices.getSupportedConstraints?.().resizeMode?{resizeMode:{ideal:'none'}}:{})};
+}
 async function enableCohostMedia(){
  if(mode!=='gameplay'||role!=='cohost')throw Error('Join GAMEPLAY as co-host first.');
  if(!navigator.mediaDevices?.getUserMedia)throw Error('Camera and microphone access require a compatible browser on HTTPS.');
@@ -350,7 +365,7 @@ async function enableCohostMedia(){
  let media;
  try{
   media=await navigator.mediaDevices.getUserMedia({
-   video:{...(videoId?{deviceId:{exact:videoId}}:{}),width:{ideal:640},height:{ideal:360},facingMode:{ideal:'user'}},
+   video:gameplayCameraConstraints(videoId),
    audio:{...(micId?{deviceId:{exact:micId}}:{}),echoCancellation:true,noiseSuppression:true,autoGainControl:true}
   });
  }catch(error){
@@ -379,7 +394,7 @@ async function enableCohostMedia(){
  await devices();
  say('Co-host camera and microphone are on.');
 }
-async function enableCamera(){if(!role)throw Error('Join the call first');const gen=epoch,id=$('rbs-camera-device').value;const next=await navigator.mediaDevices.getUserMedia({audio:false,video:{...(id?{deviceId:{exact:id}}:{}),width:{ideal:640},height:{ideal:360},frameRate:{ideal:20,max:30},facingMode:'user'}});if(gen!==epoch||!role){next.getTracks().forEach(t=>t.stop());throw Error('Camera request cancelled');}camera?.getTracks().forEach(t=>t.stop());camera=next;camera.getVideoTracks()[0].onended=()=>{if(camera!==next)return;camera=null;attachLocal();};attachLocal();await studio.sync({camera,mic:audio.mic,screen:source});await devices();say(mode==='gameplay'?'Camera connected.':'Camera connected. Original orientation; no mirror.');}
+async function enableCamera(){if(!role)throw Error('Join the call first');const gen=epoch,id=$('rbs-camera-device').value;const next=await navigator.mediaDevices.getUserMedia({audio:false,video:mode==='gameplay'?gameplayCameraConstraints(id):{...(id?{deviceId:{exact:id}}:{}),width:{ideal:640},height:{ideal:360},frameRate:{ideal:20,max:30},facingMode:'user'}});if(gen!==epoch||!role){next.getTracks().forEach(t=>t.stop());throw Error('Camera request cancelled');}camera?.getTracks().forEach(t=>t.stop());camera=next;camera.getVideoTracks()[0].onended=()=>{if(camera!==next)return;camera=null;attachLocal();};attachLocal();await studio.sync({camera,mic:audio.mic,screen:source});await devices();say(mode==='gameplay'?'Camera connected.':'Camera connected. Original orientation; no mirror.');}
 async function enableMic(){if(!role)throw Error('Join the call first');const gen=epoch;await audio.enableMic($('rbs-mic-device').value);if(gen!==epoch||!role){await audio.stop();throw Error('Mic request cancelled');}await studio.sync({camera,mic:audio.mic,screen:source});await devices();say('Microphone connected to the website call.');}
 async function shareGameplayWindow(){
  if(!owner||role!=='owner')throw Error('Create / reconnect this mode first');
