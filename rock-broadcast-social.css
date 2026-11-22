@@ -76,3 +76,21 @@
 #live-broadcast .rbs-clip video { object-fit: cover; }
 
 #live-broadcast .rbs-camera-background { object-fit: cover; }
+
+#live-broadcast #rbs-game-fullscreen {
+  position: absolute; z-index: 2; right: 8px; bottom: 8px;
+  min-width: 44px; min-height: 44px; font-size: 22px; line-height: 1;
+  color: #fff; background: #091b30e8;
+}
+#live-broadcast .rbs-shared.rbs-game-expanded {
+  position: fixed; inset: 0; z-index: 2147483646;
+  width: 100%; height: 100%; border: 0; background: #000;
+}
+#live-broadcast .rbs-shared.rbs-game-expanded #rbs-game,
+#live-broadcast #rbs-game:fullscreen {
+  object-fit: contain !important; transform: none !important;
+}
+#live-broadcast .rbs-shared.rbs-game-expanded #rbs-game-fullscreen {
+  right: max(8px, env(safe-area-inset-right));
+  bottom: max(8px, env(safe-area-inset-bottom));
+}
