@@ -1,12 +1,12 @@
 /* Separate private two-host studio and public composed-output room. Never uses meeting rooms. */
 (()=>{'use strict';
 class BroadcastStudio {
-  constructor({api,audio,onTrack=()=>{},onState=()=>{}}){this.api=api;this.audio=audio;this.onTrack=onTrack;this.onState=onState;this.room=null;this.output=null;this.role=null;this.id=null;this.sent=new Map();this.received=new Map();this.generation=0;}
+  constructor({api,audio,adaptiveStream=true,onTrack=()=>{},onState=()=>{}}){this.api=api;this.audio=audio;this.adaptiveStream=adaptiveStream;this.onTrack=onTrack;this.onState=onState;this.room=null;this.output=null;this.role=null;this.id=null;this.sent=new Map();this.received=new Map();this.generation=0;}
   async sdk(){if(window.LivekitClient?.Room)return window.LivekitClient;if(!this.loading)this.loading=new Promise((resolve,reject)=>{const s=document.createElement('script');s.src='https://cdn.jsdelivr.net/npm/livekit-client@2.24.1/dist/livekit-client.umd.min.js';s.onload=()=>window.LivekitClient?.Room?resolve(window.LivekitClient):reject(Error('Studio library unavailable'));s.onerror=()=>{this.loading=null;reject(Error('Studio library unavailable'));};document.head.append(s);});return this.loading;}
   async connect(role,id,password){
     await this.disconnect();const generation=++this.generation,sdk=await this.sdk(),response=await this.api(role==='viewer'?'viewer-token':role==='cohost'?'cohost-token':'owner-token',{id,password});
     if(generation!==this.generation)throw Error('Studio connection cancelled');
-    const room=new sdk.Room({adaptiveStream:true,dynacast:true,audioCaptureDefaults:{echoCancellation:true,noiseSuppression:true,autoGainControl:true},disconnectOnPageLeave:true});
+    const room=new sdk.Room({adaptiveStream:this.adaptiveStream,dynacast:true,audioCaptureDefaults:{echoCancellation:true,noiseSuppression:true,autoGainControl:true},disconnectOnPageLeave:true});
     this.room=room;this.id=response.id;this.role=role;
     room.on(sdk.RoomEvent.TrackSubscribed,(track,publication,participant)=>this.receive(track,publication,participant));
     room.on(sdk.RoomEvent.TrackUnsubscribed,(track)=>this.remove(track.sid));
