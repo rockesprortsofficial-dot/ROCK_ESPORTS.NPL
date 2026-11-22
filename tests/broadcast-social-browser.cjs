@@ -42,7 +42,7 @@ await page.click('#rbs-share');await page.waitForFunction(()=>document.querySele
 await page.evaluate(()=>{
  const room=window.__rooms.findLast(r=>r.token==='owner-token');
  const canvas=document.createElement('canvas');canvas.width=640;canvas.height=360;
- const ctx=canvas.getContext('2d');ctx.fillStyle='#a0f';ctx.fillRect(0,0,640,360);
+ const ctx=canvas.getContext('2d');ctx.fillStyle='#f00';ctx.fillRect(0,0,320,360);ctx.fillStyle='#0f0';ctx.fillRect(320,0,320,360);
  const mediaStreamTrack=canvas.captureStream(30).getVideoTracks()[0];
  const camera={sid:'remote-cohost-camera',kind:'video',mediaStreamTrack,detach:()=>[],attach:video=>{
   if(video.hidden)throw Error('Remote camera must be visible before attachment');
@@ -69,6 +69,24 @@ await page.evaluate(()=>{
 await page.selectOption('#rbs-background-owner','rock');
 await page.selectOption('#rbs-background-cohost','violet');
 await page.waitForFunction(()=>Array.from(document.querySelectorAll('.rbs-camera-background')).filter(c=>!c.hidden).length===2);
+const cohostBackground=page.locator('#rbs-tiles .rbs-camera-background').last();
+const framePixels=canvas=>{
+ const ctx=canvas.getContext('2d'),w=canvas.width,h=canvas.height;
+ const pixel=(x,y)=>Array.from(ctx.getImageData(x,y,1,1).data);
+ return {aspect:w/h,left:pixel(Math.floor(w*.43),Math.floor(h*.5)),right:pixel(Math.floor(w*.57),Math.floor(h*.5)),edge:pixel(1,Math.floor(h*.5))};
+};
+const normal=await cohostBackground.evaluate(framePixels);
+assert.ok(normal.aspect>3&&normal.aspect<3.2);
+assert.ok(normal.left[0]>220&&normal.right[1]>220);
+assert.equal(normal.edge[3],255);
+assert.ok(normal.edge.slice(0,3).some(channel=>channel>10));
+await page.check('#rbs-mirror-cohost');
+await page.waitForFunction(()=>{
+ const canvas=document.querySelectorAll('#rbs-tiles .rbs-camera-background')[1];
+ return canvas.getContext('2d').getImageData(canvas.width*.43,canvas.height*.5,1,1).data[1]>220;
+});
+assert.equal(await page.evaluate(()=>localStorage.getItem('rock-gameplay-camera-flip-cohost')),'1');
+await page.uncheck('#rbs-mirror-cohost');
 await page.selectOption('#rbs-background-owner','');
 assert.equal(await page.locator('.rbs-camera-background').first().isHidden(),true);
 assert.equal(await page.locator('.rbs-camera-background').last().isVisible(),true);

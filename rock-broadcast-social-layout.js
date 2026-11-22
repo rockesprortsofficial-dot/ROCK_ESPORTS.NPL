@@ -12,5 +12,6 @@ function videoRect([x,y,w,h],width,height,fill=false,zoom=1){
  return [x+(w-dw)/2,y+(h-dh)/2,dw,dh];
 }
 const filters=Object.freeze({natural:'none',bright:'brightness(1.16) contrast(1.05)',soft:'brightness(1.08) contrast(.9) saturate(.94)',warm:'sepia(.16) saturate(1.17)'});
-const api={layout,videoRect,filters};if(typeof module!=='undefined')module.exports=api;else root.RockBroadcastSocialLayout=api;
+function cameraRect([x,y,w,h]){return [x+2,y+2,w-4,Math.max(1,h*.8-3)];}
+const api={layout,videoRect,filters,cameraRect};if(typeof module!=='undefined')module.exports=api;else root.RockBroadcastSocialLayout=api;
 })(typeof window==='undefined'?globalThis:window);

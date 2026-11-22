@@ -27,7 +27,8 @@
   // Draw the full studio without stretching it or cutting off the logo.
   const fit=Math.min(w/sw,h/sh),dw=sw*fit,dh=sh*fit;
   ctx.drawImage(studio,x,y,sw,sh,(w-dw)/2,(h-dh)/2,dw,dh);
-  ctx.fillStyle='#141523';ctx.fillRect(0,0,w,h);
+  const fill=Math.max(w/sw,h/sh),fw=sw*fill,fh=sh*fill;
+  ctx.drawImage(studio,x,y,sw,sh,(w-fw)/2,(h-fh)/2,fw,fh);
  }
 
  async function createSegmenter(){
@@ -45,23 +46,25 @@
   return segmenter;
  }
  function draw(canvas,{image,segmentationMask},target){
-  const scale=Math.min(1,480/Math.max(image.width,image.height));
-  const w=Math.round(image.width*scale),h=Math.round(image.height*scale);
-  if(!w||!h)return;
+  const w=480,h=Math.round(w/target.aspect);
+  const width=image.width||image.videoWidth,height=image.height||image.videoHeight;
+  if(!width||!height)return false;
+  const fit=Math.min(w/width,h/height),dw=width*fit,dh=height*fit;
   if(canvas.width!==w||canvas.height!==h){canvas.width=w;canvas.height=h;}
   const ctx=canvas.getContext('2d');
   ctx.save();
   ctx.clearRect(0,0,w,h);
   const {style,studio,background}=target;
   ctx.save();ctx.translate(w/2,h/2);ctx.scale(style.mirror?-style.zoom:style.zoom,style.zoom);
-  ctx.drawImage(segmentationMask,-w/2,-h/2,w,h);
+  ctx.drawImage(segmentationMask,-dw/2,-dh/2,dw,dh);
   ctx.globalCompositeOperation='source-in';
   ctx.filter=style.filter;
-  ctx.drawImage(image,-w/2,-h/2,w,h);
+  ctx.drawImage(image,-dw/2,-dh/2,dw,dh);
   ctx.restore();
   ctx.globalCompositeOperation='destination-over';
   paintStudio(ctx,studio,background,w,h);
   ctx.restore();
+  return true;
  }
  window.RockGameplayBackground=class{
   constructor(cameras,failed){
@@ -89,8 +92,7 @@
      this.segmenter.onResults(result=>{
       const target=this.current;
       if(!target||!target.active())return;
-      draw(target.canvas,result,target);
-      target.canvas.hidden=false;
+      if(draw(target.canvas,result,target))target.canvas.hidden=false;
      });
     }
     if(camera.active()&&camera.video.readyState>=2&&!document.hidden){

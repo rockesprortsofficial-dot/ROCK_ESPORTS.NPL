@@ -70,3 +70,5 @@
 #live-broadcast .rbs-clip { border-color: #28a8cf; box-shadow: none; }
 
 #live-broadcast .rbs-clip video { object-fit: cover; }
+
+#live-broadcast .rbs-camera-background { object-fit: cover; }
