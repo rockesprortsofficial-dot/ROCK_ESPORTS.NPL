@@ -132,6 +132,13 @@ Deno.serve(async req=>{
   }catch(_){return reply({error:'Call membership expired or revoked; sign in again'},403);}
  }
  const ownerId=await owner();if(ownerId!==row.owner_id)return reply({error:'Owner access required'},403);
+ if(action==='cohost-background'){
+  if(mode!=='gameplay')return reply({error:'Gameplay only'},404);
+  const background=b.background;
+  if(!['','rock','cyan','violet','red','warm'].includes(background))return reply({error:'Invalid background'},400);
+  await rooms.updateRoomMetadata(callRoom,JSON.stringify({rockCohostBackground:background}));
+  return reply({ok:true});
+ }
  if(action==='platform-status'){
   if(!row.egress_id)return reply({state:row.egress_state==='starting'?'starting':'idle',destinations:[]});
   try{

@@ -14,7 +14,7 @@ window.sb={
  removeChannel:async channel=>window.feedListeners.delete(channel),
  auth:{getSession:async()=>({data:{session:window.testOwner?{user:{email:'rockesprorts.official@gmail.com'},access_token:'owner'}:null}}),onAuthStateChange:fn=>window.auths.push(fn)},from:()=>{const q=new Proxy({},{get:(_,k)=>k==='then'?resolve=>resolve({data:null}):()=>q});return q;}};
 class Room{constructor(){this.handlers={};this.remoteParticipants=new Map();this.localParticipant={identity:'local',publishTrack:async(track,options)=>{window.lastPublishOptions??=[];window.lastPublishOptions.push(options);},unpublishTrack:async()=>{}};window.__rooms.push(this);}on(k,fn){this.handlers[k]=fn;return this;}async connect(url,token){this.token=token;this.state='connected';}async startAudio(){}async disconnect(){this.state='disconnected';}}
-window.LivekitClient={Room,RoomEvent:{TrackSubscribed:'track',TrackUnsubscribed:'untrack',Disconnected:'disconnected',Reconnecting:'reconnecting',Reconnected:'reconnected',ParticipantConnected:'person',ParticipantDisconnected:'left'},Track:{Source:{Camera:'camera',Microphone:'microphone',ScreenShare:'screen',ScreenShareAudio:'screen-audio'}}};
+window.LivekitClient={Room,RoomEvent:{RoomMetadataChanged:'room-metadata',TrackSubscribed:'track',TrackUnsubscribed:'untrack',Disconnected:'disconnected',Reconnecting:'reconnecting',Reconnected:'reconnected',ParticipantConnected:'person',ParticipantDisconnected:'left'},Track:{Source:{Camera:'camera',Microphone:'microphone',ScreenShare:'screen',ScreenShareAudio:'screen-audio'}}};
 const c=new AudioContext(),o=c.createOscillator(),audio=c.createMediaStreamDestination();o.connect(audio);o.start();window.testAudio=c;const makeVideo=()=>{const canvas=document.createElement('canvas');canvas.width=1920;canvas.height=1080;const x=canvas.getContext('2d');x.fillStyle='#123960';x.fillRect(0,0,1920,1080);x.fillStyle='#73d7ff';x.font='70px Arial';x.fillText('SYNTHETIC GAME / VIDEO TEST',250,500);return canvas.captureStream(30);};navigator.mediaDevices.getDisplayMedia=async()=>{const s=makeVideo();s.addTrack(audio.stream.getAudioTracks()[0].clone());return s;};navigator.mediaDevices.getUserMedia=async constraints=>{window.lastMediaRequest=constraints;return new MediaStream([...(constraints.video?makeVideo().getVideoTracks():[]),...(constraints.audio?[audio.stream.getAudioTracks()[0].clone()]:[])]);};navigator.mediaDevices.enumerateDevices=async()=>[{kind:'videoinput',deviceId:'usb',label:'USB Camera'},{kind:'audioinput',deviceId:'mic',label:'Headset Microphone'}];});
 for(const file of ['rock-broadcast-core.js','rock-broadcast-audio.js','rock-broadcast-compositor.js','rock-broadcast-studio.js','rock-live-broadcast.js','rock-broadcast-social-layout.js','rock-broadcast-social-compositor.js','rock-gameplay-background.js','rock-broadcast-social.js'])await page.addScriptTag({url:'/'+file});await page.waitForTimeout(150);assert.equal(await page.locator('.lb-player').count(),64);assert.equal(await page.locator('.rbs-tabs button').count(),3);
 await page.click('#rbs-tab-gameplay');await page.waitForSelector('#rbs-create');assert.equal(await page.locator('#lb-tournament-panel').isHidden(),true);assert.equal(await page.locator('#rbs-screen .lb-card').count(),0);await page.click('#rbs-generate-password');
@@ -208,6 +208,17 @@ await page.waitForFunction(()=>document.querySelector('#rbs-status').textContent
 assert.deepEqual(await page.evaluate(()=>window.lastPublishOptions.slice(-2).map(o=>o.source).sort()),['camera','microphone']);
 const cohostVideo=page.locator('#rbs-tiles .rbs-tile').filter({hasText:'CO-HOST'}).locator('video');
 await cohostVideo.waitFor({state:'visible'});
+await page.evaluate(()=>{
+ const room=window.__rooms.findLast(r=>r.token==='cohost-token');
+ room.handlers['room-metadata'](JSON.stringify({rockCohostBackground:'rock'}));
+});
+const cohostPreview=page.locator('#rbs-tiles .rbs-camera-background').last();
+await cohostPreview.waitFor({state:'visible'});
+await page.evaluate(()=>{
+ const room=window.__rooms.findLast(r=>r.token==='cohost-token');
+ room.handlers['room-metadata'](JSON.stringify({rockCohostBackground:''}));
+});
+await cohostPreview.waitFor({state:'hidden'});
 assert.equal(await cohostVideo.evaluate(v=>getComputedStyle(v).objectFit),'contain');
 assert.equal(await page.locator('#rbs-cohost-dialog').evaluate(d=>d.open),false);
 assert.equal(await page.locator('#rbs-tiles .rbs-tile').filter({hasText:'CO-HOST'}).evaluate(tile=>getComputedStyle(tile).getPropertyValue('--rbs-led').trim()),'#ff56ca');

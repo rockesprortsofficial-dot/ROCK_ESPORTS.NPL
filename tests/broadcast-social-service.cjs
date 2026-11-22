@@ -10,7 +10,7 @@ let op='read',value,filters=[],one=false;const q=new Proxy({},{get(_,k){if(k==='
 const createClient=(url,key,opt)=>key==='service'?{from:query,rpc:async()=>({data:deviceValid})}:{auth:{getUser:async()=>({data:{user:opt?.global?.headers?.Authorization==='Bearer OWNER'?{id:'OWNER'}:null}})},rpc:async()=>({data:opt?.global?.headers?.Authorization==='Bearer OWNER'})};
 class AccessToken{constructor(k,s,o){this.o=o;}addGrant(g){this.g=g;}async toJwt(){return JSON.stringify({...this.o,sub:this.o.identity,video:this.g});}}
 class TokenVerifier{async verify(t){const c=JSON.parse(t);if(c.forged)throw Error('signature');return c;}}
-class Rooms{async listRooms(names){return names.map(name=>({name}));}async createRoom(){}async listParticipants(room){return participants.get(room)||[];}async getParticipant(room,id){const p=(participants.get(room)||[]).find(p=>p.identity===id);if(!p)throw Error();return p;}async removeParticipant(room,id){participants.set(room,(participants.get(room)||[]).filter(p=>p.identity!==id));}async mutePublishedTrack(){}async deleteRoom(room){participants.delete(room);}}
+class Rooms{async listRooms(names){return names.map(name=>({name}));}async createRoom(){}async updateRoomMetadata(room,metadata){assert.ok(room);assert.equal(JSON.parse(metadata).rockCohostBackground,'rock');}async listParticipants(room){return participants.get(room)||[];}async getParticipant(room,id){const p=(participants.get(room)||[]).find(p=>p.identity===id);if(!p)throw Error();return p;}async removeParticipant(room,id){participants.set(room,(participants.get(room)||[]).filter(p=>p.identity!==id));}async mutePublishedTrack(){}async deleteRoom(room){participants.delete(room);}}
 class Egress{async startRoomCompositeEgress(room,out){egresses.push(out);return {egressId:'EGRESS'};}async stopEgress(){}async listEgress(){return [{egressId:'EGRESS',status:4,error:'invalid stream key',streamResults:[{url:'rtmps://a.rtmps.youtube.com/live2/DO_NOT_EXPOSE',status:2,error:'403 DO_NOT_EXPOSE'}]}];}}
 class StreamOutput{constructor(x){Object.assign(this,x);}}
 const env={SUPABASE_URL:'https://test.invalid',SUPABASE_SERVICE_ROLE_KEY:'service',SUPABASE_ANON_KEY:'anon',LIVEKIT_URL:'wss://test.invalid',LIVEKIT_API_KEY:'key',LIVEKIT_API_SECRET:'secret'};
@@ -47,6 +47,8 @@ const newOut=policy.grant('output',createdGameplay.body.id).room;
 participants.set(newOut,[{identity:'output',tracks:[{type:0},{type:1}]},{identity:'viewer-a'},{identity:'viewer-b'}]);
 await call('live',{id:createdGameplay.body.id},true,'gameplay');
 assert.equal((await call('status',{},false,'gameplay')).body.viewers,2);
+assert.equal((await call('cohost-background',{id:createdGameplay.body.id,background:'rock'},false,'gameplay')).status,403);
+assert.equal((await call('cohost-background',{id:createdGameplay.body.id,background:'rock'},true,'gameplay')).status,200);
 const savedDest={server:'rtmps://a.rtmps.youtube.com/live2',key:'SAVED_TEST_KEY'};
 assert.equal((await call('save-youtube',{destination:savedDest},false,'gameplay')).status,403);
 assert.equal((await call('save-youtube',{destination:savedDest},true,'watchparty')).status,404);
