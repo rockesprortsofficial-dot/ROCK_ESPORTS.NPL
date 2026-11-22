@@ -13,7 +13,7 @@ Deno.serve(async req=>{
  const url=Deno.env.get('SUPABASE_URL')||'',service=Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')||'',anon=Deno.env.get('SUPABASE_ANON_KEY')||'',lk=Deno.env.get('LIVEKIT_URL')||'',key=Deno.env.get('LIVEKIT_API_KEY')||'',secret=Deno.env.get('LIVEKIT_API_SECRET')||'';
  if(!url||!service||!anon||!lk||!key||!secret)return reply({error:'Broadcast call service is not configured'},503);
  const db=createClient(url,service,{auth:{persistSession:false,autoRefreshToken:false}}),endpoint=lk.replace(/^wss:/,'https:').replace(/^ws:/,'http:'),rooms=new RoomServiceClient(endpoint,key,secret),egress=new EgressClient(endpoint,key,secret);
- const capacity=Math.min(500,Math.max(2,Number(Deno.env.get('BROADCAST_SOCIAL_MAX_PARTICIPANTS'))||100));
+ const capacity=mode==='watchparty'?21:Math.min(500,Math.max(2,Number(Deno.env.get('BROADCAST_SOCIAL_MAX_PARTICIPANTS'))||100));
  const checked=async(q:any)=>{const r=await q;if(r.error)throw Error('DATABASE');return r.data;};
  const owner=async()=>{const jwt=(req.headers.get('Authorization')||'').replace(/^Bearer\s+/i,'');if(!jwt)throw Error('OWNER');const scoped=createClient(url,anon,{global:{headers:{Authorization:'Bearer '+jwt}},auth:{persistSession:false}});const {data,error}=await scoped.auth.getUser(jwt);if(error||!data.user||(await scoped.rpc('rock_broadcast_is_owner')).data!==true)throw Error('OWNER');return data.user.id;};
  const latest=()=>checked(db.from('rock_broadcast_social_sessions').select('*').eq('mode',mode).eq('ended',false).gt('expires_at',new Date().toISOString()).order('created_at',{ascending:false}).limit(1).maybeSingle());
@@ -53,7 +53,7 @@ Deno.serve(async req=>{
   const id=crypto.randomUUID(),password=supplied||Array.from(crypto.getRandomValues(new Uint8Array(24))).map(x=>x.toString(16).padStart(2,'0')).join('');
   await checked(db.from('rock_broadcast_social_sessions').insert({id,mode,owner_id:ownerId,invite_hash:mode==='gameplay'||supplied?await gameplayInviteHash(secret,id,password):await digest(id+':'+password),...(mode==='watchparty'&&supplied?{watchparty_password_required:true}:{})}));return reply({id,mode,password,capacity},201);
  }
- let id=String(b.id||'');if(!id&&['member-token','viewer-token'].includes(action))id=(await latest())?.id||'';
+ let id=String(b.id||'');if(!id&&['member-token','watchparty-token','viewer-token'].includes(action))id=(await latest())?.id||'';
  if(!/^[0-9a-f-]{36}$/i.test(id))return reply({error:'Owner must start this mode first'},404);
  const row=await checked(db.from('rock_broadcast_social_sessions').select('*').eq('id',id).eq('mode',mode).maybeSingle());
  if(!row||row.ended||Date.parse(row.expires_at)<=Date.now())return reply({error:'This call has ended or expired'},404);
@@ -76,11 +76,27 @@ Deno.serve(async req=>{
  }
  const callRoom=grant('owner',id).room,outRoom=grant('output',id).room;
  const activeMember=async(memberId:string)=>checked(db.from('rock_meeting_members').select('id,real_name,is_active').eq('id',memberId).eq('team_slug','rock-esports').eq('is_active',true).maybeSingle());
- const token=async(role:string,identity:string,name:string)=>{const t=new AccessToken(key,secret,{identity,name,ttl:'60s',metadata:JSON.stringify({rock_social:true,role,session:id})});t.addGrant(grant(role,id));const ticket=new AccessToken(key,secret,{identity,name,ttl:'6h',metadata:JSON.stringify({rock_social:true,role,session:id,purpose:'heartbeat'})});ticket.addGrant({room:grant('owner',id).room,roomJoin:false,canPublish:false,canSubscribe:false});return {id,mode,token:await t.toJwt(),renew_token:await ticket.toJwt(),server_url:lk,identity,role,name,capacity};};
+ const token=async(role:string,identity:string,name:string,metadata:Record<string,boolean>={})=>{const t=new AccessToken(key,secret,{identity,name,ttl:'60s',metadata:JSON.stringify({rock_social:true,role,session:id,...metadata})});t.addGrant(grant(role,id));const ticket=new AccessToken(key,secret,{identity,name,ttl:'6h',metadata:JSON.stringify({rock_social:true,role,session:id,...metadata,purpose:'heartbeat'})});ticket.addGrant({room:grant('owner',id).room,roomJoin:false,canPublish:false,canSubscribe:false});return {id,mode,token:await t.toJwt(),renew_token:await ticket.toJwt(),server_url:lk,identity,role,name,capacity};};
  if(action==='viewer-token'){
   if(!row.live)return reply({error:'Website broadcast has not started'},409);
   const p=await rooms.listParticipants(outRoom).catch(()=>[]);if(!p.some(x=>x.identity==='output'&&x.tracks.some(t=>t.type===1)))return reply({error:'Broadcaster is reconnecting'},409);
   return reply(await token('viewer','viewer-'+crypto.randomUUID(),'Viewer'));
+ }
+ if(action==='watchparty-token'){
+  if(mode!=='watchparty')return reply({error:'Watch Party only'},404);
+  if(!row.join_open)return reply({error:'Owner has closed new entries'},403);
+  if(!row.watchparty_password_required)return reply({error:'Ask the owner to set a Watch Party password first'},409);
+  const password=String(b.password||''),visitor=String(b.visitor||'');
+  if(b.login!=='ROCK'||password.length<8||password.length>48||!/^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(visitor))
+   return reply({error:'Enter ID ROCK and the owner’s Watch Party password'},403);
+  if(!await checked(db.rpc('rock_watchparty_password_attempt',{p_session:id,p_member:id})))return reply({error:'Too many sign-in attempts. Try again in a minute.'},429);
+  if(await gameplayInviteHash(secret,id,password)!==row.invite_hash)return reply({error:'Incorrect Watch Party password'},403);
+  const identity='member-'+visitor.toLowerCase();
+  if(row.blocked.includes(identity))return reply({error:'Owner has removed this participant'},403);
+  const present=await rooms.listParticipants(callRoom).catch(()=>[]);
+  if(present.filter(p=>p.identity!=='owner').length>=20&&!present.some(p=>p.identity===identity))return reply({error:'Watch Party already has 20 members'},409);
+  const display=String(b.display_name||'Member').replace(/[<>\u0000-\u001f]/g,'').slice(0,40);
+  return reply(await token('member',identity,display,{password_join:true}));
  }
  if(action==='member-token'||action==='cohost-token'){
   if(!row.join_open)return reply({error:'Owner has closed new entries'},403);
@@ -130,7 +146,7 @@ Deno.serve(async req=>{
  if(action==='heartbeat'){
   try{const c=await new TokenVerifier(key,secret).verify(String(b.call_token||'')),meta=JSON.parse(String(c.metadata||'{}'));
    if(meta.rock_social!==true||meta.purpose!=='heartbeat'||c.video?.roomJoin!==false||meta.session!==id||c.video?.room!==callRoom||!['member','cohost','owner'].includes(meta.role)||row.blocked.includes(String(c.sub)))throw Error();
-   if(meta.role!=='owner'&&mode==='watchparty'&&(!meta.member_id||!await activeMember(meta.member_id)))throw Error();
+   if(meta.role!=='owner'&&mode==='watchparty'&&meta.password_join!==true&&(!meta.member_id||!await activeMember(meta.member_id)))throw Error();
    if(meta.device_session_id&&!(await checked(db.rpc('rock_member_session_valid',{p_id:meta.device_session_id,p_member:meta.member_id}))))throw Error();await rooms.getParticipant(callRoom,String(c.sub));
    const renewed=new AccessToken(key,secret,{identity:String(c.sub),name:String(c.name||'Member'),ttl:'60s',metadata:String(c.metadata)});renewed.addGrant(grant(meta.role,id));return reply({token:await renewed.toJwt(),join_open:row.join_open});
   }catch(_){return reply({error:'Call membership expired or revoked; sign in again'},403);}
