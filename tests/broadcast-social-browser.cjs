@@ -15,7 +15,7 @@ window.sb={
  auth:{getSession:async()=>({data:{session:window.testOwner?{user:{email:'rockesprorts.official@gmail.com'},access_token:'owner'}:null}}),onAuthStateChange:fn=>window.auths.push(fn)},from:()=>{const q=new Proxy({},{get:(_,k)=>k==='then'?resolve=>resolve({data:null}):()=>q});return q;}};
 class Room{constructor(){this.handlers={};this.remoteParticipants=new Map();this.localParticipant={identity:'local',publishTrack:async(track,options)=>{window.lastPublishOptions??=[];window.lastPublishOptions.push(options);},unpublishTrack:async()=>{}};window.__rooms.push(this);}on(k,fn){this.handlers[k]=fn;return this;}async connect(url,token){this.token=token;this.state='connected';}async startAudio(){}async disconnect(){this.state='disconnected';}}
 window.LivekitClient={Room,RoomEvent:{TrackSubscribed:'track',TrackUnsubscribed:'untrack',Disconnected:'disconnected',Reconnecting:'reconnecting',Reconnected:'reconnected',ParticipantConnected:'person',ParticipantDisconnected:'left'},Track:{Source:{Camera:'camera',Microphone:'microphone',ScreenShare:'screen',ScreenShareAudio:'screen-audio'}}};
-const c=new AudioContext(),o=c.createOscillator(),audio=c.createMediaStreamDestination();o.connect(audio);o.start();window.testAudio=c;const makeVideo=()=>{const canvas=document.createElement('canvas');canvas.width=1920;canvas.height=1080;const x=canvas.getContext('2d');x.fillStyle='#123960';x.fillRect(0,0,1920,1080);x.fillStyle='#73d7ff';x.font='70px Arial';x.fillText('SYNTHETIC GAME / VIDEO TEST',250,500);return canvas.captureStream(30);};navigator.mediaDevices.getDisplayMedia=async()=>{const s=makeVideo();s.addTrack(audio.stream.getAudioTracks()[0].clone());return s;};navigator.mediaDevices.getUserMedia=async constraints=>new MediaStream([...(constraints.video?makeVideo().getVideoTracks():[]),...(constraints.audio?[audio.stream.getAudioTracks()[0].clone()]:[])]);navigator.mediaDevices.enumerateDevices=async()=>[{kind:'videoinput',deviceId:'usb',label:'USB Camera'},{kind:'audioinput',deviceId:'mic',label:'Headset Microphone'}];});
+const c=new AudioContext(),o=c.createOscillator(),audio=c.createMediaStreamDestination();o.connect(audio);o.start();window.testAudio=c;const makeVideo=()=>{const canvas=document.createElement('canvas');canvas.width=1920;canvas.height=1080;const x=canvas.getContext('2d');x.fillStyle='#123960';x.fillRect(0,0,1920,1080);x.fillStyle='#73d7ff';x.font='70px Arial';x.fillText('SYNTHETIC GAME / VIDEO TEST',250,500);return canvas.captureStream(30);};navigator.mediaDevices.getDisplayMedia=async()=>{const s=makeVideo();s.addTrack(audio.stream.getAudioTracks()[0].clone());return s;};navigator.mediaDevices.getUserMedia=async constraints=>{window.lastMediaRequest=constraints;return new MediaStream([...(constraints.video?makeVideo().getVideoTracks():[]),...(constraints.audio?[audio.stream.getAudioTracks()[0].clone()]:[])]);};navigator.mediaDevices.enumerateDevices=async()=>[{kind:'videoinput',deviceId:'usb',label:'USB Camera'},{kind:'audioinput',deviceId:'mic',label:'Headset Microphone'}];});
 for(const file of ['rock-broadcast-core.js','rock-broadcast-audio.js','rock-broadcast-compositor.js','rock-broadcast-studio.js','rock-live-broadcast.js','rock-broadcast-social-layout.js','rock-broadcast-social-compositor.js','rock-gameplay-background.js','rock-broadcast-social.js'])await page.addScriptTag({url:'/'+file});await page.waitForTimeout(150);assert.equal(await page.locator('.lb-player').count(),64);assert.equal(await page.locator('.rbs-tabs button').count(),3);
 await page.click('#rbs-tab-gameplay');await page.waitForSelector('#rbs-create');assert.equal(await page.locator('#lb-tournament-panel').isHidden(),true);assert.equal(await page.locator('#rbs-screen .lb-card').count(),0);await page.click('#rbs-generate-password');
 assert.match(await page.locator('#rbs-owner-password').inputValue(),/^[a-f0-9]{48}$/);
@@ -39,6 +39,18 @@ await page.click('#rbs-share');
 await page.waitForFunction(()=>document.querySelector('#rbs-status').textContent.includes('mirroring window'));
 await page.evaluate(()=>{navigator.mediaDevices.getDisplayMedia=()=>{if(!navigator.userActivation.isActive)throw Error('Missing click activation');return window.testDisplayMedia();};});
 await page.click('#rbs-share');await page.waitForFunction(()=>document.querySelector('#rbs-game').srcObject?.getVideoTracks().length===1);
+await page.selectOption('#rbs-source','capture');
+assert.equal(await page.locator('#rbs-capture-profile').inputValue(),'1080-30');
+await page.selectOption('#rbs-capture-video','usb');
+await page.selectOption('#rbs-capture-profile','720-30');
+await page.click('#rbs-share');
+await page.waitForFunction(()=>window.lastMediaRequest?.video?.height?.ideal===720);
+assert.equal(await page.evaluate(()=>window.lastMediaRequest.video.frameRate.max),30);
+await page.selectOption('#rbs-source','screen');
+assert.equal(await page.locator('#rbs-capture-profile').isHidden(),true);
+await page.click('#rbs-share');
+await page.waitForFunction(()=>document.querySelector('#rbs-status').textContent.includes('Gameplay video and sound connected'));
+
 await page.evaluate(()=>{
  const room=window.__rooms.findLast(r=>r.token==='owner-token');
  const canvas=document.createElement('canvas');canvas.width=640;canvas.height=360;
