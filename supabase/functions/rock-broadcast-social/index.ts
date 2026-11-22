@@ -19,7 +19,6 @@ Deno.serve(async req=>{
  const latest=()=>checked(db.from('rock_broadcast_social_sessions').select('*').eq('mode',mode).eq('ended',false).gt('expires_at',new Date().toISOString()).order('created_at',{ascending:false}).limit(1).maybeSingle());
  if(action==='status'){
   const row=await latest(),status=publicStatus(row);
-  if(mode!=='gameplay')return reply(status);
   let viewers:number|null=0;
   if(status.live){
    try{const participants=await rooms.listParticipants(grant('viewer',row.id).room);
@@ -59,7 +58,6 @@ Deno.serve(async req=>{
  const row=await checked(db.from('rock_broadcast_social_sessions').select('*').eq('id',id).eq('mode',mode).maybeSingle());
  if(!row||row.ended||Date.parse(row.expires_at)<=Date.now())return reply({error:'This call has ended or expired'},404);
  if(action==='engagement'){
-  if(mode!=='gameplay')return reply({error:'Gameplay only'},404);
   const operation=String(b.operation||'');
   if(!['read','like','comment','approve','hide','block'].includes(operation))return reply({error:'Invalid interaction'},400);
   const moderating=['approve','hide','block'].includes(operation);
