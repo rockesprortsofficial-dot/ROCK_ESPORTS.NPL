@@ -157,7 +157,10 @@ await page.waitForFunction(()=>document.querySelector('#rbs-platform-status').pa
 
 await page.click('#rbs-website');await page.waitForFunction(()=>document.querySelector('#rbs-status').textContent.includes('Website output started'));assert.equal(requests.filter(b=>b.action==='simulcast').length,0);
 assert.equal(await page.evaluate(()=>window.lastPublishOptions.find(o=>o.name==='social-composite').screenShareEncoding.maxFramerate),60);
-await page.click('#rbs-tab-watchparty');await page.fill('#rbs-watchparty-password','WatchCup27');await page.click('#rbs-create');await page.waitForSelector('#rbs-camera');assert.ok(requests.some(b=>b.action==='create'&&b.mode==='watchparty'&&b.password==='WatchCup27'));
+await page.click('#rbs-tab-watchparty');await page.fill('#rbs-watchparty-password','WatchCup27');
+assert.equal(await page.locator('#rbs-game-fit').inputValue(),'fill');
+await page.locator('#rbs-game-zoom').fill('135');
+assert.equal(await page.locator('#rbs-game').evaluate(v=>v.style.transform),'scale(1.35)');await page.click('#rbs-create');await page.waitForSelector('#rbs-camera');assert.ok(requests.some(b=>b.action==='create'&&b.mode==='watchparty'&&b.password==='WatchCup27'));
 const flip=page.locator('#rbs-moderation').getByRole('button',{name:'Flip left / right'}).first();
 await flip.click();
 assert.equal(await page.locator('#rbs-tiles video').first().evaluate(v=>v.style.transform),'scaleX(-1)');
