@@ -24,6 +24,21 @@ gameplayOptions.innerHTML=`<legend>Gameplay setup</legend>
  <option value="red">Red Arena</option><option value="warm">Warm Lounge</option>
  </select></label>`).join('')}`;
 $('rbs-owner').prepend(gameplayOptions);
+const watchpartyPassword=document.createElement('fieldset');
+watchpartyPassword.className='lb-form';
+watchpartyPassword.hidden=true;
+watchpartyPassword.innerHTML='<legend>Watch Party sign-in</legend><label>Member ID<input value="ROCK" readonly></label><label>Member password<input id="rbs-watchparty-password" type="password" minlength="8" maxlength="48" autocomplete="new-password"></label><button type="button" id="rbs-save-watchparty-password" hidden>Set member password</button>';
+$('rbs-owner').prepend(watchpartyPassword);
+$('rbs-save-watchparty-password').onclick=run(async()=>{
+ const gen=epoch;
+ if(mode!=='watchparty'||role!=='owner'||!owner)throw Error('Connect the owner call first');
+ const input=$('rbs-watchparty-password'),password=input.value.trim();
+ if(password.length<8)throw Error('Enter a password with at least 8 characters');
+ await api('create',{password});
+ if(gen!==epoch||mode!=='watchparty')return;
+ input.value='';
+ say('Watch Party password set. Members use ID ROCK and this password.');
+});
 const captureProfile=document.createElement('label');
 captureProfile.hidden=true;
 captureProfile.innerHTML='<span>HDMI capture quality</span><select id="rbs-capture-profile"><option value="1080-30">1080p · 30 FPS</option><option value="720-30">720p · 30 FPS</option><option value="1080-60">1080p · 60 FPS</option></select>';
@@ -249,7 +264,7 @@ $('rbs-comment-form').onsubmit=event=>{
  sendReaction($('rbs-send-comment'),'comment',{name:$('rbs-guest-name').value,message:$('rbs-comment').value});
 };
 $('rbs-game-zoom').oninput=()=>{if(mode==='gameplay'&&owner)renderPeople();};
-const people=new Map(),videoNodes=new Map(),audio=new RockBroadcastAudio();
+const people=new Map(),videoNodes=new Map(),watchpartyFlips=new Set(),audio=new RockBroadcastAudio();
 const say=(text,bad=false)=>{if(cohostDialog.open)$('rbs-cohost-status').textContent=text;$('rbs-status').textContent=text;$('rbs-status').classList.toggle('lb-danger',bad);};
 async function api(action,body={}){const requestMode=mode;const {data:{session}}=await sb.auth.getSession();const response=await fetch(SUPABASE_URL+'/functions/v1/rock-broadcast-social',{method:'POST',cache:'no-store',headers:{'Content-Type':'application/json',apikey:SUPABASE_KEY,...(session?.access_token?{Authorization:'Bearer '+session.access_token}:{})},body:JSON.stringify({action,mode:requestMode,...body})});const data=await response.json().catch(()=>({}));if(!response.ok)throw Error(data.error||'Broadcast call unavailable');return data;}
 function showGameplayCamera(video,stream,track){
@@ -362,11 +377,43 @@ function renderPeople(){const list=ordered(),display=mode==='gameplay'?[{id:'own
    if(!cameraBackground(id)||v.hidden)canvas.hidden=true;
   });
  }else{
+  frameState.cameraStyles=actual.map(({id})=>({mirror:watchpartyFlips.has(id)}));
+  actual.forEach(({id},i)=>{videoNodes.get(id).style.transform=frameState.cameraStyles[i].mirror?'scaleX(-1)':'';});
   $('rbs-game').style.removeProperty('object-fit');
   $('rbs-game').style.removeProperty('transform');
  }
  backgroundProcessor.update();renderModeration();}
-function renderModeration(){const list=$('rbs-moderation');list.replaceChildren();if(!owner)return;for(const p of ordered()){if(p.id==='owner')continue;const item=document.createElement('div');item.className='rbs-person';item.textContent=p.label;for(const action of ['mute','remove']){const b=document.createElement('button');b.textContent=action==='mute'?'Mute':'Remove';b.onclick=run(async()=>{await api(action,{id:sessionId,identity:p.id});say(action==='mute'?'Participant microphone muted.':'Participant removed from this call.');});item.append(b);}list.append(item);}}
+function renderModeration(){
+ const list=$('rbs-moderation');
+ list.replaceChildren();
+ if(!owner)return;
+ for(const person of ordered()){
+  if(person.id==='owner'&&mode!=='watchparty')continue;
+  const item=document.createElement('div');
+  item.className='rbs-person';item.textContent=person.label;
+  if(mode==='watchparty'){
+   const flip=document.createElement('button');
+   flip.type='button';flip.textContent='Flip left / right';
+   flip.setAttribute('aria-pressed',String(watchpartyFlips.has(person.id)));
+   flip.onclick=()=>{
+    if(watchpartyFlips.has(person.id))watchpartyFlips.delete(person.id);
+    else watchpartyFlips.add(person.id);
+    renderPeople();
+   };
+   item.append(flip);
+  }
+  if(person.id!=='owner')for(const action of ['mute','remove']){
+   const button=document.createElement('button');
+   button.textContent=action==='mute'?'Mute':'Remove';
+   button.onclick=run(async()=>{
+    await api(action,{id:sessionId,identity:person.id});
+    say(action==='mute'?'Participant microphone muted.':'Participant removed from this call.');
+   });
+   item.append(button);
+  }
+  list.append(item);
+ }
+}
 function renderAccess(){
  if(mode==='tournament')return;
  const gameplay=mode==='gameplay';
@@ -387,19 +434,23 @@ function renderAccess(){
  $('rbs-av').hidden=!(gameplay&&role==='cohost');
  $('rbs-view-fullscreen').hidden=!gameplay;
  $('rbs-set-cohost-password').hidden=!(gameplay&&role==='owner'&&owner);
- $('rbs-code-label').hidden=!(gameplay||invited);
- cohostLogin.hidden=!gameplay;
+ $('rbs-code-label').hidden=false;
+ $('rbs-code-label').firstChild.textContent=gameplay?'Private co-host invitation password':'Watch Party password';
+ cohostLogin.hidden=false;
+ const login=$('rbs-cohost-login');login.readOnly=!gameplay;if(!gameplay)login.value='ROCK';
+ watchpartyPassword.hidden=!(!gameplay&&owner);
+ $('rbs-save-watchparty-password').hidden=!(mode==='watchparty'&&role==='owner');
  $('rbs-join').textContent=gameplay||invited?'Join as co-host':'Join with Meeting Room login';
  $('rbs-member-note').textContent=gameplay?
   'Enter the private password from the owner. Your camera and voice may appear in the broadcast.':
-  'Existing Meeting Room member login is required. Your on-screen name, camera and voice may appear to website viewers and on platform LIVE.';
+  'Sign in through Meeting Room first. Use ID ROCK and enter the password if the owner has set one.';
 }
-async function access(){const wasOwner=owner;const {data:{session}}=await sb.auth.getSession();owner=!!session&&session.user.email?.toLowerCase()==='rockesprorts.official@gmail.com';try{member=await window.rockGetMemberSession?.()||null;}catch(_){member=null;}if(role==='owner'&&!owner||role&&role!=='owner'&&mode==='watchparty'&&!member)await leave();if(!owner){$('rbs-owner-password').value='';for(const p of ['youtube','tiktok']){$('rbs-'+p+'-key').value='';$('rbs-'+p+'-server').value='';}$('rbs-invite').replaceChildren();}renderAccess();if(wasOwner!==owner&&feedId){$('rbs-comments').replaceChildren();refreshFeed();}if(mode!=='tournament')renderPeople();}
+async function access(){const wasOwner=owner;const {data:{session}}=await sb.auth.getSession();owner=!!session&&session.user.email?.toLowerCase()==='rockesprorts.official@gmail.com';try{member=await window.rockGetMemberSession?.()||null;}catch(_){member=null;}if(role==='owner'&&!owner||role&&role!=='owner'&&mode==='watchparty'&&!member)await leave();if(!owner){$('rbs-owner-password').value='';$('rbs-watchparty-password').value='';for(const p of ['youtube','tiktok']){$('rbs-'+p+'-key').value='';$('rbs-'+p+'-server').value='';}$('rbs-invite').replaceChildren();}renderAccess();if(wasOwner!==owner&&feedId){$('rbs-comments').replaceChildren();refreshFeed();}if(mode!=='tournament')renderPeople();}
 function run(fn){return async event=>{const b=event?.currentTarget;if(b?.disabled)return;if(b){b.disabled=true;b.setAttribute('aria-busy','true');}try{await fn();}catch(e){say(e.message||'Could not complete this action',true);}finally{if(b){b.disabled=false;b.removeAttribute('aria-busy');}}};}
 async function requireOwner(){await access();if(!owner)throw Error('Owner login required');}
 async function devices(){if(!navigator.mediaDevices?.enumerateDevices)return;const d=await navigator.mediaDevices.enumerateDevices();for(const [id,kind,label] of [['rbs-camera-device','videoinput','Default camera'],['rbs-mic-device','audioinput','Default microphone'],['rbs-capture-video','videoinput','Choose capture card'],['rbs-capture-audio','audioinput','Video only / no game audio']]){const select=$(id),selected=select.value;select.replaceChildren(new Option(label,''));d.filter(x=>x.kind===kind).forEach((x,i)=>select.append(new Option(x.label||kind+' '+(i+1),x.deviceId)));if(d.some(x=>x.deviceId===selected))select.value=selected;}}
 function attachLocal(){if(!role)return;const id=role==='owner'?'owner':joinResponse?.identity;if(id){ensurePerson(id,role==='owner'?'HOST':$('rbs-name').value.trim()||joinResponse?.name||'Member');const v=videoNodes.get(id);if(mode==='gameplay'){showGameplayCamera(v,camera);}else{v.srcObject=camera;v.hidden=!camera;v.parentElement.dataset.empty=String(!camera);}}if(role==='owner'){$('rbs-game').srcObject=source;$('rbs-game').hidden=!source;$('rbs-empty').hidden=!!source;}}
-async function join(asOwner=false){if(joining||role)return;joining=true;const start=epoch,startMode=mode;try{await access();if(asOwner){if(!owner)throw Error('Owner login required');const password=$('rbs-owner-password').value.trim();$('rbs-owner-password').value='';const result=await api('create',mode==='gameplay'&&password?{password}:{});if(start!==epoch||mode!==startMode)throw Error('Call cancelled');sessionId=result.id;joinOpen=result.join_open!==false;if(result.password)showInvite(result.password);joinResponse=null;role='owner';joinResponse=await studio.connect('owner',sessionId);}else{const status=await api('status');if(start!==epoch||mode!==startMode)throw Error('Call cancelled');sessionId=invited?query.get('socialStudio')||status.id:status.id;const cohost=mode==='gameplay'||invited;if(mode==='gameplay'&&!sessionId)throw Error('Ask the owner to start the GAMEPLAY call first');if(mode==='watchparty'&&!member)throw Error('Sign in in the existing Meeting Room first');joinResponse=await api(cohost?'cohost-token':'member-token',{id:sessionId,...(mode==='gameplay'?{login:$('rbs-cohost-login').value.trim()}:{}),password:$('rbs-code').value.trim(),member_token:member?.token,display_name:$('rbs-name').value.trim()});role=cohost?'cohost':'member';await studio.connect('cohost',sessionId);$('rbs-code').value='';}
+async function join(asOwner=false){if(joining||role)return;joining=true;const start=epoch,startMode=mode;try{await access();if(asOwner){if(!owner)throw Error('Owner login required');const input=$(mode==='watchparty'?'rbs-watchparty-password':'rbs-owner-password');const password=input.value.trim();input.value='';const result=await api('create',password?{password}:{});if(start!==epoch||mode!==startMode)throw Error('Call cancelled');sessionId=result.id;joinOpen=result.join_open!==false;if(result.password&&(mode==='gameplay'||!password))showInvite(result.password);joinResponse=null;role='owner';joinResponse=await studio.connect('owner',sessionId);}else{const status=await api('status');if(start!==epoch||mode!==startMode)throw Error('Call cancelled');sessionId=invited?query.get('socialStudio')||status.id:status.id;const cohost=mode==='gameplay'||invited;if(mode==='gameplay'&&!sessionId)throw Error('Ask the owner to start the GAMEPLAY call first');if(mode==='watchparty'&&!member)throw Error('Sign in in the existing Meeting Room first');joinResponse=await api(cohost?'cohost-token':'member-token',{id:sessionId,login:$('rbs-cohost-login').value.trim(),password:$('rbs-code').value.trim(),member_token:member?.token,display_name:$('rbs-name').value.trim()});role=cohost?'cohost':'member';await studio.connect('cohost',sessionId);$('rbs-code').value='';}
  if(start!==epoch)throw Error('Call cancelled');ticket=joinResponse.renew_token;const S=window.LivekitClient.RoomEvent;studio.room.on(S.ParticipantConnected,p=>ensurePerson(p.identity,p.name||'Member'));studio.room.on(S.ParticipantDisconnected,p=>{people.delete(p.identity);videoNodes.get(p.identity)?.parentElement.remove();videoNodes.delete(p.identity);renderPeople();});for(const p of studio.room.remoteParticipants?.values()||[])ensurePerson(p.identity,p.name||'Member');ensurePerson(joinResponse.identity,role==='owner'?'HOST':joinResponse.name);connectCohostBackground(studio.room);attachLocal();cohostOpen=false;renderAccess();await devices();await viewer.disconnect();viewerId=null;$('rbs-view-stage').hidden=true;$('rbs-screen').hidden=false;say(mode==='gameplay'&&role==='cohost'?'Joined as co-host. Tap Enable camera and mic and allow both permissions.':'Joined website call. Enable your camera and microphone below. YouTube/TikTok are not required.');
  }catch(e){await leave();throw e;}finally{joining=false;}}
 function showInvite(password){const url=new URL(location.pathname,location.origin);url.searchParams.set('broadcastMode',mode);url.searchParams.set('socialStudio',sessionId);url.searchParams.set('socialCohost','1');url.hash='live-broadcast';const area=$('rbs-invite');area.replaceChildren();const text=document.createElement('textarea');text.className='rbs-invite';text.readOnly=true;text.setAttribute('aria-label','Private co-host invitation');text.value='Join: '+url.href+(mode==='gameplay'?'\nID: ROCK':'')+'\nPassword: '+password+(mode==='watchparty'?'\nUse your existing approved Meeting Room login.':'');const copy=document.createElement('button');copy.textContent='COPY PRIVATE CO-HOST INVITATION';copy.onclick=run(async()=>{try{await navigator.clipboard.writeText(text.value);say('Private invitation copied; share only with your co-host.');}catch(_){text.focus();text.select();say('Invitation selected; copy and share privately.');}});area.append(text,copy);}
@@ -500,7 +551,7 @@ async function share(){
  if(mode==='gameplay'&&$('rbs-source').value==='screen')return shareGameplayWindow();
 await requireOwner();if(role!=='owner')throw Error('Create / reconnect this mode first');const gen=epoch;let next;try{if($('rbs-source').value==='capture'){const id=$('rbs-capture-video').value;if(!id)throw Error('Select the capture card video device');if(hdmiCaptureSource&&hdmiCaptureSource===source){await releaseHDMICapture();if(gen!==epoch||role!=='owner')return;}const [height,fps]=$('rbs-capture-profile').value.split('-').map(Number);const width=height===720?1280:1920;next=await navigator.mediaDevices.getUserMedia({video:{deviceId:{exact:id},width:{ideal:width},height:{ideal:height},frameRate:{ideal:fps,max:fps}},audio:false});const aid=$('rbs-capture-audio').value;if(aid){const sound=await navigator.mediaDevices.getUserMedia({video:false,audio:{deviceId:{exact:aid},echoCancellation:false,noiseSuppression:false,autoGainControl:false,sampleRate:{ideal:48000},channelCount:{ideal:2}}});sound.getAudioTracks().forEach(t=>next.addTrack(t));}}else next=await navigator.mediaDevices.getDisplayMedia({video:{width:{ideal:1920},height:{ideal:1080},frameRate:{ideal:60,max:60}},audio:true});if(gen!==epoch||role!=='owner')throw Error('Source request cancelled');source?.getTracks().forEach(t=>t.stop());source=next;hdmiCaptureSource=$('rbs-source').value==='capture'?next:null;await audio.setScreen(source);source.getVideoTracks()[0].onended=()=>{if(source!==next)return;source=null;audio.setScreen(null);attachLocal();studio.sync({camera,mic:audio.mic,screen:null}).catch(()=>{});};attachLocal();await studio.sync({screen:source,camera,mic:audio.mic});const settings=source.getVideoTracks()[0].getSettings();const info=$('rbs-source').value==='capture'&&settings.width&&settings.height?('HDMI input: '+settings.width+' × '+settings.height+(settings.frameRate?' · '+Math.round(settings.frameRate)+' FPS. ':'. ')):'';say(info+(source.getAudioTracks().length?'Game/video and its audio shared with the call.':'Video shared without game audio. Select capture audio or share tab audio to include game sound.'));}catch(e){if(next!==source)next?.getTracks().forEach(t=>t.stop());throw e;}}
 async function syncViewer(){if(viewerBusy||mode==='tournament'||(role&&mode!=='gameplay'))return;viewerBusy=true;const gen=epoch;try{const video=$('rbs-view');if((document.hidden&&!video.webkitDisplayingFullscreen&&!document.fullscreenElement)||location.hash!=='#live-broadcast'){await viewer.disconnect();viewerId=null;closeFeed();return;}const status=await api('status');if(gen!==epoch)return;showViewers(status);syncFeed(status);if(role)return;if(!status.live){showExpandedVideo(false);if(viewer.role)await viewer.disconnect();viewerId=null;$('rbs-view-stage').hidden=true;$('rbs-screen').hidden=false;return;}if(viewerId!==status.id||!viewer.room||viewer.room.state==='disconnected'){await viewer.connect('viewer',status.id);if(gen!==epoch||role){await viewer.disconnect();return;}viewerId=status.id;}$('rbs-view-stage').hidden=false;$('rbs-screen').hidden=true;}catch(_){/* Quiet public retry; visitors never get member/admin controls. */}finally{viewerBusy=false;}}
-async function select(next){if(switching||next===mode)return;switching=true;tabs.querySelectorAll('button').forEach(b=>b.disabled=true);try{if(mode==='tournament')await window.RockTournamentBroadcast?.suspend();else{if(studio.output)await studio.stopOutput(true);await leave();await viewer.disconnect();viewerId=null;}for(const p of ['youtube','tiktok']){$('rbs-'+p+'-key').value='';$('rbs-'+p+'-server').value='';}$('rbs-invite').replaceChildren();closeFeed();gameplayClips.forEach(clip=>clip.clear());showExpandedVideo(false);cohostOpen=false;cohostDialog.close();cohostEntry.hidden=true;$('rbs-code').value='';mode=next;$('rbs-capture-profile').value=next==='watchparty'?'1080-60':'1080-30';viewerCount.hidden=true;$('rbs-owner-password').value='';invited=query.get('broadcastMode')===mode&&!!query.get('socialCohost');cohostOpen=mode==='gameplay'&&invited;window.rockBroadcastSelectedMode=mode;tournament.hidden=mode!=='tournament';panel.hidden=mode==='tournament';panel.setAttribute('aria-labelledby','rbs-tab-'+mode);tabs.querySelectorAll('button').forEach(b=>b.setAttribute('aria-selected',String(b.dataset.mode===mode)));const u=new URL(location.href);if(!invited){u.searchParams.delete('socialCohost');u.searchParams.delete('socialStudio');}if(mode==='tournament')u.searchParams.delete('broadcastMode');else u.searchParams.set('broadcastMode',mode);history.replaceState(null,'',u);if(mode!=='tournament'){renderPeople();await access();await syncViewer();}window.dispatchEvent(new Event('rock-broadcast-mode-changed'));}catch(e){say(e.message,true);}finally{switching=false;tabs.querySelectorAll('button').forEach(b=>b.disabled=false);}}
+async function select(next){if(switching||next===mode)return;switching=true;tabs.querySelectorAll('button').forEach(b=>b.disabled=true);try{if(mode==='tournament')await window.RockTournamentBroadcast?.suspend();else{if(studio.output)await studio.stopOutput(true);await leave();await viewer.disconnect();viewerId=null;}for(const p of ['youtube','tiktok']){$('rbs-'+p+'-key').value='';$('rbs-'+p+'-server').value='';}$('rbs-invite').replaceChildren();closeFeed();gameplayClips.forEach(clip=>clip.clear());showExpandedVideo(false);cohostOpen=false;cohostDialog.close();cohostEntry.hidden=true;$('rbs-code').value='';mode=next;$('rbs-watchparty-password').value='';$('rbs-capture-profile').value=next==='watchparty'?'1080-60':'1080-30';viewerCount.hidden=true;$('rbs-owner-password').value='';invited=query.get('broadcastMode')===mode&&!!query.get('socialCohost');cohostOpen=mode==='gameplay'&&invited;window.rockBroadcastSelectedMode=mode;tournament.hidden=mode!=='tournament';panel.hidden=mode==='tournament';panel.setAttribute('aria-labelledby','rbs-tab-'+mode);tabs.querySelectorAll('button').forEach(b=>b.setAttribute('aria-selected',String(b.dataset.mode===mode)));const u=new URL(location.href);if(!invited){u.searchParams.delete('socialCohost');u.searchParams.delete('socialStudio');}if(mode==='tournament')u.searchParams.delete('broadcastMode');else u.searchParams.set('broadcastMode',mode);history.replaceState(null,'',u);if(mode!=='tournament'){renderPeople();await access();await syncViewer();}window.dispatchEvent(new Event('rock-broadcast-mode-changed'));}catch(e){say(e.message,true);}finally{switching=false;tabs.querySelectorAll('button').forEach(b=>b.disabled=false);}}
 tabs.querySelectorAll('button').forEach(b=>b.onclick=()=>select(b.dataset.mode));
 $('rbs-set-cohost-password').onclick=run(async()=>{
  const password=$('rbs-owner-password').value.trim(),gen=epoch;
