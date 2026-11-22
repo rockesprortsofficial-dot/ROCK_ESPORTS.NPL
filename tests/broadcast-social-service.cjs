@@ -11,7 +11,7 @@ const createClient=(url,key,opt)=>key==='service'?{from:query,rpc:async()=>({dat
 class AccessToken{constructor(k,s,o){this.o=o;}addGrant(g){this.g=g;}async toJwt(){return JSON.stringify({...this.o,sub:this.o.identity,video:this.g});}}
 class TokenVerifier{async verify(t){const c=JSON.parse(t);if(c.forged)throw Error('signature');return c;}}
 class Rooms{async listRooms(names){return names.map(name=>({name}));}async createRoom(){}async listParticipants(room){return participants.get(room)||[];}async getParticipant(room,id){const p=(participants.get(room)||[]).find(p=>p.identity===id);if(!p)throw Error();return p;}async removeParticipant(room,id){participants.set(room,(participants.get(room)||[]).filter(p=>p.identity!==id));}async mutePublishedTrack(){}async deleteRoom(room){participants.delete(room);}}
-class Egress{async startRoomCompositeEgress(room,out){egresses.push(out);return {egressId:'EGRESS'};}async stopEgress(){}}
+class Egress{async startRoomCompositeEgress(room,out){egresses.push(out);return {egressId:'EGRESS'};}async stopEgress(){}async listEgress(){return [{egressId:'EGRESS',status:4,error:'invalid stream key',streamResults:[{url:'rtmps://a.rtmps.youtube.com/live2/DO_NOT_EXPOSE',status:2,error:'403 DO_NOT_EXPOSE'}]}];}}
 class StreamOutput{constructor(x){Object.assign(this,x);}}
 const env={SUPABASE_URL:'https://test.invalid',SUPABASE_SERVICE_ROLE_KEY:'service',SUPABASE_ANON_KEY:'anon',LIVEKIT_URL:'wss://test.invalid',LIVEKIT_API_KEY:'key',LIVEKIT_API_SECRET:'secret'};
 const exports={...policy,...dest};const source=stripTypeScriptTypes(fs.readFileSync('supabase/functions/rock-broadcast-social/index.ts','utf8').replace(/^import .*;\r?\n/gm,''));new Function('Deno','createClient','AccessToken','TokenVerifier','RoomServiceClient','EgressClient','StreamOutput','StreamProtocol',...Object.keys(exports),source)({env:{get:n=>env[n]},serve:fn=>handler=fn},createClient,AccessToken,TokenVerifier,Rooms,Egress,StreamOutput,{RTMP:1},...Object.values(exports));
@@ -56,6 +56,12 @@ assert.equal(JSON.stringify([...youtubeSettings.values()]).includes(savedDest.ke
 const savedStream=await call('simulcast',{id:createdGameplay.body.id,platforms:['youtube']},true,'gameplay');
 assert.equal(savedStream.status,200);
 assert.ok(egresses.at(-1).urls[0].endsWith('/SAVED_TEST_KEY'));
+assert.equal((await call('platform-status',{id:createdGameplay.body.id},false,'gameplay')).status,403);
+const state=await call('platform-status',{id:createdGameplay.body.id},true,'gameplay');
+assert.equal(state.body.state,'failed');
+assert.equal(state.body.destinations[0].platform,'YouTube');
+assert.equal(state.body.destinations[0].status,'failed');
+assert.doesNotMatch(JSON.stringify(state.body),/DO_NOT_EXPOSE/);
 assert.equal((await call('engagement',{id:createdGameplay.body.id,operation:'approve',event:1},false,'gameplay')).status,403);
 console.log('PASS: existing Meeting Room signed login, revoked device/inactive/new members, visitor denial/read-only playback, co-host membership, owner lock/remove, isolated modes, website output independent from platforms, key privacy (mock SDK/database).');
 })().catch(e=>{console.error(e);process.exit(1)});
