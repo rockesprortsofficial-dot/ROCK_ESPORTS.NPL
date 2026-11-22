@@ -18,12 +18,20 @@ gameplayOptions.innerHTML=`<legend>Gameplay setup</legend>
  <label>Gameplay framing<select id="rbs-game-fit"><option value="fit">Fit · show the entire game</option><option value="fill" selected>Fill · crop edges</option></select></label>
  <label>Broadcast frame rate<select id="rbs-game-fps"><option value="60">60 FPS target</option><option value="30">30 FPS target</option></select></label>
  <label>Shared video zoom <output id="rbs-game-zoom-value">100%</output><input type="range" id="rbs-game-zoom" min="100" max="175" step="1" value="100"></label>
- ${['owner','cohost'].map((id,i)=>`<label>${i?'Co-host':'Host'} camera filter<select id="rbs-filter-${id}">${Object.keys(RockBroadcastSocialLayout.filters).map(f=>`<option value="${f}">${f[0].toUpperCase()+f.slice(1)}</option>`).join('')}</select></label><label><span><input type="checkbox" id="rbs-mirror-${id}"> Mirror ${i?'co-host':'host'} camera</span></label><label>${i?'Co-host':'Host'} camera zoom <input type="range" id="rbs-camera-zoom-${id}" min="70" max="160" value="100"></label><label>${i?'Co-host':'Host'} background<select id="rbs-background-${id}">
+ ${['owner','cohost'].map((id,i)=>`<label>${i?'Co-host':'Host'} camera filter<select id="rbs-filter-${id}">${Object.keys(RockBroadcastSocialLayout.filters).map(f=>`<option value="${f}">${f[0].toUpperCase()+f.slice(1)}</option>`).join('')}</select></label><label><span><input type="checkbox" id="rbs-mirror-${id}"> Flip ${i?'co-host':'host'} left / right</span></label><label>${i?'Co-host':'Host'} camera zoom <input type="range" id="rbs-camera-zoom-${id}" min="70" max="160" value="100"></label><label>${i?'Co-host':'Host'} background<select id="rbs-background-${id}">
  <option value="">Original room</option><option value="rock">ROCK LED Studio</option>
  <option value="cyan">Cyan Studio</option><option value="violet">Violet Studio</option>
  <option value="red">Red Arena</option><option value="warm">Warm Lounge</option>
  </select></label>`).join('')}`;
 $('rbs-owner').prepend(gameplayOptions);
+for(const id of ['owner','cohost']){
+ const flip=$('rbs-mirror-'+id);
+ const key='rock-gameplay-camera-flip-'+id;
+ try{flip.checked=localStorage.getItem(key)==='1';}catch(_){}
+ flip.addEventListener('change',()=>{
+  try{localStorage.setItem(key,flip.checked?'1':'0');}catch(_){}
+ });
+}
 const gameplayClips=['Host video','Co-host video'].map((name,index)=>{
  const box=document.createElement('figure');
  box.className='rbs-tile rbs-clip';
@@ -252,13 +260,14 @@ function showGameplayCamera(video,stream,track){
 }
 const backgroundProcessor=new RockGameplayBackground(()=>{
  if(mode!=='gameplay'||role!=='owner')return [];
- return ['owner','cohost'].flatMap(id=>{
+ return ['owner','cohost'].flatMap((id,index)=>{
   const video=videoNodes.get(id);
   if(!video)return [];
   const canvas=video.parentElement.querySelector('.rbs-camera-background');
   const background=$('rbs-background-'+id).value;
   const active=()=>!!background&&mode==='gameplay'&&role==='owner'&&video.isConnected&&!video.hidden&&$('rbs-background-'+id).value===background;
-  return active()&&canvas?[{video,canvas,active,background,style:{zoom:Number($('rbs-camera-zoom-'+id).value)/100,mirror:$('rbs-mirror-'+id).checked,filter:RockBroadcastSocialLayout.filters[$('rbs-filter-'+id).value]}}]:[];
+  const rect=RockBroadcastSocialLayout.cameraRect(RockBroadcastSocialLayout.layout(2,'gameplay').tiles[index]);
+  return active()&&canvas?[{video,canvas,active,background,aspect:rect[2]/rect[3],style:{zoom:Number($('rbs-camera-zoom-'+id).value)/100,mirror:$('rbs-mirror-'+id).checked,filter:RockBroadcastSocialLayout.filters[$('rbs-filter-'+id).value]}}]:[];
  });
 },()=>{
  for(const id of ['owner','cohost'])$('rbs-background-'+id).value='';
