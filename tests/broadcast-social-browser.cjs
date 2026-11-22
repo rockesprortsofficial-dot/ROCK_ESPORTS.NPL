@@ -181,6 +181,25 @@ await page.click('#rbs-av');
 await page.waitForFunction(()=>document.querySelector('#rbs-status').textContent.includes('Camera and microphone are on'));
 const memberCamera=page.locator('#rbs-tiles .rbs-tile').filter({hasText:'Member Alias'}).locator('video');
 await memberCamera.waitFor({state:'visible'});
+assert.equal(await page.evaluate(()=>window.lastPublishOptions.findLast(o=>o.name==='camera').simulcast),false);
+await page.evaluate(()=>{
+ const room=window.__rooms.findLast(r=>r.token==='watchparty-token');
+ function track(sid,color){
+  const canvas=document.createElement('canvas');
+  canvas.width=320;canvas.height=180;
+  const ctx=canvas.getContext('2d');ctx.fillStyle=color;ctx.fillRect(0,0,320,180);
+  const mediaStreamTrack=canvas.captureStream(10).getVideoTracks()[0];
+  return {sid,kind:'video',mediaStreamTrack,attach:()=>{},detach:()=>[]};
+ }
+ const person={identity:'remote-member-camera',name:'Remote Member'},first=track('first-watch-camera','red'),next=track('next-watch-camera','blue');
+ room.handlers.track(first,{source:'camera'},person);
+ room.handlers.track(next,{source:'camera'},person);
+ room.handlers.untrack(first);
+ window.watchpartyRemoteCameraId=next.mediaStreamTrack.id;
+});
+const remoteMember=page.locator('#rbs-tiles .rbs-tile').filter({hasText:'Remote Member'}).locator('video');
+await remoteMember.waitFor({state:'visible'});
+assert.equal(await remoteMember.evaluate(v=>v.srcObject.getVideoTracks()[0].id),await page.evaluate(()=>window.watchpartyRemoteCameraId));
 for(let repeat=0;repeat<2;repeat++){
  await page.click('#rbs-leave');
  await page.getByRole('button',{name:'Join Watch Party'}).waitFor({state:'visible'});

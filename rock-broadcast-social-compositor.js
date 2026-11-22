@@ -49,16 +49,18 @@ class SocialCompositor extends RockBroadcastCompositor{
  }
 }
 class SocialStudio extends RockBroadcastStudio{
+ constructor(options){super(options);this.getMode=options.getMode;}
+ get cameraSimulcast(){return this.getMode?.()!=='watchparty';}
  async connect(role,id,password){
   await this.disconnect();const generation=++this.generation,sdk=await this.sdk(),response=await this.api(role==='viewer'?'viewer-token':role==='cohost'?'cohost-token':'owner-token',{id,password});if(generation!==this.generation)throw Error('Call cancelled');
   // The owner canvas still needs remote cameras while the owner scrolls to controls.
   // Ordinary participants/viewers retain adaptive subscriptions for their visible tiles.
-  const room=new sdk.Room({adaptiveStream:role!=='owner',dynacast:true,audioCaptureDefaults:{echoCancellation:true,noiseSuppression:true,autoGainControl:true},disconnectOnPageLeave:true});this.room=room;this.id=response.id;this.role=role;
+  const room=new sdk.Room({adaptiveStream:role!=='owner'&&!(role==='cohost'&&this.getMode?.()==='watchparty'),dynacast:true,audioCaptureDefaults:{echoCancellation:true,noiseSuppression:true,autoGainControl:true},disconnectOnPageLeave:true});this.room=room;this.id=response.id;this.role=role;
   room.on(sdk.RoomEvent.TrackSubscribed,(track,pub,p)=>this.receive(track,pub,p));room.on(sdk.RoomEvent.TrackUnsubscribed,track=>this.remove(track.sid));room.on(sdk.RoomEvent.Disconnected,()=>{if(this.room===room){this.clearReceived();this.onState('disconnected');}});room.on(sdk.RoomEvent.Reconnecting,()=>this.onState('reconnecting'));room.on(sdk.RoomEvent.Reconnected,()=>this.onState('connected'));
   try{await room.connect(response.server_url,response.token);if(generation!==this.generation){await room.disconnect();throw Error('Call cancelled');}await room.startAudio().catch(()=>this.onState('audio-blocked'));this.onState('connected');return response;}catch(e){if(this.room===room)await this.disconnect();else await room.disconnect();throw e;}
  }
  receive(track,pub,p){if(this.role!=='viewer'){super.receive(track,pub,p);return;}if(p.identity===this.room?.localParticipant.identity||this.received.has(track.sid))return;this.received.set(track.sid,{track,pub,participant:p});this.onTrack(track,pub,p,true);}
- remove(sid){const r=this.received.get(sid);if(!r)return;for(const el of r.track.detach()){if(el.closest?.('#rbs-screen,#rbs-view-stage'))el.srcObject=null;else el.remove();}if(this.role==='owner')this.audio.setRemote(sid,null);this.onTrack(r.track,r.pub,r.participant,false);this.received.delete(sid);}
+ remove(sid){const r=this.received.get(sid);if(!r)return;for(const el of r.track.detach()){if(el.closest?.('#rbs-screen,#rbs-view-stage')){if(this.getMode?.()!=='watchparty'||r.track.kind!=='video'||!el.srcObject?.getVideoTracks().some(t=>t.id!==r.track.mediaStreamTrack.id))el.srcObject=null;}else el.remove();}if(this.role==='owner')this.audio.setRemote(sid,null);this.onTrack(r.track,r.pub,r.participant,false);this.received.delete(sid);}
 
  async startOutput(compositor,fps=30){
   if(this.role!=='owner'||!this.room)throw Error('Connect the owner call first');if(this.output||this.starting)throw Error('Website output is already starting/running');
