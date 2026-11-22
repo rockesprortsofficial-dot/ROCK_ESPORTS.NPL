@@ -1,7 +1,7 @@
 import 'jsr:@supabase/functions-js/edge-runtime.d.ts';
 import {createClient} from 'npm:@supabase/supabase-js@2.95.0';
 import {AccessToken,TokenVerifier,RoomServiceClient,EgressClient,StreamOutput,StreamProtocol} from 'npm:livekit-server-sdk@2.13.3';
-import {modes,actions,grant,digest,publicStatus,gameplayInviteHash,sealYoutubeSettings,openYoutubeSettings} from './policy.ts';
+import {modes,actions,grant,digest,publicStatus,gameplayInviteHash,sealYoutubeSettings,openYoutubeSettings,platformStatus} from './policy.ts';
 import {streamDestination} from './destinations.ts';
 const cors={'Access-Control-Allow-Origin':'*','Access-Control-Allow-Headers':'authorization,apikey,content-type','Access-Control-Allow-Methods':'POST,OPTIONS','Cache-Control':'no-store'};
 const reply=(v:unknown,status=200)=>new Response(JSON.stringify(v),{status,headers:{...cors,'Content-Type':'application/json'}});
@@ -132,6 +132,13 @@ Deno.serve(async req=>{
   }catch(_){return reply({error:'Call membership expired or revoked; sign in again'},403);}
  }
  const ownerId=await owner();if(ownerId!==row.owner_id)return reply({error:'Owner access required'},403);
+ if(action==='platform-status'){
+  if(!row.egress_id)return reply({state:row.egress_state==='starting'?'starting':'idle',destinations:[]});
+  try{
+   const result=(await egress.listEgress(outRoom)).find(entry=>entry.egressId===row.egress_id);
+   return reply(result?platformStatus(result):{state:'not_found',destinations:[]});
+  }catch(_){return reply({error:'The relay status is temporarily unavailable.'},502);}
+ }
  if(action==='owner-token'){if(!(await rooms.listRooms([callRoom])).length)await rooms.createRoom({name:callRoom,maxParticipants:capacity,emptyTimeout:300});return reply(await token('owner','owner','HOST'));}
  if(action==='output-token')return reply(await token('output','output','Broadcast'));
  if(action==='lock'){await checked(db.from('rock_broadcast_social_sessions').update({join_open:!b.closed}).eq('id',id));return reply({join_open:!b.closed});}
@@ -145,7 +152,7 @@ Deno.serve(async req=>{
  if(action==='pause'||action==='stop'||action==='stop-simulcast'){
   // Mark website output unavailable before stopping any transport.
   if(action!=='stop-simulcast')await checked(db.from('rock_broadcast_social_sessions').update({live:false,...(action==='stop'?{join_open:false}:{})}).eq('id',id));
-  let failed=false;if(row.egress_id)try{await egress.stopEgress(row.egress_id);}catch(_){failed=true;}
+  let failed=false;if(row.egress_id)try{await egress.stopEgress(row.egress_id);}catch(_){try{const entry=(await egress.listEgress(outRoom)).find(item=>item.egressId===row.egress_id);failed=!entry||![3,4,5,6].includes(entry.status);}catch(_){failed=true;}}
   if(action!=='stop-simulcast')for(const name of action==='stop'?[callRoom,outRoom]:[outRoom])try{if((await rooms.listRooms([name])).length)await rooms.deleteRoom(name);}catch(_){failed=true;}
   if(failed)return reply({error:'Could not confirm every stream stopped. Retry Stop.'},502);
   await checked(db.from('rock_broadcast_social_sessions').update({egress_id:null,egress_state:'idle',...(action==='stop'?{ended:true}:{})}).eq('id',id));return reply({ok:true});

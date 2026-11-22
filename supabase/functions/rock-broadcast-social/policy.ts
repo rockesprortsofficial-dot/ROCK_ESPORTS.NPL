@@ -1,5 +1,5 @@
 export const modes=['gameplay','watchparty'];
-export const actions=['status','engagement','save-youtube','leave','create','owner-token','cohost-token','member-token','viewer-token','output-token','heartbeat','live','pause','stop','lock','remove','mute','simulcast','stop-simulcast'];
+export const actions=['status','engagement','save-youtube','platform-status','leave','create','owner-token','cohost-token','member-token','viewer-token','output-token','heartbeat','live','pause','stop','lock','remove','mute','simulcast','stop-simulcast'];
 export function grant(role:string,id:string){
  if(!/^[0-9a-f-]{36}$/i.test(id)||!['owner','cohost','member','viewer','output'].includes(role))throw Error('Invalid role/session');
  return {roomJoin:true,room:'rock-social-'+(['output','viewer'].includes(role)?'output-':'call-')+id,canSubscribe:role!=='output',canPublish:role!=='viewer',canPublishSources:role==='owner'?[1,2,3,4]:role==='output'?[3,4]:role==='viewer'?[]:[1,2],canPublishData:false,canUpdateOwnMetadata:false};
@@ -28,4 +28,29 @@ export async function openYoutubeSettings(secret:string,ownerId:string,sealed:st
  const bytes=Uint8Array.from(atob(sealed),char=>char.charCodeAt(0));
  const data=await crypto.subtle.decrypt({name:'AES-GCM',iv:bytes.subarray(0,12)},await youtubeSettingsKey(secret,ownerId),bytes.subarray(12));
  return new TextDecoder().decode(data);
+}
+
+type PlatformOutput = {url?:string,status?:number,error?:string};
+type PlatformEgress = {status?:number,error?:string,streamResults?:PlatformOutput[]};
+function platformLabel(url:string){
+ try{
+  const host=new URL(url).hostname;
+  if(host.endsWith('.youtube.com'))return 'YouTube';
+  if(host.endsWith('.tiktok.com')||host.endsWith('.tiktokcdn.com')||host.endsWith('.tiktokv.com'))return 'TikTok';
+ }catch(_){}
+ return 'Platform';
+}
+function platformFailure(error:string){
+ if(/auth|unauthori[sz]ed|forbidden|invalid.*key|bad.?name|403|401/i.test(error))return 'Check the stream key selected in the platform studio.';
+ if(/timeout|timed out|connection|network|refused|dial/i.test(error))return 'Could not confirm a connection to the platform ingest server.';
+ if(/no (?:audio|video|media)|track.*not found/i.test(error))return 'The relay could not get the website video or audio.';
+ return 'The relay reported an error.';
+}
+export function platformStatus(info:PlatformEgress){
+ const state=['starting','active','stopping','finished','failed','aborted','limit_reached'][info.status??-1]||'unknown';
+ const destinations=(info.streamResults||[]).map(stream=>{
+  const status=['active','finished','failed'][stream.status??-1]||'unknown';
+  return {platform:platformLabel(stream.url||''),status,...(status==='failed'?{hint:platformFailure(stream.error||info.error||'')}: {})};
+ });
+ return {state,destinations,...(state==='failed'?{hint:platformFailure(info.error||'')}: {})};
 }
