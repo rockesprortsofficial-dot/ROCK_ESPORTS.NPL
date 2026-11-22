@@ -10,7 +10,7 @@ const path = require('node:path');
     page.setDefaultTimeout(10000);
     await page.route(base + '**', route => route.fulfill({
       contentType: 'text/html',
-      body: '<meta name="viewport" content="width=device-width, initial-scale=1"><section id="home"><div class="hero-content"><h1>ROCK ESPORTS</h1></div></section>'
+      body: '<meta name="viewport" content="width=device-width, initial-scale=1"><section id="home" hidden><div class="hero-content"><h1>ROCK ESPORTS</h1></div></section><section id="rockCommunityFeed"><div class="container"><h2>Community</h2></div></section>'
     }));
     await page.goto(base);
     await page.evaluate(() => {
@@ -60,6 +60,7 @@ const path = require('node:path');
     });
     await page.addScriptTag({path: path.join(__dirname, '..', 'rock-home-live.js')});
     const grid = page.locator('#rock-home-live');
+    assert.equal(await grid.evaluate(element => element.closest('section[id="rockCommunityFeed"]').id), 'rockCommunityFeed');
     assert.equal(await grid.isHidden(), true);
     await page.evaluate(() => {
       window.liveModes = ['tournament', 'gameplay', 'watchparty'];
@@ -74,7 +75,8 @@ const path = require('node:path');
     await page.waitForURL(base + '#live-broadcast');
     await page.waitForFunction(() => window.disconnected === 3);
     assert.equal(await grid.isHidden(), true);
-    await page.evaluate(() => { window.liveModes = ['watchparty']; location.hash = 'home'; });
+    await page.evaluate(() => { window.liveModes = ['watchparty']; document.getElementById('home').hidden = false; location.hash = 'home'; });
+    await page.waitForFunction(() => document.querySelector('#home #rock-home-live'));
     await grid.getByRole('link', {name: /Members Watch Party/}).click();
     await page.waitForURL(base + '?broadcastMode=watchparty#live-broadcast');
     console.log('PASS: offline homepage, three muted live previews, watch links, preview cleanup and correct Watch Party URL.');
