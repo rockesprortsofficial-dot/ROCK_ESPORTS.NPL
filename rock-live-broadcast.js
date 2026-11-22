@@ -17,7 +17,7 @@ const studio=window.RockBroadcastStudio?new RockBroadcastStudio({api:studioApi,a
 const cohostInvite=new URLSearchParams(location.search).get('broadcastRole')==='cohost';
 const cameraMirrors=[true,true];
 let viewerBusy=false,viewerId=null;
-const viewer=window.RockBroadcastStudio?new RockBroadcastStudio({api:studioApi,audio:null,onTrack:(track,pub,participant,added)=>{if(track.kind==='video'){if(added)remoteViews.output=new MediaStream([track.mediaStreamTrack]);else delete remoteViews.output;attachMedia();}},onState:()=>{}}):null;
+const viewer=window.RockBroadcastStudio?new RockBroadcastStudio({api:studioApi,audio:null,adaptiveStream:false,onTrack:(track,pub,participant,added)=>{if(track.kind==='video'){if(added)remoteViews.output=new MediaStream([track.mediaStreamTrack]);else delete remoteViews.output;attachMedia();}},onState:()=>{}}):null;
 function renderAccess(){root.querySelectorAll('[data-owner-only]').forEach(el=>el.hidden=!owner);const entry=$('lb-cohost-entry');entry.hidden=false;if(cohostInvite&&!owner){entry.open=true;$('lb-channel-links').parentNode.insertBefore(entry,$('lb-channel-links'));}renderCohostControls();}
 function renderCohostControls(){const joined=studio?.role==='cohost'&&!!studio.room&&studio.room.state!=='disconnected';for(const id of ['lb-cohost-mic-enable','lb-cohost-camera-enable','lb-leave-studio','lb-resume-audio','lb-toggle-studio-mic','lb-toggle-studio-camera'])$(id).disabled=!joined;$('lb-join-cohost').disabled=joined;$('lb-join-id').readOnly=joined||!cohostInvite;$('lb-join-password').disabled=joined;}
 async function syncPublicVideo(){
