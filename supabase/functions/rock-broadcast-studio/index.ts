@@ -1,7 +1,7 @@
 import 'jsr:@supabase/functions-js/edge-runtime.d.ts';
 import {createClient} from 'npm:@supabase/supabase-js@2.95.0';
 import {AccessToken,RoomServiceClient,EgressClient,StreamOutput,StreamProtocol} from 'npm:livekit-server-sdk@2.13.3';
-import {grantFor,allowedAction,invitationHash,safeStatus,streamDestination} from './policy.ts';
+import {grantFor,allowedAction,invitationHash,safeStatus,streamDestination,customTournamentPassword} from './policy.ts';
 
 const cors={'Access-Control-Allow-Origin':'*','Access-Control-Allow-Headers':'authorization,apikey,x-client-info,content-type','Access-Control-Allow-Methods':'POST,OPTIONS','Cache-Control':'no-store'};
 const reply=(body:unknown,status=200)=>new Response(JSON.stringify(body),{status,headers:{...cors,'Content-Type':'application/json'}});
@@ -42,7 +42,7 @@ Deno.serve(async req=>{
       return reply(safeStatus(row,{youtube:false,tiktok:false}));
     }
     let id=String(body.id||'');
-    if(action==='viewer-token'&&!id){const {data}=await statusQuery();id=data?.id||'';}
+    if(['viewer-token','cohost-token','engagement'].includes(action)&&!id){const {data}=await statusQuery();id=data?.id||'';}
     if(!/^[0-9a-f-]{36}$/i.test(id))return reply({error:'Enter a valid studio ID'},400);
     const {data:row,error}=await db.from('rock_broadcast_studios').select('*').eq('id',id).maybeSingle();
     if(error||!row||row.ended||Date.parse(row.expires_at)<=Date.now())return reply({error:'Studio ended or expired'},404);
@@ -60,11 +60,38 @@ Deno.serve(async req=>{
     }
     if(action==='cohost-token'){
       const code=String(body.password||'');
-      if(!row.cohost_enabled||!/^[0-9a-f]{48}$/.test(code)||await invitationHash(id,code)!==row.invite_hash)return reply({error:'Invalid or revoked co-host invitation'},403);
-      // Fixed identity replaces an old connection rather than allowing extra co-hosts.
+      if(!row.cohost_enabled)return reply({error:'Invalid or revoked co-host invitation'},403);
+      if(row.custom_cohost_password){
+       if(!/^[0-9a-f-]{36}$/i.test(id)||code.length<8||code.length>48)return reply({error:'Enter the owner’s Tournament password'},403);
+       const attempt=await db.rpc('rock_tournament_cohost_attempt',{p_studio:id});
+       if(attempt.error)throw Error('PASSWORD_CHECK');
+       if(!attempt.data)return reply({error:'Too many sign-in attempts. Try again in a minute.'},429);
+       if(await customTournamentPassword(secret,id,code)!==row.invite_hash)return reply({error:'Incorrect Tournament password'},403);
+      }else if(!/^[0-9a-f]{48}$/.test(code)||await invitationHash(id,code)!==row.invite_hash)return reply({error:'Invalid or revoked co-host invitation'},403);
       return token('cohost');
     }
+    if(action==='engagement'){
+     const operation=String(body.operation||''),visitor=String(body.visitor||'');
+     if(!['read','like','comment','approve','hide','block'].includes(operation)||!/^[0-9a-f-]{36}$/i.test(visitor))return reply({error:'Invalid reaction request'},400);
+     const moderate=['approve','hide','block'].includes(operation);
+     const ownerId=moderate||body.moderator===true?await owner():null;
+     if(ownerId&&ownerId!==row.owner_id)return reply({error:'Owner access required'},403);
+     if(moderate&&(!Number.isSafeInteger(body.event)||body.event<=0))return reply({error:'Invalid comment'},400);
+     const result=await db.rpc('rock_tournament_interact',{p_session:id,p_action:operation,p_visitor:visitor,
+      p_name:operation==='comment'?String(body.name||'').trim():null,p_message:operation==='comment'?String(body.message||'').trim():null,
+      p_event:moderate?body.event:null,p_owner:ownerId});
+     if(result.error)throw Error('REACTIONS');
+     return reply(result.data,result.data?.error?400:200);
+    }
     const ownerId=await owner();if(ownerId!==row.owner_id)return reply({error:'Owner access required'},403);
+    if(action==='set-cohost-password'){
+      const password=String(body.password||'');
+      if(password.length<8||password.length>48)return reply({error:'Choose a password of 8 to 48 characters'},400);
+      const invite_hash=await customTournamentPassword(secret,id,password);
+      const updated=await db.from('rock_broadcast_studios').update({invite_hash,custom_cohost_password:true,cohost_enabled:true}).eq('id',id).eq('ended',false).select('id').maybeSingle();
+      if(updated.error||!updated.data)return reply({error:'Studio ended. Start a new studio first.'},409);
+      return reply({saved:true});
+    }
     if(action==='owner-token'){
       const existing=await rooms.listRooms([studioName]);if(!existing.length)await rooms.createRoom({name:studioName,maxParticipants:2,emptyTimeout:60});
       return token('owner');

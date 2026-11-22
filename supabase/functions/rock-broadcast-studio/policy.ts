@@ -8,7 +8,7 @@ export function grantFor(role: StudioRole, id: string, generation=0) {
     canPublishData: false, canUpdateOwnMetadata: false};
 }
 export function allowedAction(action: string) {
-  return ['status','create','owner-token','cohost-token','output-token','viewer-token','live','pause','stop','revoke-cohost','simulcast','stop-simulcast'].includes(action);
+  return ['status','create','set-cohost-password','engagement','owner-token','cohost-token','output-token','viewer-token','live','pause','stop','revoke-cohost','simulcast','stop-simulcast'].includes(action);
 }
 export async function invitationHash(id: string, code: string) {
   const bytes = await crypto.subtle.digest('SHA-256',new TextEncoder().encode(id+':'+code));
@@ -28,4 +28,11 @@ export function streamDestination(platform: string, value: any) {
   const host=url.hostname.toLowerCase(),trusted=platform==='youtube'?/^(?:[a-z0-9-]+\.)?(?:rtmp|rtmps)\.youtube\.com$/.test(host):platform==='tiktok'&&['tiktok.com','tiktokcdn.com','tiktokv.com'].some(base=>host===base||host.endsWith('.'+base));
   if(!trusted||!['rtmp:','rtmps:'].includes(url.protocol)||url.username||url.password||url.search||url.hash||(url.port&&!['443','1935'].includes(url.port)))throw Error('Invalid platform destination');
   return url.href.replace(/\/$/,'')+'/'+key;
+}
+
+export async function customTournamentPassword(secret:string,id:string,password:string){
+ const encoder=new TextEncoder();
+ const key=await crypto.subtle.importKey('raw',encoder.encode(secret),{name:'HMAC',hash:'SHA-256'},false,['sign']);
+ const hash=await crypto.subtle.sign('HMAC',key,encoder.encode('rock-tournament:'+id+':'+password));
+ return Array.from(new Uint8Array(hash),n=>n.toString(16).padStart(2,'0')).join('');
 }
