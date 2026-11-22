@@ -10,7 +10,7 @@ const path = require('node:path');
     page.setDefaultTimeout(10000);
     await page.route(base + '**', route => route.fulfill({
       contentType: 'text/html',
-      body: '<meta name="viewport" content="width=device-width, initial-scale=1"><section id="home" hidden><div class="hero-content"><h1>ROCK ESPORTS</h1></div></section><section id="rockCommunityFeed"><div class="container"><h2>Community</h2></div></section>'
+      body: '<meta name="viewport" content="width=device-width, initial-scale=1"><style>#rockIntroSequence{display:none}#rockIntroSequence.active{display:block;position:fixed;inset:0;background:#001;z-index:10}</style><section id="home" hidden><div class="hero-content"><h1>ROCK ESPORTS</h1></div></section><section id="rockCommunityFeed"><div class="container"><h2>Community</h2></div></section><div id="rockIntroSequence"><button id="rockIntroSkip">Skip intro</button></div>'
     }));
     await page.goto(base);
     await page.evaluate(() => {
@@ -75,11 +75,24 @@ const path = require('node:path');
     await page.waitForURL(base + '#live-broadcast');
     await page.waitForFunction(() => window.disconnected === 3);
     assert.equal(await grid.isHidden(), true);
+    await page.evaluate(() => {
+      window.liveModes = ['gameplay'];
+      const intro = document.getElementById('rockIntroSequence');
+      intro.classList.add('active');
+      document.getElementById('rockIntroSkip').onclick = () => intro.classList.remove('active');
+      window.RockBroadcastSocial = {select(mode) { window.selectedMode = mode; }};
+      location.hash = 'rockCommunityFeed';
+    });
+    await page.locator('#rockIntroSequence').getByRole('link', {name: /Gameplay/}).click();
+    await page.waitForURL(base + '#live-broadcast');
+    assert.equal(await page.evaluate(() => window.selectedMode), 'gameplay');
+    assert.equal(await page.locator('#rockIntroSequence').isHidden(), true);
+    await page.evaluate(() => { delete window.RockBroadcastSocial; });
     await page.evaluate(() => { window.liveModes = ['watchparty']; document.getElementById('home').hidden = false; location.hash = 'home'; });
     await page.waitForFunction(() => document.querySelector('#home #rock-home-live'));
     await grid.getByRole('link', {name: /Members Watch Party/}).click();
     await page.waitForURL(base + '?broadcastMode=watchparty#live-broadcast');
-    console.log('PASS: offline homepage, three muted live previews, watch links, preview cleanup and correct Watch Party URL.');
+    console.log('PASS: offline homepage, three muted previews, preview cleanup, live navigation from welcome and Watch Party URL.');
   } finally {
     await browser.close();
   }

@@ -23,10 +23,13 @@
     #rock-home-live .rock-live-label { display:flex; align-items:center; gap:8px; padding:10px; flex-wrap:wrap }
     #rock-home-live .rock-live-badge { color:#fff; background:#a6002a; border-radius:4px; padding:3px 6px; font-size:.75em; font-weight:800 }
     #rock-home-live .rock-live-action { margin-left:auto; color:#a9e8ff; font-size:.85em }
+    #rockIntroSequence > #rock-home-live { position:absolute; z-index:3; inset-block-start:max(12px,env(safe-area-inset-top)); inset-inline:12px; max-width:840px; max-height:50vh; overflow:auto; margin:0 auto }
+    #rockIntroSequence #rock-home-live a { width:min(100%,280px) }
   `;
   document.head.append(styles);
 
   const sdkLoader = new RockBroadcastStudio({});
+  const intro = document.getElementById('rockIntroSequence');
   const cards = new Map();
   let refreshing = false;
   let pageActive = true;
@@ -58,6 +61,16 @@
     if (mode !== 'tournament') url.searchParams.set('broadcastMode', mode);
     url.hash = 'live-broadcast';
     link.href = url;
+    link.addEventListener('click', event => {
+      if (event.defaultPrevented || event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
+      const broadcast = window.RockBroadcastSocial;
+      event.preventDefault();
+      if (intro?.classList.contains('active')) document.getElementById('rockIntroSkip')?.click();
+      document.getElementById('rockAiChatClose')?.click();
+      location.hash = 'live-broadcast';
+      if (broadcast) broadcast.select(mode);
+      else history.replaceState(history.state, '', url);
+    });
     const video = document.createElement('video');
     video.autoplay = video.defaultMuted = video.muted = video.playsInline = true;
     video.hidden = true;
@@ -126,7 +139,8 @@
       grid.hidden = true;
       return;
     }
-    const mount = location.hash === '#home' ? hero : document.querySelector('#rockCommunityFeed > .container') || hero;
+    const landing = location.hash === '#home' ? hero : document.querySelector('#rockCommunityFeed > .container') || hero;
+    const mount = intro?.classList.contains('active') ? intro : landing;
     if (grid.parentNode !== mount) mount.prepend(grid);
     if (refreshing) return;
     refreshing = true;
@@ -144,6 +158,7 @@
   }
 
   window.addEventListener('hashchange', refresh);
+  if (intro) new MutationObserver(refresh).observe(intro, {attributes:true, attributeFilter:['class']});
   window.addEventListener('rock-navigation-updated', refresh);
   document.addEventListener('visibilitychange', refresh);
   window.addEventListener('pageshow', () => { pageActive = true; refresh(); });
