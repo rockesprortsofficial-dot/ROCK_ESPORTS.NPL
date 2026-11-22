@@ -39,20 +39,20 @@ Deno.serve(async req=>{
  }
  if(action==='create'){
   const ownerId=await owner();
-  const supplied=mode==='gameplay'?String(b.password||''):'';
+  const supplied=String(b.password||'');
   if(supplied&&(supplied.length<8||supplied.length>48))return reply({error:'Choose a password of 8 to 48 characters'},400);
   const active=await latest();
   if(active){
    if(!supplied)return reply({...publicStatus(active),existing:true,capacity});
    if(active.owner_id!==ownerId)return reply({error:'Owner access required'},403);
    const invite_hash=await gameplayInviteHash(secret,active.id,supplied);
-   const updated=await checked(db.from('rock_broadcast_social_sessions').update({invite_hash}).eq('id',active.id).eq('ended',false).select('id').maybeSingle());
+   const updated=await checked(db.from('rock_broadcast_social_sessions').update({invite_hash,...(mode==='watchparty'?{watchparty_password_required:true}:{})}).eq('id',active.id).eq('ended',false).select('id').maybeSingle());
    if(!updated)return reply({error:'Gameplay call ended. Create a new call.'},409);
    return reply({...publicStatus(active),existing:true,capacity,password:supplied});
   }
   await checked(db.from('rock_broadcast_social_sessions').update({ended:true,live:false}).eq('mode',mode).eq('ended',false).lt('expires_at',new Date().toISOString()));
   const id=crypto.randomUUID(),password=supplied||Array.from(crypto.getRandomValues(new Uint8Array(24))).map(x=>x.toString(16).padStart(2,'0')).join('');
-  await checked(db.from('rock_broadcast_social_sessions').insert({id,mode,owner_id:ownerId,invite_hash:mode==='gameplay'?await gameplayInviteHash(secret,id,password):await digest(id+':'+password)}));return reply({id,mode,password,capacity},201);
+  await checked(db.from('rock_broadcast_social_sessions').insert({id,mode,owner_id:ownerId,invite_hash:mode==='gameplay'||supplied?await gameplayInviteHash(secret,id,password):await digest(id+':'+password),...(mode==='watchparty'&&supplied?{watchparty_password_required:true}:{})}));return reply({id,mode,password,capacity},201);
  }
  let id=String(b.id||'');if(!id&&['member-token','viewer-token'].includes(action))id=(await latest())?.id||'';
  if(!/^[0-9a-f-]{36}$/i.test(id))return reply({error:'Owner must start this mode first'},404);
@@ -95,6 +95,12 @@ Deno.serve(async req=>{
     deviceSession=meta.device_session_id||null;member=await activeMember(String(claims.sub));if(!member)throw Error();
    }catch(_){return reply({error:'Sign in through the existing ROCK ESPORTS Meeting Room. Active membership is required.'},403);}
   }
+  if(mode==='watchparty'&&row.watchparty_password_required){
+   const password=String(b.password||'');
+   if(b.login!=='ROCK'||password.length<8||password.length>48)return reply({error:'Enter ID ROCK and the owner’s Watch Party password'},403);
+   if(!await checked(db.rpc('rock_watchparty_password_attempt',{p_session:id,p_member:member.id})))return reply({error:'Too many sign-in attempts. Try again in a minute.'},429);
+   if(await gameplayInviteHash(secret,id,password)!==row.invite_hash)return reply({error:'Incorrect Watch Party password'},403);
+  }
   if(action==='cohost-token'&&mode==='gameplay'&&b.login!=='ROCK')return reply({error:'Invalid co-host invitation'},403);
   if(action==='cohost-token'){
    const password=String(b.password||'');
@@ -104,7 +110,7 @@ Deno.serve(async req=>{
     const valid=await gameplayInviteHash(secret,id,password)===row.invite_hash||
      (/^[0-9a-f]{48}$/.test(password)&&await digest(id+':'+password)===row.invite_hash);
     if(!valid)return reply({error:'Invalid co-host invitation'},403);
-   }else if(!/^[0-9a-f]{48}$/.test(password)||await digest(id+':'+password)!==row.invite_hash){
+   }else if(!row.watchparty_password_required&&(!/^[0-9a-f]{48}$/.test(password)||await digest(id+':'+password)!==row.invite_hash)){
     return reply({error:'Invalid co-host invitation'},403);
    }
   }

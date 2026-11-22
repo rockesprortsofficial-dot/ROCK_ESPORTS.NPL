@@ -41,6 +41,7 @@ class SocialCompositor extends RockBroadcastCompositor{
      ctx.save();ctx.strokeStyle=led;ctx.lineWidth=4;ctx.shadowColor=led;ctx.shadowBlur=14;
      ctx.strokeRect(r[0]+2,r[1]+2,r[2]-4,r[3]-4);ctx.restore();
     }
+    else if(s.cameraStyles?.[i]?.mirror)this.gameplayVideo(v.people[i],rect,{mirror:true});
     else this.video(v.people[i],rect);
    });
    if(gameplay)this.geometry.clips.forEach((rect,i)=>this.gameplayVideo(v.clips?.[i],rect,{fill:true}));
