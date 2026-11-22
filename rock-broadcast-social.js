@@ -482,15 +482,27 @@ $('rbs-set-cohost-password').onclick=run(async()=>{
 $('rbs-create').onclick=run(()=>join(true));$('rbs-join').onclick=run(()=>join(false));$('rbs-leave').onclick=run(async()=>{if(studio.output)await studio.stopOutput(true);await leave();say('Left the call; local devices stopped.');});$('rbs-av').onclick=run(enableCohostMedia);$('rbs-camera').onclick=run(enableCamera);$('rbs-mic').onclick=run(enableMic);$('rbs-share').onclick=run(share);$('rbs-devices').onclick=run(devices);$('rbs-sound').onclick=run(()=>studio.resumeAudio());$('rbs-monitor').onclick=run(async()=>{if(role!=='owner')throw Error('Owner call required');await audio.init();audio.monitorOn(!audio.monitoring);say(audio.monitoring?'Game-only headphone sound ON. Own mic is excluded.':'Game headphone sound OFF.');});
 $('rbs-mute').onclick=run(async()=>{if(!audio.mic)throw Error('Enable your microphone first');const muted=audio.mic.getAudioTracks()[0].enabled;audio.mic.getAudioTracks().forEach(t=>t.enabled=!muted);studio.mute('mic',muted);say(muted?'Your mic is muted.':'Your mic is enabled.');});$('rbs-hide-camera').onclick=run(async()=>{if(!camera)throw Error('Enable your camera first');const hidden=camera.getVideoTracks()[0].enabled;camera.getVideoTracks().forEach(t=>t.enabled=!hidden);studio.mute('camera',hidden);});
 $('rbs-website').onclick=run(async()=>{await requireOwner();if(!source)throw Error('Connect game/video first');if(document.hidden)throw Error('Keep this page visible while composing video');const fps=mode==='gameplay'&&$('rbs-game-fps').value==='60'?60:30;await studio.startOutput(new RockBroadcastSocialCompositor(()=>frameState,()=>({game:$('rbs-game'),people:frameState.people.map(p=>{const video=videoNodes.get(p.id);const canvas=video?.parentElement.querySelector('.rbs-camera-background');return canvas&&!canvas.hidden?canvas:video;}),clips:gameplayClips.map(clip=>clip.video)})),fps);say(mode==='gameplay'?'Website output started at 1080p with a '+fps+' FPS target. Actual frame rate depends on the source and connection.':'Website output started. Visitors can watch only; YouTube/TikTok are still separate.');});$('rbs-pause').onclick=run(async()=>{await requireOwner();await studio.stopOutput(true);say('Website/platform output paused. The private call remains connected.');});$('rbs-end').onclick=run(async()=>{await requireOwner();const id=sessionId||(await api('status')).id;if(!id)throw Error('No active call');await api('stop',{id});await leave();sessionId=null;$('rbs-invite').replaceChildren();say('This mode ended; its calls and streams stopped. Tournament is unchanged.');});$('rbs-lock').onclick=run(async()=>{await requireOwner();if(!sessionId)throw Error('Start this mode first');const r=await api('lock',{id:sessionId,closed:joinOpen});joinOpen=r.join_open;say(joinOpen?'New verified member/co-host entries OPEN.':'New entries CLOSED; existing call continues.');});
-$('rbs-platform-start').onclick=run(async()=>{await requireOwner();const platforms=['youtube','tiktok'].filter(p=>$('rbs-'+p+'-selected').checked);if(!platforms.length)throw Error('Select YouTube/TikTok');const destinations={};for(const p of platforms){const server=$('rbs-'+p+'-server').value.trim(),key=$('rbs-'+p+'-key').value.trim();if(server||key){if(!server||!key)throw Error('Enter both RTMP server and stream key for '+p);destinations[p]={server,key};}}await api('simulcast',{id:sessionId,platforms,destinations});for(const p of platforms)$('rbs-'+p+'-key').value='';say('Platform start requested. Use Check platform stream to see whether the relay connected.');});$('rbs-platform-status').onclick=run(async()=>{
- await requireOwner();
- const id=sessionId||(await api('status')).id;
- if(!id)throw Error('No active call');
- const result=await api('platform-status',{id});
- const outputs=result.destinations.map(entry=>entry.platform+': '+entry.status+(entry.hint?' — '+entry.hint:''));
- const note=result.state==='active'?' Confirm reception in the platform studio.':'';
- say('Relay: '+result.state+'. '+[...outputs,result.hint,note].filter(Boolean).join(' '));
-});
+$('rbs-platform-start').onclick=run(async()=>{await requireOwner();const platforms=['youtube','tiktok'].filter(p=>$('rbs-'+p+'-selected').checked);if(!platforms.length)throw Error('Select YouTube/TikTok');const destinations={};for(const p of platforms){const server=$('rbs-'+p+'-server').value.trim(),key=$('rbs-'+p+'-key').value.trim();if(server||key){if(!server||!key)throw Error('Enter both RTMP server and stream key for '+p);destinations[p]={server,key};}}await api('simulcast',{id:sessionId,platforms,destinations});for(const p of platforms)$('rbs-'+p+'-key').value='';say('Platform start requested. Use Check platform stream to see whether the relay connected.');});const platformStatusButton=$('rbs-platform-status');
+const platformStatusNote=document.createElement('p');
+platformStatusNote.className='lb-note';
+platformStatusNote.setAttribute('role','status');
+platformStatusNote.setAttribute('aria-live','polite');
+platformStatusButton.parentElement.after(platformStatusNote);
+platformStatusButton.onclick=async()=>{
+ if(platformStatusButton.disabled)return;
+ platformStatusButton.disabled=true;
+ platformStatusNote.textContent='Checking platform stream…';
+ try{
+  await requireOwner();
+  const id=sessionId||(await api('status')).id;
+  if(!id)throw Error('No active call');
+  const result=await api('platform-status',{id});
+  const outputs=result.destinations.map(entry=>entry.platform+': '+entry.status+(entry.hint?' — '+entry.hint:''));
+  const note=result.state==='active'?'Confirm reception in YouTube Studio.':'';
+  platformStatusNote.textContent='Relay: '+result.state+'. '+[...outputs,result.hint,note].filter(Boolean).join(' ');
+ }catch(error){platformStatusNote.textContent='Relay check: '+(error.message||'Status unavailable');}
+ finally{platformStatusButton.disabled=false;}
+};
 $('rbs-platform-stop').onclick=run(async()=>{await requireOwner();await api('stop-simulcast',{id:sessionId});say('Platform streams stopped; website call/output continues.');});const view=$('rbs-view'),viewStage=$('rbs-view-stage'),viewFullscreen=$('rbs-view-fullscreen');
 function showExpandedVideo(expanded){
  viewStage.classList.toggle('rbs-view-expanded',expanded);

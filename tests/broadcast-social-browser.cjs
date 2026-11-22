@@ -150,6 +150,11 @@ await page.click('#rbs-save-youtube');
 await page.waitForFunction(()=>document.querySelector('#rbs-status').textContent.includes('YouTube settings saved'));
 assert.equal(await page.locator('#rbs-youtube-key').inputValue(),'');
 assert.ok(requests.some(b=>b.action==='save-youtube'&&b.destination.server==='rtmps://a.rtmps.youtube.com/live2'));
+await page.click('#rbs-platform-status');
+const relayNote=page.locator('#rbs-platform-status').locator('xpath=../following-sibling::p[1]');
+await relayNote.waitFor({state:'visible'});
+await page.waitForFunction(()=>document.querySelector('#rbs-platform-status').parentElement.nextElementSibling.textContent.startsWith('Relay check:'));
+
 await page.click('#rbs-website');await page.waitForFunction(()=>document.querySelector('#rbs-status').textContent.includes('Website output started'));assert.equal(requests.filter(b=>b.action==='simulcast').length,0);
 assert.equal(await page.evaluate(()=>window.lastPublishOptions.find(o=>o.name==='social-composite').screenShareEncoding.maxFramerate),60);
 await page.click('#rbs-tab-watchparty');await page.click('#rbs-create');await page.waitForSelector('#rbs-camera');
