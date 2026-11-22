@@ -353,7 +353,7 @@ function renderPeople(){const list=ordered(),display=mode==='gameplay'?[{id:'own
  if(title.dataset.brand!==brandName||title.dataset.mode!==mode){
  title.dataset.brand=brandName;title.dataset.mode=mode;
  title.innerHTML=E(brandName)+' · <span style="color:'+(mode==='gameplay'?'#12eaff':'#ff23b4')+'">'+(mode==='gameplay'?'GAMEPLAY':'MEMBERS WATCH PARTY')+'</span>';
- if(mode==='gameplay'){const text=document.createElement('strong');text.append(...title.childNodes);title.append(text);}
+ const text=document.createElement('strong');text.append(...title.childNodes);title.append(text);
  }
  const gameplay=mode==='gameplay';
  panel.dataset.mode=mode;

@@ -1,7 +1,7 @@
 /* Dedicated renderer: the existing Tournament compositor is never modified. */
 (()=>{'use strict';
 class SocialCompositor extends RockBroadcastCompositor{
- rebuild(s){const h=this.h;h.clearRect(0,0,1920,1080);h.fillStyle='#010611';h.fillRect(0,0,1920,1080);this.text(s.branding.headerName+' · '+(s.mode==='gameplay'?'GAMEPLAY':'MEMBERS WATCH PARTY'),470,34,27,s.mode==='gameplay'?'#20e9ff':'#ff38b3',1400);h.strokeStyle='#ff1ab5';h.lineWidth=3;h.strokeRect(2,2,1916,1076);this.geometry=RockBroadcastSocialLayout.layout(s.people.length,s.mode);this.panel(...this.geometry.game);this.text('Waiting for shared gameplay / video',600,460,28,'#83bddd');for(let i=0;i<this.geometry.tiles.length;i++){const r=this.geometry.tiles[i];this.panel(...r,i%2?'#fc1cb6':'#12d7ff');this.text(s.people[i]?.label||'Camera off',r[0]+4,r[1]+r[3]-3,Math.min(19,Math.max(7,r[3]*.18)),'#fff',r[2]-8);}this.monitorLogo(s.branding.monitorLogo,...this.geometry.logo);this.text(s.branding.monitorName,this.geometry.logo[0]-100,1074,13,'#b5edff',200);}
+ rebuild(s){const h=this.h;h.clearRect(0,0,1920,1080);h.fillStyle='#010611';h.fillRect(0,0,1920,1080);h.strokeStyle='#ff1ab5';h.lineWidth=3;h.strokeRect(2,2,1916,1076);this.geometry=RockBroadcastSocialLayout.layout(s.people.length,s.mode);this.panel(...this.geometry.game);this.text('Waiting for shared gameplay / video',600,460,28,'#83bddd');for(let i=0;i<this.geometry.tiles.length;i++){const r=this.geometry.tiles[i];this.panel(...r,i%2?'#fc1cb6':'#12d7ff');this.text(s.people[i]?.label||'Camera off',r[0]+4,r[1]+r[3]-3,Math.min(19,Math.max(7,r[3]*.18)),'#fff',r[2]-8);}this.monitorLogo(s.branding.monitorLogo,...this.geometry.logo);this.text(s.branding.monitorName,this.geometry.logo[0]-100,1074,13,'#b5edff',200);}
  gameplayVideo(video,rect,{fill=false,zoom=1,mirror=false,filter='natural'}={}){
   const canvas=video instanceof HTMLCanvasElement;
   const width=canvas?video.width:video?.videoWidth,height=canvas?video.height:video?.videoHeight;
@@ -22,15 +22,13 @@ class SocialCompositor extends RockBroadcastCompositor{
    if(s!==this.lastState||!this.key){this.lastState=s;this.key='ready';this.rebuild(s);}
    this.ctx.drawImage(this.hud,0,0);
    const v=this.getVideos();
-   if(gameplay){
-    this.ctx.fillStyle='#010611';this.ctx.fillRect(8,6,1904,45);
+   this.ctx.fillStyle='#010611';this.ctx.fillRect(8,6,1904,45);
     const offset=this.reducedMotion?0:Math.sin(time/1500)*130;
-    const title=s.branding.headerName+' · GAMEPLAY';
+    const title=s.branding.headerName+' · '+(gameplay?'GAMEPLAY':'MEMBERS WATCH PARTY');
     this.ctx.save();this.ctx.font='bold 27px Arial';
-    this.ctx.fillStyle='#20e9ff';this.ctx.textAlign='center';
+    this.ctx.fillStyle=gameplay?'#20e9ff':'#ff38b3';this.ctx.textAlign='center';
     this.ctx.fillText(title,960+offset,34,1400);
-    this.ctx.restore();
-   }
+   this.ctx.restore();
    this.gameplayVideo(v.game,this.geometry.game,{fill:s.gameFit==='fill',zoom:s.gameZoom});
    this.geometry.tiles.forEach((r,i)=>{
     const rect=RockBroadcastSocialLayout.cameraRect(r);
