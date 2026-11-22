@@ -25,13 +25,12 @@
     #rock-home-live .rock-live-action { margin-left:auto; color:#a9e8ff; font-size:.85em }
   `;
   document.head.append(styles);
-  hero.prepend(grid);
 
   const sdkLoader = new RockBroadcastStudio({});
   const cards = new Map();
   let refreshing = false;
   let pageActive = true;
-  const isHome = () => pageActive && !document.hidden && ['', '#home'].includes(location.hash);
+  const isHome = () => pageActive && !document.hidden && ['', '#home', '#rockCommunityFeed'].includes(location.hash);
 
   async function request(endpoint, mode, action, id) {
     const response = await fetch(SUPABASE_URL + '/functions/v1/' + endpoint, {
@@ -127,6 +126,8 @@
       grid.hidden = true;
       return;
     }
+    const mount = location.hash === '#home' ? hero : document.querySelector('#rockCommunityFeed > .container') || hero;
+    if (grid.parentNode !== mount) mount.prepend(grid);
     if (refreshing) return;
     refreshing = true;
     try {
@@ -143,6 +144,7 @@
   }
 
   window.addEventListener('hashchange', refresh);
+  window.addEventListener('rock-navigation-updated', refresh);
   document.addEventListener('visibilitychange', refresh);
   window.addEventListener('pageshow', () => { pageActive = true; refresh(); });
   window.addEventListener('pagehide', () => { pageActive = false; refresh(); });
