@@ -6,12 +6,15 @@
   overflow: hidden;
   text-shadow: 0 0 8px #12eaff90;
 }
-#live-broadcast #rbs-panel[data-mode="gameplay"] .rbs-title strong {
+#live-broadcast #rbs-panel[data-mode="gameplay"] .rbs-title strong,
+#live-broadcast #rbs-panel[data-mode="watchparty"] .rbs-title strong {
   animation: rbs-gameplay-heading 3s ease-in-out infinite alternate;
 }
+#live-broadcast #rbs-panel[data-mode="watchparty"] .rbs-title { overflow: hidden; }
+#live-broadcast #rbs-panel[data-mode="watchparty"] .rbs-title strong { --rbs-heading-travel: clamp(8px, 4vw, 80px); }
 @keyframes rbs-gameplay-heading {
-  from { transform: translateX(-18%); }
-  to { transform: translateX(18%); }
+  from { transform: translateX(calc(-1 * var(--rbs-heading-travel,18%))); }
+  to { transform: translateX(var(--rbs-heading-travel,18%)); }
 }
 #live-broadcast #rbs-gameplay-options {
   border: 1px solid #287dad;
@@ -20,7 +23,8 @@
   min-width: 0;
 }
 @media (prefers-reduced-motion: reduce) {
-  #live-broadcast #rbs-panel[data-mode="gameplay"] .rbs-title strong { animation: none; }
+  #live-broadcast #rbs-panel[data-mode="gameplay"] .rbs-title strong,
+  #live-broadcast #rbs-panel[data-mode="watchparty"] .rbs-title strong { animation: none; }
 }
 
 #live-broadcast #rbs-engagement { margin: 12px 0; overflow-wrap: anywhere; }

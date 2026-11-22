@@ -158,6 +158,10 @@ await page.waitForFunction(()=>document.querySelector('#rbs-platform-status').pa
 await page.click('#rbs-website');await page.waitForFunction(()=>document.querySelector('#rbs-status').textContent.includes('Website output started'));assert.equal(requests.filter(b=>b.action==='simulcast').length,0);
 assert.equal(await page.evaluate(()=>window.lastPublishOptions.find(o=>o.name==='social-composite').screenShareEncoding.maxFramerate),60);
 await page.click('#rbs-tab-watchparty');await page.fill('#rbs-watchparty-password','WatchCup27');
+assert.equal(await page.locator('#rbs-title strong').evaluate(v=>getComputedStyle(v).animationName),'rbs-gameplay-heading');
+await page.emulateMedia({reducedMotion:'reduce'});
+assert.equal(await page.locator('#rbs-title strong').evaluate(v=>getComputedStyle(v).animationName),'none');
+await page.emulateMedia({reducedMotion:'no-preference'});
 assert.equal(await page.locator('#rbs-game-fit').inputValue(),'fill');
 await page.locator('#rbs-game-zoom').fill('135');
 assert.equal(await page.locator('#rbs-game').evaluate(v=>v.style.transform),'scale(1.35)');await page.click('#rbs-create');await page.waitForSelector('#rbs-camera');assert.ok(requests.some(b=>b.action==='create'&&b.mode==='watchparty'&&b.password==='WatchCup27'));
