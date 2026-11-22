@@ -35,14 +35,15 @@ class SocialCompositor extends RockBroadcastCompositor{
    this.geometry.tiles.forEach((r,i)=>{
     const rect=[r[0]+2,r[1]+2,r[2]-4,Math.max(1,r[3]*.8-3)];
     if(gameplay){
-     this.gameplayVideo(v.people[i],rect,s.cameraStyles?.[i]);
+     const input=v.people[i];
+     this.gameplayVideo(input,rect,input instanceof HTMLCanvasElement?undefined:s.cameraStyles?.[i]);
      const ctx=this.ctx,led=i?'#ff56ca':'#28eaff';
      ctx.save();ctx.strokeStyle=led;ctx.lineWidth=4;ctx.shadowColor=led;ctx.shadowBlur=14;
      ctx.strokeRect(r[0]+2,r[1]+2,r[2]-4,r[3]-4);ctx.restore();
     }
     else this.video(v.people[i],rect);
    });
-   if(gameplay)this.geometry.clips.forEach((rect,i)=>this.gameplayVideo(v.clips?.[i],rect));
+   if(gameplay)this.geometry.clips.forEach((rect,i)=>this.gameplayVideo(v.clips?.[i],rect,{fill:true}));
    this.frames++;
   }
   this.timer=requestAnimationFrame(t=>this.frame(t));

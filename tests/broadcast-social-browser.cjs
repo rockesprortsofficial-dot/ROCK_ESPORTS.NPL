@@ -66,13 +66,13 @@ await page.evaluate(()=>{
   }
  };
 });
-await page.check('#rbs-background-owner');
-await page.check('#rbs-background-cohost');
+await page.selectOption('#rbs-background-owner','rock');
+await page.selectOption('#rbs-background-cohost','violet');
 await page.waitForFunction(()=>Array.from(document.querySelectorAll('.rbs-camera-background')).filter(c=>!c.hidden).length===2);
-await page.uncheck('#rbs-background-owner');
+await page.selectOption('#rbs-background-owner','');
 assert.equal(await page.locator('.rbs-camera-background').first().isHidden(),true);
 assert.equal(await page.locator('.rbs-camera-background').last().isVisible(),true);
-await page.uncheck('#rbs-background-cohost');
+await page.selectOption('#rbs-background-cohost','');
 await page.locator('#rbs-camera-zoom-cohost').fill('85');
 assert.equal(await remoteVideo.evaluate(v=>v.style.transform),'scale(0.85, 0.85)');
 assert.notEqual(await page.locator('#rbs-tiles video').first().evaluate(v=>v.style.transform),'scale(0.85, 0.85)');
@@ -89,7 +89,7 @@ const clip=Buffer.from(await page.evaluate(async()=>{
 for(const input of await page.locator('#rbs-gameplay-options input[type=file]').all()){
  await input.setInputFiles({name:'clip.webm',mimeType:'video/webm',buffer:clip});
 }
-await page.waitForFunction(()=>Array.from(document.querySelectorAll('.rbs-clip video')).every(v=>v.videoWidth===160),{}, {timeout:7000}).catch(async e=>{console.log(await page.locator('.rbs-clip video').evaluateAll(v=>v.map(x=>({src:x.currentSrc,w:x.videoWidth,error:x.error?.message}))),clip.length);throw e;});
+await page.waitForFunction(()=>Array.from(document.querySelectorAll('.rbs-clip video')).every(v=>v.videoWidth===160&&v.loop&&getComputedStyle(v).objectFit==='cover'),{}, {timeout:7000}).catch(async e=>{console.log(await page.locator('.rbs-clip video').evaluateAll(v=>v.map(x=>({src:x.currentSrc,w:x.videoWidth,error:x.error?.message}))),clip.length);throw e;});
 await page.waitForFunction(()=>[...document.querySelectorAll('.rbs-tile')].some(tile=>tile.textContent==='CO-HOST'&&tile.querySelector('video').videoWidth===640));
 await page.evaluate(()=>{
  const room=window.__rooms.findLast(r=>r.token==='owner-token');
