@@ -30,8 +30,8 @@ class SocialCompositor extends RockBroadcastCompositor{
     this.ctx.fillStyle='#20e9ff';this.ctx.textAlign='center';
     this.ctx.fillText(title,960+offset,34,1400);
     this.ctx.restore();
-    this.gameplayVideo(v.game,this.geometry.game,{fill:s.gameFit==='fill',zoom:s.gameZoom});
-   }else this.video(v.game,this.geometry.game);
+   }
+   this.gameplayVideo(v.game,this.geometry.game,{fill:s.gameFit==='fill',zoom:s.gameZoom});
    this.geometry.tiles.forEach((r,i)=>{
     const rect=RockBroadcastSocialLayout.cameraRect(r);
     if(gameplay){

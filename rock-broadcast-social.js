@@ -24,6 +24,13 @@ gameplayOptions.innerHTML=`<legend>Gameplay setup</legend>
  <option value="red">Red Arena</option><option value="warm">Warm Lounge</option>
  </select></label>`).join('')}`;
 $('rbs-owner').prepend(gameplayOptions);
+const framingByMode={gameplay:{fit:'fill',zoom:'100'},watchparty:{fit:'fill',zoom:'100'}};
+const sharedFraming=document.createElement('fieldset');
+sharedFraming.className='lb-form';
+sharedFraming.innerHTML='<legend>Shared video framing</legend>';
+for(const id of ['rbs-game-fit','rbs-game-zoom'])sharedFraming.append($(id).closest('label'));
+gameplayOptions.before(sharedFraming);
+sharedFraming.addEventListener('change',()=>{if(mode!=='tournament'&&owner)renderPeople();});
 const watchpartyPassword=document.createElement('fieldset');
 watchpartyPassword.className='lb-form';
 watchpartyPassword.hidden=true;
@@ -263,7 +270,7 @@ $('rbs-comment-form').onsubmit=event=>{
  event.preventDefault();
  sendReaction($('rbs-send-comment'),'comment',{name:$('rbs-guest-name').value,message:$('rbs-comment').value});
 };
-$('rbs-game-zoom').oninput=()=>{if(mode==='gameplay'&&owner)renderPeople();};
+$('rbs-game-zoom').oninput=()=>{if(mode!=='tournament'&&owner)renderPeople();};
 const people=new Map(),videoNodes=new Map(),watchpartyFlips=new Set(),audio=new RockBroadcastAudio();
 const say=(text,bad=false)=>{if(cohostDialog.open)$('rbs-cohost-status').textContent=text;$('rbs-status').textContent=text;$('rbs-status').classList.toggle('lb-danger',bad);};
 async function api(action,body={}){const requestMode=mode;const {data:{session}}=await sb.auth.getSession();const response=await fetch(SUPABASE_URL+'/functions/v1/rock-broadcast-social',{method:'POST',cache:'no-store',headers:{'Content-Type':'application/json',apikey:SUPABASE_KEY,...(session?.access_token?{Authorization:'Bearer '+session.access_token}:{})},body:JSON.stringify({action,mode:requestMode,...body})});const data=await response.json().catch(()=>({}));if(!response.ok)throw Error(data.error||'Broadcast call unavailable');return data;}
@@ -354,16 +361,16 @@ function renderPeople(){const list=ordered(),display=mode==='gameplay'?[{id:'own
  showCaptureProfile();
  saveYoutube.hidden=!gameplay;youtubeNote.hidden=!gameplay;
  frameState={mode,branding:brand,people:actual};
- if(gameplay){
-  frameState.gameFit=$('rbs-game-fit').value;
+ frameState.gameFit=$('rbs-game-fit').value;
   const zoom=$('rbs-game-zoom');
   zoom.disabled=frameState.gameFit!=='fill';
   frameState.gameZoom=zoom.disabled?1:Number(zoom.value)/100;
   $('rbs-game-zoom-value').textContent=Math.round(frameState.gameZoom*100)+'%';
   $('rbs-game').style.transform='scale('+frameState.gameZoom+')';
+  $('rbs-game').style.objectFit=frameState.gameFit==='fill'?'cover':'contain';
+ if(gameplay){
   frameState.cameraStyles=actual.map(({id})=>({mirror:$('rbs-mirror-'+id).checked,zoom:Number($('rbs-camera-zoom-'+id).value)/100,filter:$('rbs-filter-'+id).value}));
   gameplayClips.forEach(({box},i)=>position(box,geo.clips[i]));
-  $('rbs-game').style.objectFit=frameState.gameFit==='fill'?'cover':'contain';
   actual.forEach(({id},i)=>{
    const v=videoNodes.get(id),style=frameState.cameraStyles[i];
    v.style.objectFit='contain';
@@ -379,8 +386,6 @@ function renderPeople(){const list=ordered(),display=mode==='gameplay'?[{id:'own
  }else{
   frameState.cameraStyles=actual.map(({id})=>({mirror:watchpartyFlips.has(id)}));
   actual.forEach(({id},i)=>{videoNodes.get(id).style.transform=frameState.cameraStyles[i].mirror?'scaleX(-1)':'';});
-  $('rbs-game').style.removeProperty('object-fit');
-  $('rbs-game').style.removeProperty('transform');
  }
  backgroundProcessor.update();renderModeration();}
 function renderModeration(){
@@ -551,7 +556,7 @@ async function share(){
  if(mode==='gameplay'&&$('rbs-source').value==='screen')return shareGameplayWindow();
 await requireOwner();if(role!=='owner')throw Error('Create / reconnect this mode first');const gen=epoch;let next;try{if($('rbs-source').value==='capture'){const id=$('rbs-capture-video').value;if(!id)throw Error('Select the capture card video device');if(hdmiCaptureSource&&hdmiCaptureSource===source){await releaseHDMICapture();if(gen!==epoch||role!=='owner')return;}const [height,fps]=$('rbs-capture-profile').value.split('-').map(Number);const width=height===720?1280:1920;next=await navigator.mediaDevices.getUserMedia({video:{deviceId:{exact:id},width:{ideal:width},height:{ideal:height},frameRate:{ideal:fps,max:fps}},audio:false});const aid=$('rbs-capture-audio').value;if(aid){const sound=await navigator.mediaDevices.getUserMedia({video:false,audio:{deviceId:{exact:aid},echoCancellation:false,noiseSuppression:false,autoGainControl:false,sampleRate:{ideal:48000},channelCount:{ideal:2}}});sound.getAudioTracks().forEach(t=>next.addTrack(t));}}else next=await navigator.mediaDevices.getDisplayMedia({video:{width:{ideal:1920},height:{ideal:1080},frameRate:{ideal:60,max:60}},audio:true});if(gen!==epoch||role!=='owner')throw Error('Source request cancelled');source?.getTracks().forEach(t=>t.stop());source=next;hdmiCaptureSource=$('rbs-source').value==='capture'?next:null;await audio.setScreen(source);source.getVideoTracks()[0].onended=()=>{if(source!==next)return;source=null;audio.setScreen(null);attachLocal();studio.sync({camera,mic:audio.mic,screen:null}).catch(()=>{});};attachLocal();await studio.sync({screen:source,camera,mic:audio.mic});const settings=source.getVideoTracks()[0].getSettings();const info=$('rbs-source').value==='capture'&&settings.width&&settings.height?('HDMI input: '+settings.width+' × '+settings.height+(settings.frameRate?' · '+Math.round(settings.frameRate)+' FPS. ':'. ')):'';say(info+(source.getAudioTracks().length?'Game/video and its audio shared with the call.':'Video shared without game audio. Select capture audio or share tab audio to include game sound.'));}catch(e){if(next!==source)next?.getTracks().forEach(t=>t.stop());throw e;}}
 async function syncViewer(){if(viewerBusy||mode==='tournament'||(role&&mode!=='gameplay'))return;viewerBusy=true;const gen=epoch;try{const video=$('rbs-view');if((document.hidden&&!video.webkitDisplayingFullscreen&&!document.fullscreenElement)||location.hash!=='#live-broadcast'){await viewer.disconnect();viewerId=null;closeFeed();return;}const status=await api('status');if(gen!==epoch)return;showViewers(status);syncFeed(status);if(role)return;if(!status.live){showExpandedVideo(false);if(viewer.role)await viewer.disconnect();viewerId=null;$('rbs-view-stage').hidden=true;$('rbs-screen').hidden=false;return;}if(viewerId!==status.id||!viewer.room||viewer.room.state==='disconnected'){await viewer.connect('viewer',status.id);if(gen!==epoch||role){await viewer.disconnect();return;}viewerId=status.id;}$('rbs-view-stage').hidden=false;$('rbs-screen').hidden=true;}catch(_){/* Quiet public retry; visitors never get member/admin controls. */}finally{viewerBusy=false;}}
-async function select(next){if(switching||next===mode)return;switching=true;tabs.querySelectorAll('button').forEach(b=>b.disabled=true);try{if(mode==='tournament')await window.RockTournamentBroadcast?.suspend();else{if(studio.output)await studio.stopOutput(true);await leave();await viewer.disconnect();viewerId=null;}for(const p of ['youtube','tiktok']){$('rbs-'+p+'-key').value='';$('rbs-'+p+'-server').value='';}$('rbs-invite').replaceChildren();closeFeed();gameplayClips.forEach(clip=>clip.clear());showExpandedVideo(false);cohostOpen=false;cohostDialog.close();cohostEntry.hidden=true;$('rbs-code').value='';mode=next;$('rbs-watchparty-password').value='';$('rbs-capture-profile').value=next==='watchparty'?'1080-60':'1080-30';viewerCount.hidden=true;$('rbs-owner-password').value='';invited=query.get('broadcastMode')===mode&&!!query.get('socialCohost');cohostOpen=mode==='gameplay'&&invited;window.rockBroadcastSelectedMode=mode;tournament.hidden=mode!=='tournament';panel.hidden=mode==='tournament';panel.setAttribute('aria-labelledby','rbs-tab-'+mode);tabs.querySelectorAll('button').forEach(b=>b.setAttribute('aria-selected',String(b.dataset.mode===mode)));const u=new URL(location.href);if(!invited){u.searchParams.delete('socialCohost');u.searchParams.delete('socialStudio');}if(mode==='tournament')u.searchParams.delete('broadcastMode');else u.searchParams.set('broadcastMode',mode);history.replaceState(null,'',u);if(mode!=='tournament'){renderPeople();await access();await syncViewer();}window.dispatchEvent(new Event('rock-broadcast-mode-changed'));}catch(e){say(e.message,true);}finally{switching=false;tabs.querySelectorAll('button').forEach(b=>b.disabled=false);}}
+async function select(next){if(switching||next===mode)return;switching=true;tabs.querySelectorAll('button').forEach(b=>b.disabled=true);try{if(mode==='tournament')await window.RockTournamentBroadcast?.suspend();else{if(studio.output)await studio.stopOutput(true);await leave();await viewer.disconnect();viewerId=null;}for(const p of ['youtube','tiktok']){$('rbs-'+p+'-key').value='';$('rbs-'+p+'-server').value='';}$('rbs-invite').replaceChildren();closeFeed();gameplayClips.forEach(clip=>clip.clear());showExpandedVideo(false);cohostOpen=false;cohostDialog.close();cohostEntry.hidden=true;$('rbs-code').value='';if(framingByMode[mode])framingByMode[mode]={fit:$('rbs-game-fit').value,zoom:$('rbs-game-zoom').value};mode=next;if(framingByMode[mode]){$('rbs-game-fit').value=framingByMode[mode].fit;$('rbs-game-zoom').value=framingByMode[mode].zoom;}$('rbs-watchparty-password').value='';$('rbs-capture-profile').value=next==='watchparty'?'1080-60':'1080-30';viewerCount.hidden=true;$('rbs-owner-password').value='';invited=query.get('broadcastMode')===mode&&!!query.get('socialCohost');cohostOpen=mode==='gameplay'&&invited;window.rockBroadcastSelectedMode=mode;tournament.hidden=mode!=='tournament';panel.hidden=mode==='tournament';panel.setAttribute('aria-labelledby','rbs-tab-'+mode);tabs.querySelectorAll('button').forEach(b=>b.setAttribute('aria-selected',String(b.dataset.mode===mode)));const u=new URL(location.href);if(!invited){u.searchParams.delete('socialCohost');u.searchParams.delete('socialStudio');}if(mode==='tournament')u.searchParams.delete('broadcastMode');else u.searchParams.set('broadcastMode',mode);history.replaceState(null,'',u);if(mode!=='tournament'){renderPeople();await access();await syncViewer();}window.dispatchEvent(new Event('rock-broadcast-mode-changed'));}catch(e){say(e.message,true);}finally{switching=false;tabs.querySelectorAll('button').forEach(b=>b.disabled=false);}}
 tabs.querySelectorAll('button').forEach(b=>b.onclick=()=>select(b.dataset.mode));
 $('rbs-set-cohost-password').onclick=run(async()=>{
  const password=$('rbs-owner-password').value.trim(),gen=epoch;
