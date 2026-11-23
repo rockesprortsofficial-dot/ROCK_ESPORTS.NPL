@@ -111,7 +111,16 @@ const { chromium } = require('playwright');
     await page.setViewportSize({ width: 390, height: 844 });
     await page.locator('#results .rock-winner-card').waitFor();
     assert(await page.locator('#results .rock-winner-poster').evaluate(node => node.scrollWidth <= node.clientWidth + 1));
-    assert.equal(await page.locator('.nav-inner a[href="#finance-management"]').count(), 1);
+    const externalFinance = page.locator('.nav-inner a[href="#finance-management"]');
+    assert.equal(await externalFinance.count(), 1);
+    await page.setViewportSize({ width: 320, height: 740 });
+    await page.locator('.nav-inner').evaluate(nav => nav.scrollTo({left:0,behavior:'instant'}));
+    assert.equal(await externalFinance.evaluate(link => {
+      const rect = link.getBoundingClientRect();
+      const nav = link.parentElement.getBoundingClientRect();
+      return rect.width > 0 && rect.left >= nav.left && rect.right <= nav.right - 32;
+    }), true);
+    await page.setViewportSize({ width: 390, height: 844 });
     await page.locator('#adminNavButton').evaluate(button => button.click());
     const admin = page.locator('#adminOverlay.open');
     const adminTab = admin.getByRole('button', { name: 'FINANCE MANAGEMENT SYSTEM', exact: true });

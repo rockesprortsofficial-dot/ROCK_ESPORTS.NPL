@@ -125,3 +125,18 @@
 .rock-winner-interactions form { display: flex; flex-wrap: wrap; gap: .4rem; align-items: end; }
 .rock-winner-interactions form label:last-of-type { flex: 1 1 12rem; }
 .rock-winner-interactions form label:last-of-type input { max-width: none; }
+
+.nav .nav-inner > a.rock-finance-nav {
+  background: #133e69;
+  border-color: #5dbefa;
+  color: #f3faff;
+}
+@media (max-width: 480px) {
+  .nav .nav-inner > a.rock-finance-nav {
+    order: -1;
+    max-inline-size: 9rem;
+    text-align: center;
+    white-space: normal !important;
+    line-height: 1.2;
+  }
+}
