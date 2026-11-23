@@ -1,0 +1,127 @@
+.rock-winners { color: #eaf5ff; scroll-margin-top: 6rem; }
+.rock-winners button { background: #132941; color: #edf7ff; border: 1px solid #477394; border-radius: .5rem; padding: .5rem .85rem; cursor: pointer; }
+.rock-winners button[aria-pressed="true"], .rock-winners button:hover { background: #23496c; }
+.rock-winners button:disabled { opacity: .65; cursor: default; }
+.rock-winner-actions { display: flex; align-items: center; flex-wrap: wrap; gap: .6rem; margin: .65rem 0; }
+.rock-winner-card { background: linear-gradient(140deg, #0a2340, #080b15 58%, #320f18); border: 1px solid #487da5; border-radius: 1rem; margin: 1rem 0; padding: clamp(.8rem, 3vw, 1.6rem); }
+.rock-winner-card header { position: static; display: flex; align-items: center; gap: .8rem; padding: 0; background: transparent; text-align: left; }
+.rock-winner-brand { width: 3.5rem; aspect-ratio: 1; border-radius: 50%; border: 2px solid #61cfff; }
+.rock-winner-placements { display: grid; grid-template-columns: 1fr 1.35fr 1fr; align-items: end; gap: .65rem; margin: 1rem 0; }
+.rock-winner-placement { padding: .5rem; border: 1px solid #497392; border-radius: .6rem; background: #0d1728; text-align: center; overflow-wrap: anywhere; }
+.rock-winner-placement:first-child { grid-column: 2; grid-row: 1; border-color: #e6bd63; box-shadow: 0 0 1rem #d7a85740; }
+.rock-winner-placement:first-child h4 { color: #ffdc84; }
+.rock-winner-placement:nth-child(2) { grid-column: 1; grid-row: 1; }
+.rock-winner-placement:nth-child(3) { grid-column: 3; grid-row: 1; }
+.rock-winner-placement:nth-child(4) { grid-column: 2; }
+.rock-winner-photo { width: 100%; aspect-ratio: 4 / 3; object-fit: contain; background: #050911; border-radius: .4rem; }
+.rock-winner-name { display: flex; justify-content: center; align-items: center; flex-wrap: wrap; gap: .35rem; font-weight: 700; }
+.rock-winner-team-logo { width: 2rem; height: 2rem; object-fit: contain; }
+.rock-winner-dialog { position: fixed; margin: auto; max-width: min(94vw, 56rem); max-height: 90dvh; overflow: auto; background: #0a1524; color: #eaf5ff; padding: 1rem; border: 1px solid #61a1cc; border-radius: .8rem; }
+.rock-winner-dialog::backdrop { background: #02060de0; }
+.rock-winner-story { width: 100vw; max-width: 100vw; height: 100dvh; max-height: 100dvh; }
+.rock-winners .rock-story-icon { border-radius: 2rem; display: inline-flex; align-items: center; gap: .4rem; }
+.rock-story-icon img { width: 1.8rem; border-radius: 50%; }
+.rock-winners fieldset { margin: .55rem 0; padding: .65rem; border: 1px solid #325574; min-width: 0; }
+.rock-winners label { display: block; margin: .45rem 0; }
+.rock-winners input:not([type="checkbox"]) { display: block; width: 100%; max-width: 28rem; padding: .35rem; color: inherit; background: #101f34; border: 1px solid #477394; border-radius: .4rem; }
+.rock-winner-interactions summary { cursor: pointer; margin: .65rem 0; }
+.rock-winner-comment { margin: .6rem 0; overflow-wrap: anywhere; }
+@media (max-width: 480px) {
+  .rock-winner-placements { grid-template-columns: 1fr 1fr; }
+  .rock-winner-placement:nth-child(n) { grid-column: auto; grid-row: auto; }
+  .rock-winner-placement:first-child { grid-column: 1 / -1; }
+}
+.rock-winner-slogan { margin: .7rem 0 0; text-align: center; font-size: .75rem; letter-spacing: .15em; }
+.rock-winners .rock-champions-card { padding: 0; overflow: hidden; background: #101523; }
+.rock-champions-card header { padding: .65rem 1rem; background: linear-gradient(110deg, #101525, #251022 60%, #161832); }
+.rock-champions-card header strong { color: #fff; }
+.rock-champions-card .rock-winner-poster { padding: clamp(.45rem, 2vw, 1.5rem); isolation: isolate; position: relative; overflow: hidden; background: radial-gradient(ellipse at 51% 78%, #871013 0%, transparent 46%), radial-gradient(ellipse at 5% 80%, #0c3b8c, transparent 30%), radial-gradient(ellipse at 95% 28%, #0e3984, transparent 36%), #070912; }
+.rock-champions-card .rock-winner-poster::before { content: ""; position: absolute; inset: 0; z-index: -1; background: linear-gradient(62deg, transparent 23%, #0153aa88 24%, #9cdbff 24.2%, transparent 24.7%), linear-gradient(115deg, transparent 70%, #ff002588 71%, #ff9d9d 71.3%, transparent 71.9%), linear-gradient(166deg, transparent 85%, #d51e5a 87%, transparent 88%); }
+.rock-tdm-winner-title { text-align: center; position: relative; padding: .4rem 3rem 1rem; }
+.rock-tdm-winner-title p { color: #fff; font-weight: 900; font-style: italic; letter-spacing: .12em; }
+.rock-tdm-winner-title h3 { display: table; margin: .4rem auto 0; padding: .2rem 1.1rem; color: #fff; background: linear-gradient(0deg, #371019, #a01522, #3d0b16); font-style: italic; font-size: clamp(.95rem, 3vw, 1.9rem); text-transform: uppercase; clip-path: polygon(5% 0, 95% 0, 100% 50%, 95% 100%, 5% 100%, 0 50%); }
+.rock-tdm-winner-title strong { display: block; font-size: clamp(1.55rem, 7vw, 5.6rem); line-height: 1.06; font-style: italic; font-weight: 1000; letter-spacing: -.045em; color: #ffd77c; text-shadow: 2px 3px #74400b, 0 0 1rem #ed9b35; }
+.rock-tdm-poster-logo, .rock-tdm-pubg { position: absolute; top: 0; }
+.rock-tdm-poster-logo { left: 0; width: clamp(2rem, 7vw, 4rem); }
+.rock-tdm-pubg { right: 0; color: #fff; font-size: clamp(.45rem, 1.25vw, .95rem); font-weight: 900; border: 1px solid #fff; padding: .15em; }
+.rock-tdm-flag { position: absolute; bottom: 0; font-size: clamp(.95rem, 4vw, 2.8rem); }
+.rock-tdm-flag-left { left: 5%; transform: rotate(-14deg); }
+.rock-tdm-flag-right { right: 5%; transform: rotate(14deg); }
+.rock-champions-card .rock-winner-placements { grid-template-columns: 1fr 1.35fr 1fr 1fr; gap: clamp(.2rem, 1vw, .65rem); }
+.rock-champions-card .rock-winner-placement { --medal: #d9e9fa; position: relative; min-width: 0; padding: .25rem; background: transparent; border: 0; box-shadow: none; }
+.rock-champions-card .rock-winner-placement:nth-child(1) { --medal: #ffcc5d; }
+.rock-champions-card .rock-winner-placement:nth-child(3) { --medal: #f6ae70; }
+.rock-champions-card .rock-winner-placement:nth-child(4) { --medal: #8af1c0; grid-column: 4; grid-row: 1; }
+.rock-champions-card .rock-winner-portrait { position: relative; filter: drop-shadow(0 0 .55rem var(--medal)); }
+.rock-champions-card .rock-winner-photo { padding: .3rem; background: var(--medal); object-fit: cover; clip-path: polygon(50% 0, 96% 16%, 96% 72%, 50% 100%, 4% 72%, 4% 16%); aspect-ratio: 1; }
+.rock-winner-crown { position: absolute; left: 50%; top: 0; transform: translate(-50%, -55%); color: #ffcb5b; z-index: 1; font-size: clamp(1.2rem, 5vw, 3.8rem); line-height: 1; }
+.rock-champions-card .rock-winner-placement h4 { margin: -.48rem 0 0; position: relative; color: var(--medal); background: #090b14; border-block: 1px solid var(--medal); font-size: clamp(.5rem, 1.4vw, .95rem); text-transform: uppercase; }
+.rock-champions-card .rock-winner-name { margin: 0; padding: .28rem 0; background: #090b14; color: white; font-size: clamp(.57rem, 1.65vw, 1.15rem); }
+.rock-champions-card .rock-winner-team-logo { width: clamp(.8rem, 3vw, 1.8rem); height: auto; }
+.rock-champions-card .rock-winner-prize { margin: 0; background: var(--medal); color: #160c05; font-weight: 900; font-style: italic; font-size: clamp(.54rem, 1.6vw, 1.05rem); padding: .1rem; }
+.rock-champions-card .rock-winner-mvp { --medal: #ffcc5d; display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: .5rem; width: fit-content; margin: auto; background: #160d0d; border: 1px solid var(--medal); padding: .25rem 1rem; }
+.rock-champions-card .rock-winner-mvp h4 { margin: 0; border: 0; order: -1; }
+.rock-champions-card .rock-winner-mvp .rock-winner-photo { width: clamp(2rem, 7vw, 4rem); background: #ffcc5d; }
+.rock-tdm-poster-meta { display: flex; flex-wrap: wrap; justify-content: center; gap: .35rem; margin-top: .7rem; }
+.rock-tdm-poster-meta > * { background: #080d1ce8; padding: .18rem .5rem; font-size: clamp(.65rem, 1.5vw, .9rem); }
+.rock-champions-card .rock-winner-interactions { padding: .35rem .8rem; }
+.rock-champions-card > button, .rock-champions-card > .rock-winner-actions { margin: .3rem .6rem; }
+@media (max-width: 480px) {
+  .rock-champions-card .rock-winner-placement:nth-child(1) { grid-column: 2; grid-row: 1; }
+  .rock-champions-card .rock-winner-placement:nth-child(2) { grid-column: 1; grid-row: 1; }
+  .rock-champions-card .rock-winner-placement:nth-child(3) { grid-column: 3; grid-row: 1; }
+}
+.rock-classic-winner-card .rock-winner-placement .rock-winner-photo,
+.rock-wow-winner-card .rock-winner-placement .rock-winner-photo {
+  aspect-ratio: 1.65;
+  object-fit: contain;
+  clip-path: polygon(50% 0, 98% 18%, 98% 84%, 50% 100%, 2% 84%, 2% 18%);
+  background: linear-gradient(145deg, var(--medal), #111d32 20%, #111d32 78%, var(--medal));
+  border: 3px solid var(--medal);
+}
+.rock-classic-winner-card .rock-winner-mvp .rock-winner-photo,
+.rock-wow-winner-card .rock-winner-mvp .rock-winner-photo { aspect-ratio: 1; object-fit: cover; }
+.rock-classic-winner-card .rock-winner-poster {
+  background: radial-gradient(ellipse at 50% 58%, #9a341933, transparent 58%),
+    radial-gradient(ellipse at 8% 42%, #215790, transparent 35%),
+    radial-gradient(ellipse at 98% 45%, #1c446f, transparent 32%), #0a101e;
+}
+.rock-wow-winner-card .rock-tdm-winner-title h3 { background: linear-gradient(0deg, #081229, #1554a9, #06132b); outline: 1px solid #6be6ff; }
+.rock-wow-winner-card .rock-winner-poster { background: radial-gradient(ellipse at 50% 75%, #67206080, transparent 55%), radial-gradient(ellipse at 8% 20%, #164388, transparent 35%), radial-gradient(ellipse at 93% 70%, #393391, transparent 37%), #080d1d; }
+#finance-management[hidden], .rock-winners [hidden] { display: none !important; }
+.rock-finance-totals { display: grid; grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr)); gap: .6rem; }
+.rock-finance-totals > div, .rock-finance-chart { background: #101c2c; border: 1px solid #395a75; border-radius: .6rem; padding: .7rem; }
+.rock-finance-totals strong { color: #86d8ff; }
+.rock-finance-chart { margin-block: .9rem; }
+.rock-finance-chart > div { display: flex; align-items: center; flex-wrap: wrap; gap: .5rem 1rem; }
+.rock-finance-chart meter { margin-inline-start: .4rem; }
+.rock-winners select { display: block; background: #12243a; color: inherit; padding: .4rem; margin-top: .15rem; border: 1px solid #477394; max-width: 100%; }
+.rock-finance-table { overflow-x: auto; }
+.rock-winners table { border-collapse: collapse; width: 100%; }
+.rock-winners :is(td, th) { padding: .5rem; border-bottom: 1px solid #395a75; text-align: left; }
+@media print {
+  body:has(.rock-finance-print) > :not(dialog:has(.rock-finance-print)) { display: none !important; }
+  dialog:has(.rock-finance-print) { display: block !important; position: static; max-height: none; max-width: none; overflow: visible; background: white; color: black; border: 0; margin: 0; padding: 0; }
+  dialog:has(.rock-finance-print)::backdrop { display: none; }
+  dialog:has(.rock-finance-print) button, dialog:has(.rock-finance-print) > h3 { display: none; }
+}
+.rock-champions-card .rock-winner-poster,
+.rock-classic-winner-card .rock-winner-poster,
+.rock-wow-winner-card .rock-winner-poster {
+  background: linear-gradient(180deg, #03050a45, #08071339 58%, #07091490),
+    url("assets/rock-winners-arena.webp") center / cover no-repeat #080a14;
+}
+.rock-champions-card .rock-winner-poster::before { opacity: .65; }
+.rock-classic-winner-card .rock-tdm-winner-title h3 { box-shadow: inset 0 0 0 1px #ffd77c; }
+.rock-wow-winner-card .rock-tdm-winner-title h3 { box-shadow: inset 0 0 0 1px #6be6ff; }
+.rock-winner-portrait img { display: block; }
+.rock-winner-portrait:empty { min-height: 3rem; }
+.rock-winner-card button.rock-winner-like { color: #ffe8ed; border-color: #b9445d; background: #471625; }
+.rock-winner-story .rock-winner-card[data-placement] .rock-winner-placements { display: block; }
+.rock-winner-story .rock-winner-card[data-placement] .rock-winner-placement[hidden] { display: none !important; }
+.rock-winner-story .rock-winner-card[data-placement] .rock-winner-placement { max-width: 28rem; margin-inline: auto; }
+.rock-winner-social { display: grid; grid-template-columns: repeat(3, 1fr); gap: .4rem; padding: .35rem 0; border-block: 1px solid #3e4b60; }
+.rock-winner-counts { color: #dce6f6; font-size: .85rem; }
+.rock-winner-interactions form { display: flex; flex-wrap: wrap; gap: .4rem; align-items: end; }
+.rock-winner-interactions form label:last-of-type { flex: 1 1 12rem; }
+.rock-winner-interactions form label:last-of-type input { max-width: none; }
