@@ -425,6 +425,9 @@
       const { data } = await sb.auth.getSession();
       if (location.hash !== '#finance-management') return;
       if (data.session && await query(sb.rpc('rock_finance_is_owner'))) {
+        if (location.hash !== '#finance-management') return;
+        window.history.replaceState(window.history.state, '', '#results');
+        window.dispatchEvent(new Event('hashchange'));
         if (managerDialog?.open) managerDialog.close();
         if (!adminOverlay.classList.contains('open')) buildEditor();
         adminOverlay.classList.add('open');

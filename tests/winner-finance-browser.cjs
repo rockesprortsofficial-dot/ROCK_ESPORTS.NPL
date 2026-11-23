@@ -30,7 +30,7 @@ const { chromium } = require('playwright');
       window.rockCalls = [];
       const client = {
         auth: {
-          getSession: async () => ({ data: { session: window.rockTestGuest ? null : { user: { id: 'test', email:'rockesprorts.official@gmail.com' } } } }),
+          getSession: async () => ({ data: { session: window.rockTestGuest ? null : { user: window.rockTestManager ? { id: 'manager' } : { id: 'test', email:'rockesprorts.official@gmail.com' } } } }),
           onAuthStateChange: () => ({ data: { subscription: { unsubscribe() {} } } })
         },
         from(table) {
@@ -58,6 +58,7 @@ const { chromium } = require('playwright');
           return api;
         },
         rpc(name, payload) {
+          if (name === 'rock_finance_is_owner' && window.rockTestManager) return Promise.resolve({ data: false });
           window.rockCalls.push([name, payload]);
           return Promise.resolve({ data: name === 'rock_winners_interact'
             ? { likes: 1, liked: false, comment_count: 1, comments: [{id: 1,display_name:'Guest',message:'Test comment',state:'visible'}] } : true });
@@ -110,7 +111,7 @@ const { chromium } = require('playwright');
     await page.setViewportSize({ width: 390, height: 844 });
     await page.locator('#results .rock-winner-card').waitFor();
     assert(await page.locator('#results .rock-winner-poster').evaluate(node => node.scrollWidth <= node.clientWidth + 1));
-    assert.equal(await page.locator('.nav-inner a[href="#finance-management"]').count(), 0);
+    assert.equal(await page.locator('.nav-inner a[href="#finance-management"]').count(), 1);
     await page.locator('#adminNavButton').evaluate(button => button.click());
     const admin = page.locator('#adminOverlay.open');
     const adminTab = admin.getByRole('button', { name: 'FINANCE MANAGEMENT SYSTEM', exact: true });
@@ -140,7 +141,7 @@ const { chromium } = require('playwright');
     await page.getByText('Receipt or proof', { exact: true }).waitFor();
     await page.locator('dialog[open]').getByRole('button', { name: 'Close', exact: true }).click();
     await page.evaluate(() => { closeAdmin(); window.rockTestGuest = true; location.hash = 'results'; });
-    await page.evaluate(() => { location.hash = 'finance-management'; });
+    await page.locator('.nav-inner a[href="#finance-management"]').evaluate(link => link.click());
     await page.getByRole('button', { name: 'Finance Manager · Meeting Room login' }).waitFor();
     assert.equal(await page.locator('dialog.rock-finance-workspace[open]').getByRole('heading', { name: 'OWNER CONTROL' }).count(), 0);
     await page.evaluate(() => { location.hash = 'results'; });
@@ -150,6 +151,12 @@ const { chromium } = require('playwright');
     await resultCard.getByLabel('Comment', { exact: true }).fill('Great event');
     await resultCard.getByRole('button', { name: 'Send comment' }).click();
     await resultCard.getByText('Comment sent for review.').waitFor();
+    await page.evaluate(() => { window.rockTestGuest = false; window.rockTestManager = true; });
+    await page.locator('.nav-inner a[href="#finance-management"]').evaluate(link => link.click());
+    const workspace = page.locator('dialog.rock-finance-workspace[open]');
+    await workspace.getByRole('heading', { name: 'Finance Manager · BIMAL CHAND' }).waitFor();
+    await workspace.getByRole('button', { name: 'New post', exact: true }).waitFor();
+    assert.equal(await page.locator('#adminOverlay.open').count(), 0);
     assert.deepEqual(errors, []);
     console.log('PASS: three RESULTS sections, shared editor preview and post templates, rank stories, mobile layout, finance entry.');
   } finally {
