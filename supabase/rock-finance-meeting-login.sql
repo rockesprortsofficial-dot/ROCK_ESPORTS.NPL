@@ -3,7 +3,6 @@ begin;
 create table rock_winners_private.meeting_finance_editor (
   singleton boolean primary key default true check (singleton),
   member_id uuid not null unique references public.rock_meeting_members(id),
-  initial_credential_hash text not null,
   login_email text not null unique default (gen_random_uuid() || '@meeting.rock-esports.invalid'),
   editor_id uuid unique references auth.users(id)
 );
@@ -24,8 +23,7 @@ returns jsonb language sql stable security definer set search_path = '' as $$
     'user_id', b.editor_id)
   from rock_winners_private.meeting_finance_editor b
   join public.rock_meeting_members m on m.id = b.member_id
-  where b.member_id = $1 and m.is_active
-    and md5(m.password_hash) <> b.initial_credential_hash;
+  where b.member_id = $1 and m.is_active;
 $$;
 revoke all on function public.rock_finance_meeting_identity(uuid) from public, anon, authenticated;
 grant execute on function public.rock_finance_meeting_identity(uuid) to service_role;
@@ -43,7 +41,7 @@ begin
   select $3, $2, m.id, md5(m.login_code_hash || ':' || m.password_hash)
   from public.rock_meeting_members m
   join rock_winners_private.meeting_finance_editor b on b.member_id = m.id
-  where m.id = $1 and m.is_active and md5(m.password_hash) <> b.initial_credential_hash;
+  where m.id = $1 and m.is_active;
   if not found then raise exception 'Finance editor unavailable'; end if;
 
   delete from rock_winners_private.meeting_finance_sessions where expires_at <= now();

@@ -360,7 +360,7 @@
           body: { name: name.value.trim(), code: code.value, password: password.value }
         });
         if (error || !data?.access_token || !data?.refresh_token) {
-          throw new Error('Meeting Room sign-in was not accepted. Check your details and use your updated password.');
+          throw new Error('Meeting Room sign-in was not accepted. Check your Meeting Room login details.');
         }
         await query(sb.auth.setSession(data));
         dialog.close();

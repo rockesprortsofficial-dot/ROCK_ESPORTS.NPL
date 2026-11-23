@@ -22,10 +22,8 @@ const {PGlite}=require('@electric-sql/pglite');
     const member='00000000-0000-0000-0000-000000000001', editor='00000000-0000-0000-0000-000000000002',
       session='00000000-0000-0000-0000-000000000003';
     const query=async(sql,args)=>(await db.query(sql,args)).rows[0];
-    await query("insert into rock_winners_private.meeting_finance_editor(member_id,initial_credential_hash) select id,md5(password_hash) from public.rock_meeting_members where id=$1",[member]);
+    await query('insert into rock_winners_private.meeting_finance_editor(member_id) values($1)',[member]);
     await db.exec('set role service_role');
-    assert.equal((await query('select public.rock_finance_meeting_identity($1) as identity',[member])).identity,null);
-    await db.exec("reset role; update public.rock_meeting_members set password_hash = 'new-password-hash'; set role service_role");
     const {identity}=await query('select public.rock_finance_meeting_identity($1) as identity',[member]);
     assert.ok(identity.email.endsWith('.invalid'));
     await db.exec('reset role');
@@ -44,6 +42,6 @@ const {PGlite}=require('@electric-sql/pglite');
     assert.equal(await allowed({sub:member,email:'rockesprorts.official@gmail.com'}),true);
     await db.exec("reset role; update public.rock_meeting_members set is_active = false");
     assert.equal(await allowed({sub:editor,session_id:session}),false);
-    console.log('PASS: rotation required, verified session only, Owner access, inactive member denied.');
+    console.log('PASS: existing Meeting Room password, verified session only, Owner access, inactive member denied.');
   } finally { await db.close(); }
 })().catch(error=>{console.error(error.message,error.position);process.exitCode=1});
