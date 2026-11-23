@@ -189,21 +189,19 @@
     const controls = element('section');
     controls.append(element('h3', owner ? 'OWNER CONTROL' : 'Finance Manager · BIMAL CHAND'),
       element('h4', 'Set tournament results'));
-    for (const stage of ['results', 'finals']) {
-      const row = element('div', '', 'rock-winner-actions');
-      const historyLink = element('a', 'Open ' + stage.toUpperCase() + ' history');
-      historyLink.href = '#' + stage;
-      row.append(historyLink);
-      for (const mode of ['tdm', 'classic', 'wow']) {
-        row.append(button('Set ' + mode.toUpperCase() + ' ' + stage.toUpperCase(), async () => {
-          try {
-            if (!window.rockOpenWinnerEditor) throw new Error('Result editor is still loading. Try again.');
-            await window.rockOpenWinnerEditor(stage, mode);
-          } catch (error) { status.textContent = error.message; }
-        }));
-      }
-      controls.append(row);
+    const resultActions = element('div', '', 'rock-winner-actions');
+    const historyLink = element('a', 'Open RESULTS history');
+    historyLink.href = '#results';
+    resultActions.append(historyLink);
+    for (const mode of ['tdm', 'classic', 'wow']) {
+      resultActions.append(button('Set ' + mode.toUpperCase() + ' RESULTS', async () => {
+        try {
+          if (!window.rockOpenWinnerEditor) throw new Error('Result editor is still loading. Try again.');
+          await window.rockOpenWinnerEditor('results', mode);
+        } catch (error) { status.textContent = error.message; }
+      }));
     }
+    controls.append(resultActions);
     dashboard.replaceChildren(controls, toolbar, summary, graph, element('h3', 'Transaction history'), tableWrap);
   }
 
