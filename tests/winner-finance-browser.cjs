@@ -30,7 +30,7 @@ const { chromium } = require('playwright');
       window.rockCalls = [];
       const client = {
         auth: {
-          getSession: async () => ({ data: { session: { user: { id: 'test' } } } }),
+          getSession: async () => ({ data: { session: window.rockTestGuest ? null : { user: { id: 'test' } } } }),
           onAuthStateChange: () => ({ data: { subscription: { unsubscribe() {} } } })
         },
         from(table) {
@@ -114,8 +114,18 @@ const { chromium } = require('playwright');
     assert(await page.locator('#finals .rock-winner-poster').evaluate(node => node.scrollWidth <= node.clientWidth + 1));
     await page.evaluate(() => { location.hash = 'finance-management'; });
     await page.getByRole('heading', { name: 'Pending Payment', exact: true }).waitFor();
+    await page.getByRole('heading', { name: 'OWNER CONTROL' }).waitFor();
+    await page.getByRole('button', { name: 'Set WOW FINALS', exact: true }).click();
+    const resultEditor = page.locator('dialog[open]');
+    await resultEditor.getByRole('heading', { name: 'WOW FINALS' }).waitFor();
+    await resultEditor.getByRole('button', { name: 'Close', exact: true }).click();
     await page.getByRole('button', { name: 'New transaction' }).click();
     await page.getByText('Receipt or proof', { exact: true }).waitFor();
+    await page.locator('dialog[open]').getByRole('button', { name: 'Close', exact: true }).click();
+    await page.evaluate(() => { window.rockTestGuest = true; location.hash = 'results'; });
+    await page.evaluate(() => { location.hash = 'finance-management'; });
+    await page.getByRole('button', { name: 'Finance Manager · Meeting Room login' }).waitFor();
+    assert.equal(await page.getByRole('heading', { name: 'OWNER CONTROL' }).count(), 0);
     assert.deepEqual(errors, []);
     console.log('PASS: six sections, shared editor preview and post templates, rank stories, mobile layout, finance entry.');
   } finally {
