@@ -59,7 +59,7 @@ Deno.serve(async(req:Request)=>{
    const deadline=event&&Math.min(Date.parse(event.created_at)+(call?60000:3600000),call?Date.parse(event.expires_at):Infinity);
    if(!event||deadline<=Date.now()||(call&&event.status!=='ringing'))return json({sent:0});
    const room=await checked(db.from('rock_connect_rooms').select('kind').eq('id',event.room_id).maybeSingle());
-   if(!room||room.kind==='lobby')return json({sent:0});
+   if(!room||(call&&room.kind==='lobby'))return json({sent:0});
    const sender=call?event.initiated_by:event.sender_id;
    const payload=JSON.stringify({
     title:call?(event.mode==='audio'?'ROCK CONNECT • Incoming voice call':'ROCK CONNECT • Incoming video call'):'ROCK CONNECT • New message',
@@ -76,7 +76,7 @@ Deno.serve(async(req:Request)=>{
       if(!pushEndpoint(d.endpoint))return;
       try{
        await webpush.sendNotification({endpoint:d.endpoint,keys:{p256dh:d.p256dh,auth:d.auth}},payload,
-        {TTL:Math.max(0,Math.floor((deadline-Date.now())/1000)),urgency:call?'high':'normal',timeout:4500});
+        {TTL:Math.max(0,Math.floor((deadline-Date.now())/1000)),urgency:'high',timeout:4500});
        sent++;
       }catch(error){
        failed++;
