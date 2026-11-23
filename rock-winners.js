@@ -123,7 +123,7 @@
     return card;
   }
 
-  function interactions(post, editor, onShare) {
+  function interactions(post, editor, owner, onShare) {
     const area = element('div', '', 'rock-winner-interactions');
     const toolbar = element('div', '', 'rock-winner-social');
     const summary = element('p', '', 'rock-winner-counts');
@@ -153,13 +153,15 @@
       for (const comment of data.comments) {
         const row = element('div', '', 'rock-winner-comment');
         row.append(element('strong', comment.display_name), element('p', comment.message));
-        if (editor) {
-          if (comment.state === 'pending') {
-            const approve = button('Approve', () => act('approve', { comment_id: comment.id }, approve));
-            row.append(approve);
-          }
-          const hide = button('Hide', () => act('hide', { comment_id: comment.id }, hide));
-          row.append(hide);
+        if (editor && comment.state === 'pending') {
+          const approve = button('Approve', () => act('approve', { comment_id: comment.id }, approve));
+          row.append(approve);
+        }
+        if (owner) {
+          const remove = button('Delete comment', () => {
+            if (confirm('Delete this comment?')) void act('delete_comment', { comment_id: comment.id }, remove);
+          });
+          row.append(remove);
         }
         comments.append(row);
       }
@@ -426,17 +428,9 @@
           .order('story_at', { ascending: false }).limit(40);
         const editor = await canEdit();
         if (current !== generation) return;
-        nav.hidden = stage === 'finals' && !editor;
-        modeHeading.hidden = nav.hidden;
-        if (nav.hidden) {
-          status.textContent = 'Private finals · Owner and Finance Manager BIMAL CHAND only.';
-          const login = element('a', 'Go to Finance Management sign-in');
-          login.href = '#finance-management';
-          management.append(login);
-          return;
-        }
-        const [posts, storyPosts] = await Promise.all([
-          request(sharedId ? postQuery.eq('id', sharedId) : postQuery), request(storyQuery)
+        const [posts, storyPosts, owner] = await Promise.all([
+          request(sharedId ? postQuery.eq('id', sharedId) : postQuery), request(storyQuery),
+          editor ? request(sb.rpc('rock_finance_is_owner')) : false
         ]);
         if (current !== generation) return;
         status.textContent = posts.length ? '' : 'No published posts yet.';
@@ -456,8 +450,7 @@
               if (!post.story_highlight && Date.parse(post.story_at) <= Date.now() - 86400000) {
                 throw new Error('This story has expired.');
               }
-              const dialog = element('dialog', '', 'rock-winners rock-winner-dialog rock-winner-story' +
-                (stage === 'finals' ? ' rock-private-winner-dialog' : ''));
+              const dialog = element('dialog', '', 'rock-winners rock-winner-dialog rock-winner-story');
               const story = postCard(post);
               const frames = [...story.querySelectorAll('[data-rank]')];
               const controls = element('div', '', 'rock-winner-actions');
@@ -476,7 +469,7 @@
               }
               controls.append(button('Close story', () => dialog.close()));
               chooseFrame('1');
-              story.append(interactions(post, editor, share(post)));
+              story.append(interactions(post, editor, owner, share(post)));
               dialog.append(controls, story);
               dialog.addEventListener('close', () => dialog.remove(), { once: true });
               document.body.append(dialog);
@@ -493,7 +486,7 @@
         if (storyPosts.length) stories.prepend(element('h4', 'Winner stories'));
         for (const post of posts.slice(0, pageSize)) {
           const card = postCard(post);
-          card.append(interactions(post, editor, share(post)));
+          card.append(interactions(post, editor, owner, share(post)));
           if (editor) card.append(button('Edit', async () => {
             try {
               const draft = await request(sb.from(tables.drafts).select('*').eq('id', post.id).single());
@@ -563,20 +556,20 @@
     return load;
   }
 
-  document.querySelectorAll('section#results, section#finals').forEach(root => {
+  document.querySelectorAll('section#results').forEach(root => {
     root.addEventListener('focusin', () => {
       if (!panels.has(root.id)) void mount(root)();
     }, { once: true });
   });
   window.rockOpenWinnerEditor = async (stage, mode) => {
-    if (!['results', 'finals'].includes(stage) || !modes.includes(mode) || !await canEdit()) {
+    if (stage !== 'results' || !modes.includes(mode) || !await canEdit()) {
       throw new Error('Owner or Finance Manager access required.');
     }
     openEditor(stage, mode, null, () => panels.get(stage)?.());
   };
   const openFromHash = () => {
     const root = document.getElementById(location.hash.slice(1));
-    if (root?.matches('section#results, section#finals') && !panels.has(root.id)) void mount(root)();
+    if (root?.matches('section#results') && !panels.has(root.id)) void mount(root)();
   };
   if ('IntersectionObserver' in window) {
     const observer = new IntersectionObserver(entries => {
@@ -586,7 +579,7 @@
         if (!panels.has(entry.target.id)) void mount(entry.target)();
       }
     });
-    document.querySelectorAll('section#results, section#finals').forEach(root => observer.observe(root));
+    document.querySelectorAll('section#results').forEach(root => observer.observe(root));
   }
   window.addEventListener('hashchange', openFromHash);
   openFromHash();

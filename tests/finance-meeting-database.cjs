@@ -16,7 +16,7 @@ const {PGlite}=require('@electric-sql/pglite');
       create table public.rock_meeting_members(id uuid primary key, login_code_hash text, password_hash text, is_active boolean);
       insert into public.rock_meeting_members values ('00000000-0000-0000-0000-000000000001','code','old-password-hash',true);
     `);
-    for (const file of ['rock-winners.sql','rock-finance.sql','rock-finance-meeting-login.sql','rock-private-finals.sql']) {
+    for (const file of ['rock-winners.sql','rock-finance.sql','rock-finance-meeting-login.sql','rock-private-finals.sql','rock-results-only.sql']) {
       await db.exec(fs.readFileSync('supabase/'+file,'utf8'));
     }
     const member='00000000-0000-0000-0000-000000000001', editor='00000000-0000-0000-0000-000000000002',
@@ -44,20 +44,35 @@ const {PGlite}=require('@electric-sql/pglite');
     }
     const list=async()=> (await db.query("select stage from public.rock_winner_posts order by stage")).rows.map(row=>row.stage);
     const readPost=id=>query("select public.rock_winners_interact($1,'read') as data",[id]);
+    const act=(action,id=null,name=null,body=null)=>query(
+      'select public.rock_winners_interact($1,$2,$3,$4,$5,$6) as data',[results,action,member,name,body,id]);
     await db.exec("select set_config('test.jwt','{}',false); set role anon");
     assert.deepEqual(await list(),['results']);
     await assert.rejects(readPost(finals),/Post unavailable/);
-    assert.equal((await readPost(results)).data.likes,0);
+    await act('like');
+    await act('like');
+    assert.equal((await readPost(results)).data.likes,1);
+    await act('comment',null,'Guest','This is a test comment.');
+    assert.equal((await readPost(results)).data.comments.length,0);
     await allowed({sub:member,session_id:session});
     assert.deepEqual(await list(),['results']);
     await assert.rejects(readPost(finals),/Post unavailable/);
     assert.equal(await allowed({sub:editor,session_id:session}),true);
-    assert.deepEqual(await list(),['finals','results']);
-    assert.equal((await readPost(finals)).data.likes,0);
-    assert.equal(await allowed({sub:editor,session_id:member,app_metadata:{rock_winners_role:'finance_manager'}}),false);
-    assert.equal(await allowed({sub:member,email:'rockesprorts.official@gmail.com'}),true);
+    assert.deepEqual(await list(),['results']);
+    const comment=(await readPost(results)).data.comments[0];
+    await assert.rejects(act('delete_comment',comment.id),/Action unavailable/);
+    await act('approve',comment.id);
+    await db.exec("reset role; select set_config('test.jwt','{}',false); set role anon");
+    assert.equal((await readPost(results)).data.comments.length,1);
+    await assert.rejects(act('delete_comment',comment.id),/Action unavailable/);
+    const owner={sub:member,email:'rockesprorts.official@gmail.com'};
+    assert.equal(await allowed(owner),true);
+    assert.deepEqual(await list(),['results']);
+    await assert.rejects(readPost(finals),/Post unavailable/);
+    await act('delete_comment',comment.id);
+    assert.equal((await readPost(results)).data.comments.length,0);
     await db.exec("reset role; update public.rock_meeting_members set is_active = false");
     assert.equal(await allowed({sub:editor,session_id:session}),false);
-    console.log('PASS: existing Meeting Room password, verified session only, private finals, public results, Owner access, inactive member denied.');
+    console.log('PASS: existing Meeting Room password, verified session only, removed finals, guest likes and comments, Owner-only comment deletion, inactive member denied.');
   } finally { await db.close(); }
 })().catch(error=>{console.error(error.message,error.position);process.exitCode=1});

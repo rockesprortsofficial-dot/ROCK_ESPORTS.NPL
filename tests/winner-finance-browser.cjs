@@ -14,7 +14,7 @@ const { chromium } = require('playwright');
     const photo = 'data:image/png;base64,' + fs.readFileSync('assets/icons/rock-192.png').toString('base64');
     const posts = [];
     const drafts = [];
-    for (const stage of ['results', 'finals']) {
+    for (const stage of ['results']) {
       for (const mode of ['tdm', 'classic', 'wow']) {
         const post = {
           id: stage + '-' + mode, stage, mode, tournament_name: mode.toUpperCase() + ' Test Cup',
@@ -60,7 +60,7 @@ const { chromium } = require('playwright');
         rpc(name, payload) {
           window.rockCalls.push([name, payload]);
           return Promise.resolve({ data: name === 'rock_winners_interact'
-            ? { likes: 1, liked: false, comment_count: 0, comments: [] } : true });
+            ? { likes: 1, liked: false, comment_count: 1, comments: [{id: 1,display_name:'Guest',message:'Test comment',state:'visible'}] } : true });
         }
       };
       window.supabase = { createClient: () => client };
@@ -78,7 +78,7 @@ const { chromium } = require('playwright');
     });
     await page.goto('http://localhost/#results', { waitUntil: 'domcontentloaded' });
     await page.addStyleTag({ content: '#rockIntroSequence, #rockAiChatRoot { display: none !important; }' });
-    for (const stage of ['results', 'finals']) {
+    for (const stage of ['results']) {
       await page.evaluate(stage => { location.hash = stage; }, stage);
       const section = page.locator('#' + stage);
       for (const mode of ['TDM', 'CLASSIC', 'WOW']) {
@@ -87,6 +87,13 @@ const { chromium } = require('playwright');
         await card.getByRole('heading', { name: mode + ' Test Cup' }).waitFor();
         assert.equal(await card.locator('.rock-winner-placements > [data-rank]').count(), 4);
         assert.equal(await card.locator('.rock-winner-mvp').count(), mode === 'TDM' ? 1 : 0);
+        const remove = card.getByRole('button', { name: 'Delete comment', exact: true });
+        await remove.waitFor();
+        if (mode === 'TDM') {
+          page.once('dialog', dialog => dialog.accept());
+          await remove.click();
+          await page.waitForFunction(() => window.rockCalls.some(([name, args]) => name === 'rock_winners_interact' && args.action === 'delete_comment'));
+        }
         await card.getByRole('button', { name: 'Edit', exact: true }).click();
         const dialog = page.locator('dialog.rock-winner-dialog[open]');
         await dialog.getByRole('button', { name: 'Preview', exact: true }).click();
@@ -106,18 +113,18 @@ const { chromium } = require('playwright');
       await nav.waitFor({ state: 'attached' });
       await page.waitForFunction(hash => [...document.querySelectorAll('a[aria-current=page]')].some(link => link.hash === hash), route);
       assert.equal(await page.locator('#results').isVisible(), false);
-      assert.equal(await page.locator('#finals').isVisible(), false);
+      assert.equal(await page.locator('#finals').count(), 0);
     }
-    await page.evaluate(() => { location.hash = 'finals'; });
+    await page.evaluate(() => { location.hash = 'results'; });
     await page.setViewportSize({ width: 390, height: 844 });
-    await page.locator('#finals .rock-winner-card').waitFor();
-    assert(await page.locator('#finals .rock-winner-poster').evaluate(node => node.scrollWidth <= node.clientWidth + 1));
+    await page.locator('#results .rock-winner-card').waitFor();
+    assert(await page.locator('#results .rock-winner-poster').evaluate(node => node.scrollWidth <= node.clientWidth + 1));
     await page.evaluate(() => { location.hash = 'finance-management'; });
     await page.getByRole('heading', { name: 'Pending Payment', exact: true }).waitFor();
     await page.getByRole('heading', { name: 'OWNER CONTROL' }).waitFor();
-    await page.getByRole('button', { name: 'Set WOW FINALS', exact: true }).click();
+    await page.getByRole('button', { name: 'Set WOW RESULTS', exact: true }).click();
     const resultEditor = page.locator('dialog[open]');
-    await resultEditor.getByRole('heading', { name: 'WOW FINALS' }).waitFor();
+    await resultEditor.getByRole('heading', { name: 'WOW RESULTS' }).waitFor();
     await resultEditor.getByRole('button', { name: 'Close', exact: true }).click();
     await page.getByRole('button', { name: 'New transaction' }).click();
     await page.getByText('Receipt or proof', { exact: true }).waitFor();
@@ -126,8 +133,15 @@ const { chromium } = require('playwright');
     await page.evaluate(() => { location.hash = 'finance-management'; });
     await page.getByRole('button', { name: 'Finance Manager · Meeting Room login' }).waitFor();
     assert.equal(await page.getByRole('heading', { name: 'OWNER CONTROL' }).count(), 0);
+    await page.evaluate(() => { location.hash = 'results'; });
+    const resultCard = page.locator('#results .rock-winner-card');
+    await resultCard.getByRole('button', { name: '♥ Like', exact: true }).click();
+    await resultCard.getByLabel('Guest name').fill('Visitor');
+    await resultCard.getByLabel('Comment', { exact: true }).fill('Great event');
+    await resultCard.getByRole('button', { name: 'Send comment' }).click();
+    await resultCard.getByText('Comment sent for review.').waitFor();
     assert.deepEqual(errors, []);
-    console.log('PASS: six sections, shared editor preview and post templates, rank stories, mobile layout, finance entry.');
+    console.log('PASS: three RESULTS sections, shared editor preview and post templates, rank stories, mobile layout, finance entry.');
   } finally {
     await browser.close();
   }

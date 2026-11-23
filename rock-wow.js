@@ -201,7 +201,6 @@ auth().catch(()=>{});load();setInterval(()=>{if(!document.hidden)load();},3000);
 
   for (const [id, title] of [
     ['results', 'RESULTS'],
-    ['finals', 'FINALS'],
     ['finance-management', 'FINANCE MANAGEMENT SYSTEM']
   ]) {
     const link = document.createElement('a');
