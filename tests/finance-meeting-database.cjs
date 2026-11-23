@@ -16,7 +16,7 @@ const {PGlite}=require('@electric-sql/pglite');
       create table public.rock_meeting_members(id uuid primary key, login_code_hash text, password_hash text, is_active boolean);
       insert into public.rock_meeting_members values ('00000000-0000-0000-0000-000000000001','code','old-password-hash',true);
     `);
-    for (const file of ['rock-winners.sql','rock-finance.sql','rock-finance-meeting-login.sql']) {
+    for (const file of ['rock-winners.sql','rock-finance.sql','rock-finance-meeting-login.sql','rock-private-finals.sql']) {
       await db.exec(fs.readFileSync('supabase/'+file,'utf8'));
     }
     const member='00000000-0000-0000-0000-000000000001', editor='00000000-0000-0000-0000-000000000002',
@@ -37,11 +37,27 @@ const {PGlite}=require('@electric-sql/pglite');
       await db.exec('set role authenticated');
       return (await query('select public.rock_winners_can_edit() allowed')).allowed;
     };
+    const finals='00000000-0000-0000-0000-000000000004', results='00000000-0000-0000-0000-000000000005';
+    for (const [id,stage] of [[finals,'finals'],[results,'results']]) {
+      await db.query("insert into public.rock_winner_drafts(id,stage,mode,winners) values($1,$2,'tdm','[{},{},{},{}]')",[id,stage]);
+      await db.query("insert into public.rock_winner_posts(id,stage,mode,tournament_name,tournament_date,winners) values($1,$2,'tdm','Test',current_date,'[]')",[id,stage]);
+    }
+    const list=async()=> (await db.query("select stage from public.rock_winner_posts order by stage")).rows.map(row=>row.stage);
+    const readPost=id=>query("select public.rock_winners_interact($1,'read') as data",[id]);
+    await db.exec("select set_config('test.jwt','{}',false); set role anon");
+    assert.deepEqual(await list(),['results']);
+    await assert.rejects(readPost(finals),/Post unavailable/);
+    assert.equal((await readPost(results)).data.likes,0);
+    await allowed({sub:member,session_id:session});
+    assert.deepEqual(await list(),['results']);
+    await assert.rejects(readPost(finals),/Post unavailable/);
     assert.equal(await allowed({sub:editor,session_id:session}),true);
+    assert.deepEqual(await list(),['finals','results']);
+    assert.equal((await readPost(finals)).data.likes,0);
     assert.equal(await allowed({sub:editor,session_id:member,app_metadata:{rock_winners_role:'finance_manager'}}),false);
     assert.equal(await allowed({sub:member,email:'rockesprorts.official@gmail.com'}),true);
     await db.exec("reset role; update public.rock_meeting_members set is_active = false");
     assert.equal(await allowed({sub:editor,session_id:session}),false);
-    console.log('PASS: existing Meeting Room password, verified session only, Owner access, inactive member denied.');
+    console.log('PASS: existing Meeting Room password, verified session only, private finals, public results, Owner access, inactive member denied.');
   } finally { await db.close(); }
 })().catch(error=>{console.error(error.message,error.position);process.exitCode=1});

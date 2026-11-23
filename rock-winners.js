@@ -236,7 +236,7 @@
       id: crypto.randomUUID(), stage, mode, tournament_name: '', tournament_date: null,
       winners: Array.from({ length: 4 }, () => ({})), mvp: null
     };
-    const dialog = element('dialog', '', 'rock-winners rock-winner-dialog');
+    const dialog = element('dialog', '', 'rock-winners rock-winner-dialog rock-private-winner-dialog');
     const form = element('form');
     const fields = element('fieldset');
     const date = element('input');
@@ -424,8 +424,19 @@
           .eq('stage', stage).eq('mode', selected)
           .or('story_highlight.eq.true,story_at.gt.' + new Date(Date.now() - 86400000).toISOString())
           .order('story_at', { ascending: false }).limit(40);
-        const [posts, editor, storyPosts] = await Promise.all([
-          request(sharedId ? postQuery.eq('id', sharedId) : postQuery), canEdit(), request(storyQuery)
+        const editor = await canEdit();
+        if (current !== generation) return;
+        nav.hidden = stage === 'finals' && !editor;
+        modeHeading.hidden = nav.hidden;
+        if (nav.hidden) {
+          status.textContent = 'Private finals · Owner and Finance Manager BIMAL CHAND only.';
+          const login = element('a', 'Go to Finance Management sign-in');
+          login.href = '#finance-management';
+          management.append(login);
+          return;
+        }
+        const [posts, storyPosts] = await Promise.all([
+          request(sharedId ? postQuery.eq('id', sharedId) : postQuery), request(storyQuery)
         ]);
         if (current !== generation) return;
         status.textContent = posts.length ? '' : 'No published posts yet.';
@@ -445,7 +456,8 @@
               if (!post.story_highlight && Date.parse(post.story_at) <= Date.now() - 86400000) {
                 throw new Error('This story has expired.');
               }
-              const dialog = element('dialog', '', 'rock-winners rock-winner-dialog rock-winner-story');
+              const dialog = element('dialog', '', 'rock-winners rock-winner-dialog rock-winner-story' +
+                (stage === 'finals' ? ' rock-private-winner-dialog' : ''));
               const story = postCard(post);
               const frames = [...story.querySelectorAll('[data-rank]')];
               const controls = element('div', '', 'rock-winner-actions');
@@ -514,7 +526,7 @@
     }
 
     async function browseDrafts(selected) {
-      const dialog = element('dialog', '', 'rock-winners rock-winner-dialog');
+      const dialog = element('dialog', '', 'rock-winners rock-winner-dialog rock-private-winner-dialog');
       const entries = element('div', '', 'rock-winner-actions');
       const notice = element('p');
       let offset = 0;
@@ -556,6 +568,12 @@
       if (!panels.has(root.id)) void mount(root)();
     }, { once: true });
   });
+  window.rockOpenWinnerEditor = async (stage, mode) => {
+    if (!['results', 'finals'].includes(stage) || !modes.includes(mode) || !await canEdit()) {
+      throw new Error('Owner or Finance Manager access required.');
+    }
+    openEditor(stage, mode, null, () => panels.get(stage)?.());
+  };
   const openFromHash = () => {
     const root = document.getElementById(location.hash.slice(1));
     if (root?.matches('section#results, section#finals') && !panels.has(root.id)) void mount(root)();
@@ -578,6 +596,7 @@
     const key = JSON.stringify([user?.id, user?.app_metadata?.rock_winners_role]);
     if (key === currentUser) return;
     currentUser = key;
+    document.querySelectorAll('.rock-private-winner-dialog[open]').forEach(dialog => dialog.close());
     setTimeout(() => panels.forEach(load => { void load(); }), 0);
   });
 })();

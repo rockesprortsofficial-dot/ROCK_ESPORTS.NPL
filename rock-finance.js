@@ -186,7 +186,25 @@
       cell.append(button('Edit', () => editEntry(row)), button('History', () => history(row)));
       return cell;
     }));
-    dashboard.replaceChildren(toolbar, summary, graph, element('h3', 'Transaction history'), tableWrap);
+    const controls = element('section');
+    controls.append(element('h3', owner ? 'OWNER CONTROL' : 'Finance Manager · BIMAL CHAND'),
+      element('h4', 'Set tournament results'));
+    for (const stage of ['results', 'finals']) {
+      const row = element('div', '', 'rock-winner-actions');
+      const historyLink = element('a', 'Open ' + stage.toUpperCase() + ' history');
+      historyLink.href = '#' + stage;
+      row.append(historyLink);
+      for (const mode of ['tdm', 'classic', 'wow']) {
+        row.append(button('Set ' + mode.toUpperCase() + ' ' + stage.toUpperCase(), async () => {
+          try {
+            if (!window.rockOpenWinnerEditor) throw new Error('Result editor is still loading. Try again.');
+            await window.rockOpenWinnerEditor(stage, mode);
+          } catch (error) { status.textContent = error.message; }
+        }));
+      }
+      controls.append(row);
+    }
+    dashboard.replaceChildren(controls, toolbar, summary, graph, element('h3', 'Transaction history'), tableWrap);
   }
 
   function history(row) {
@@ -382,7 +400,7 @@
       const { data } = await sb.auth.getSession();
       if (!data.session || !await query(sb.rpc('rock_winners_can_edit'))) {
         if (version === generation) {
-          status.textContent = 'Owner can use the regular website login.';
+          status.textContent = 'Private finance · Owner and Finance Manager BIMAL CHAND only. Owner can use the regular website login.';
           dashboard.append(button('Finance Manager · Meeting Room login', meetingLogin));
         }
         return;
