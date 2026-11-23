@@ -336,6 +336,40 @@
     } finally { winner.disabled = false; }
   }
 
+  function meetingLogin() {
+    const login = element('form');
+    const name = input('text', '', true);
+    const code = input('text', '', true);
+    const password = input('password', '', true);
+    name.autocomplete = 'name';
+    code.inputMode = 'numeric';
+    code.pattern = '[0-9]{4}';
+    code.maxLength = 4;
+    password.autocomplete = 'current-password';
+    const submit = element('button', 'Sign in with Meeting Room ID');
+    const feedback = element('p');
+    feedback.setAttribute('role', 'status');
+    login.append(field('Meeting Room name', name), field('Meeting Room ID', code),
+      field('Meeting Room password', password), submit, feedback);
+    const dialog = showDialog('Finance Manager sign-in', login);
+    login.onsubmit = async event => {
+      event.preventDefault();
+      submit.disabled = true;
+      try {
+        const { data, error } = await sb.functions.invoke('rock-finance-meeting-login', {
+          body: { name: name.value.trim(), code: code.value, password: password.value }
+        });
+        if (error || !data?.access_token || !data?.refresh_token) {
+          throw new Error('Meeting Room sign-in was not accepted. Check your details and use your updated password.');
+        }
+        await query(sb.auth.setSession(data));
+        dialog.close();
+        await load();
+      } catch (error) { feedback.textContent = error.message; }
+      finally { password.value = ''; submit.disabled = false; }
+    };
+  }
+
   const status = element('p');
   status.setAttribute('role', 'status');
   const dashboard = element('div');
@@ -347,7 +381,10 @@
     try {
       const { data } = await sb.auth.getSession();
       if (!data.session || !await query(sb.rpc('rock_winners_can_edit'))) {
-        if (version === generation) status.textContent = 'Sign in with an Owner or Finance Manager account.';
+        if (version === generation) {
+          status.textContent = 'Owner can use the regular website login.';
+          dashboard.append(button('Finance Manager · Meeting Room login', meetingLogin));
+        }
         return;
       }
       const [isOwner, savedSettings, rows] = await Promise.all([
