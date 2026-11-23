@@ -193,3 +193,38 @@ sb.auth.onAuthStateChange(()=>setTimeout(()=>auth().catch(e=>status(e.message)),
 auth().catch(()=>{});load();setInterval(()=>{if(!document.hidden)load();},3000);document.addEventListener('visibilitychange',()=>{if(!document.hidden)load();});
 })();
 
+
+;(() => {
+  const liveDrawLink = document.querySelector('.nav-inner a[href="#live-draw"]');
+  const liveDrawSection = document.getElementById('live-draw');
+  if (!liveDrawLink || !liveDrawSection || document.getElementById('results')) return;
+
+  for (const [id, title] of [
+    ['results', 'RESULTS'],
+    ['finals', 'FINALS'],
+    ['finance-management', 'FINANCE MANAGEMENT SYSTEM']
+  ]) {
+    const link = document.createElement('a');
+    link.href = '#' + id;
+    link.textContent = title;
+    liveDrawLink.before(link);
+    const section = document.createElement('section');
+    section.id = id;
+    section.className = 'container rock-winners';
+    section.hidden = id === 'finance-management';
+    const heading = document.createElement('h2');
+    heading.textContent = title;
+    section.append(heading);
+    liveDrawSection.before(section);
+  }
+  const stylesheet = document.createElement('link');
+  stylesheet.rel = 'stylesheet';
+  stylesheet.href = './rock-winners.css';
+  document.head.append(stylesheet);
+  for (const source of ['./rock-winners.js', './rock-finance.js']) {
+    const script = document.createElement('script');
+    script.src = source;
+    document.body.append(script);
+  }
+  window.dispatchEvent(new Event('rock-navigation-updated'));
+})();
