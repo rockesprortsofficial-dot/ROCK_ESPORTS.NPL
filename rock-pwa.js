@@ -67,7 +67,7 @@ window.rockConnectPush=async(session,enable=false)=>{
    await request('connect_unlink',{endpoint:saved.endpoint,user_id:saved.user,device_token:deviceToken});
    store.set(connectDeviceKey,'null');
   }
-  if(!user||(!enable&&saved?.user!==user))return false;
+  if(!user||(!enable&&!current))return false;
   if(!registration||window.Notification?.permission!=='granted')return false;
   if(!config?.configured)config=await request('config');
   if(!config?.configured)throw Error(L('Push सेटअप बाँकी छ।','Push setup is incomplete.'));

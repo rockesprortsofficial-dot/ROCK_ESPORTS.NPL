@@ -49,7 +49,7 @@ test("CONNECT notifications open the right room in a running or closed app", asy
 
 test("trusted CONNECT dispatch fans out and drops expired call invites", async () => {
   const push = [], queries = [];
-  let expired = false, serve;
+  let expired = false, roomKind = 'dm', serve;
   const endpoints = ["https://fcm.googleapis.com/a","https://web.push.apple.com/b"];
   const env = {
     SUPABASE_URL:"https://test.supabase.co", SUPABASE_ANON_KEY:"test", SUPABASE_SERVICE_ROLE_KEY:"test",
@@ -58,7 +58,7 @@ test("trusted CONNECT dispatch fans out and drops expired call invites", async (
   const db = {
     from(table) {
       return {select:()=>({eq:()=>({maybeSingle:async()=>({data:table==="rock_connect_rooms"
-        ? {kind:"group"} : {id,room_id:room,initiated_by:sender,sender_id:sender,status:"ringing",
+        ? {kind:roomKind} : {id,room_id:room,initiated_by:sender,sender_id:sender,status:"ringing",
           mode:"audio",created_at:new Date(Date.now()-(expired?70000:0)).toISOString(),expires_at:new Date(Date.now()+60000).toISOString()}})})})};
     },
     async rpc(name, args) {
@@ -90,4 +90,42 @@ test("trusted CONNECT dispatch fans out and drops expired call invites", async (
   expired = false;
   assert.equal((await (await send(env.ROCK_CONNECT_PUSH_SECRET,"message")).json()).sent,2);
   assert.equal(push[2].payload.data.message_id,id);
+  assert.equal(push[2].options.urgency,'high');
+  roomKind = 'lobby';
+  assert.equal((await (await send(env.ROCK_CONNECT_PUSH_SECRET)).json()).sent,0);
+  assert.equal((await (await send(env.ROCK_CONNECT_PUSH_SECRET,'message')).json()).sent,2);
+  assert.equal(push[4].payload.data.room_id,room);
+  assert.equal(push[4].payload.data.message_id,id);
+});
+
+test("CONNECT reuses an already permitted app subscription and unlinks it on sign-out", async () => {
+  const pwa = source("../rock-pwa.js");
+  const start = pwa.indexOf("const connectDeviceKey");
+  const end = pwa.indexOf("function open()", start);
+  const local = new Map();
+  const calls = [];
+  const receiver = { endpoint: "https://fcm.googleapis.com/conversation", toJSON() { return { endpoint: this.endpoint }; } };
+  const registration = { pushManager: {
+    getSubscription: async () => receiver,
+    subscribe: async () => { throw Error("Existing subscription should be reused"); }
+  }};
+  const window = { Notification: { permission: "granted" } };
+  runInNewContext(pwa.slice(start, end), {
+    window, registration, pwaReady: Promise.resolve(),
+    deviceToken: "device",
+    config: { configured: true },
+    store: { get: (key, fallback) => local.get(key) ?? fallback, set: (key, value) => local.set(key, value) },
+    queueDevice: run => run(),
+    request: async (action, body, token) => calls.push({ action, body, token }),
+    deviceStatus: async () => {}
+  });
+  assert.equal(await window.rockConnectPush({user:{id},access_token:"session"}),true);
+  assert.equal(calls[0].action,"connect_link");
+  assert.equal(calls[0].body.subscription.endpoint,receiver.endpoint);
+  assert.equal(await window.rockConnectPush(null),false);
+  assert.equal(calls[1].action,"connect_unlink");
+  assert.equal(calls[1].body.user_id,id);
+  window.Notification.permission = "default";
+  assert.equal(await window.rockConnectPush({user:{id},access_token:"session"}),false);
+  assert.equal(calls.length,2);
 });
