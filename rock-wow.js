@@ -242,7 +242,7 @@ auth().catch(()=>{});load();setInterval(()=>{if(!document.hidden)load();},3000);
   stylesheet.rel = 'stylesheet';
   stylesheet.href = './rock-winners.css';
   document.head.append(stylesheet);
-  for (const source of ['./rock-winners.js', './rock-finance.js']) {
+  for (const source of ['./rock-winners.js', './rock-finance.js', './rock-registration-mail.js']) {
     const script = document.createElement('script');
     script.async = false;
     script.src = source;
