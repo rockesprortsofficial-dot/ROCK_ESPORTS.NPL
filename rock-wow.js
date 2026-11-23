@@ -199,29 +199,45 @@ auth().catch(()=>{});load();setInterval(()=>{if(!document.hidden)load();},3000);
   const liveDrawSection = document.getElementById('live-draw');
   if (!liveDrawLink || !liveDrawSection || document.getElementById('results')) return;
 
-  for (const [id, title] of [
-    ['results', 'RESULTS'],
-    ['finance-management', 'FINANCE MANAGEMENT SYSTEM']
-  ]) {
-    const link = document.createElement('a');
-    link.href = '#' + id;
-    link.textContent = title;
-    liveDrawLink.before(link);
-    const section = document.createElement('section');
-    section.id = id;
-    section.className = 'container rock-winners';
-    section.hidden = id === 'finance-management';
-    const heading = document.createElement('h2');
-    heading.textContent = title;
-    section.append(heading);
-    liveDrawSection.before(section);
-  }
+  const resultsLink = document.createElement('a');
+  resultsLink.href = '#results';
+  resultsLink.textContent = 'RESULTS';
+  liveDrawLink.before(resultsLink);
+  const results = document.createElement('section');
+  results.id = 'results';
+  results.className = 'container rock-winners';
+  const heading = document.createElement('h2');
+  heading.textContent = 'RESULTS';
+  results.append(heading);
+  liveDrawSection.before(results);
+
+  const tabs = document.querySelector('#adminOverlay .tabs');
+  if (!tabs) return;
+  const financeTab = document.createElement('button');
+  financeTab.id = 'rockFinanceAdminTab';
+  financeTab.type = 'button';
+  financeTab.className = 'tab';
+  financeTab.textContent = 'FINANCE MANAGEMENT SYSTEM';
+  financeTab.onclick = () => {
+    showTab('rockFinanceAdminPanel', financeTab);
+    window.rockLoadFinanceAdmin?.();
+  };
+  tabs.append(financeTab);
+  const financePanel = document.createElement('div');
+  financePanel.id = 'rockFinanceAdminPanel';
+  financePanel.className = 'edit-section';
+  const finance = document.createElement('section');
+  finance.id = 'finance-management';
+  finance.className = 'rock-winners';
+  financePanel.append(finance);
+  tabs.after(financePanel);
   const stylesheet = document.createElement('link');
   stylesheet.rel = 'stylesheet';
   stylesheet.href = './rock-winners.css';
   document.head.append(stylesheet);
   for (const source of ['./rock-winners.js', './rock-finance.js']) {
     const script = document.createElement('script');
+    script.async = false;
     script.src = source;
     document.body.append(script);
   }

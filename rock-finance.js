@@ -189,20 +189,10 @@
     const controls = element('section');
     controls.append(element('h3', owner ? 'OWNER CONTROL' : 'Finance Manager · BIMAL CHAND'),
       element('h4', 'Set tournament results'));
-    const resultActions = element('div', '', 'rock-winner-actions');
-    const historyLink = element('a', 'Open RESULTS history');
-    historyLink.href = '#results';
-    resultActions.append(historyLink);
-    for (const mode of ['tdm', 'classic', 'wow']) {
-      resultActions.append(button('Set ' + mode.toUpperCase() + ' RESULTS', async () => {
-        try {
-          if (!window.rockOpenWinnerEditor) throw new Error('Result editor is still loading. Try again.');
-          await window.rockOpenWinnerEditor('results', mode);
-        } catch (error) { status.textContent = error.message; }
-      }));
-    }
-    controls.append(resultActions);
+    const resultManager = element('div');
+    controls.append(resultManager);
     dashboard.replaceChildren(controls, toolbar, summary, graph, element('h3', 'Transaction history'), tableWrap);
+    window.rockMountResultsManager?.(resultManager);
   }
 
   function history(row) {
@@ -417,28 +407,61 @@
       if (version === generation) status.textContent = error.message;
     }
   }
-  function openFinance() {
-    root.hidden = location.hash !== '#finance-management';
-    if (!root.hidden) {
-      root.scrollIntoView();
-      void load();
-    } else {
-      generation++;
-      dashboard.replaceChildren();
+  const ownerPanel = document.getElementById('rockFinanceAdminPanel');
+  const ownerTab = document.getElementById('rockFinanceAdminTab');
+  const adminOverlay = document.getElementById('adminOverlay');
+  let managerDialog;
+  window.rockLoadFinanceAdmin = () => {
+    if (managerDialog?.open) managerDialog.close();
+    ownerPanel.append(root);
+    void load();
+  };
+  async function openFinance() {
+    if (location.hash !== '#finance-management') {
+      if (managerDialog?.open) managerDialog.close();
+      return;
     }
+    try {
+      const { data } = await sb.auth.getSession();
+      if (location.hash !== '#finance-management') return;
+      if (data.session && await query(sb.rpc('rock_finance_is_owner'))) {
+        if (managerDialog?.open) managerDialog.close();
+        if (!adminOverlay.classList.contains('open')) buildEditor();
+        adminOverlay.classList.add('open');
+        ownerTab.click();
+        return;
+      }
+      if (!managerDialog?.open) {
+        managerDialog = showDialog(title, root);
+        managerDialog.classList.add('rock-finance-workspace');
+        const opened = managerDialog;
+        opened.addEventListener('close', () => {
+          if (opened.contains(root)) ownerPanel.append(root);
+          if (managerDialog === opened) managerDialog = null;
+          if (!adminOverlay.classList.contains('open') && location.hash === '#finance-management') {
+            window.history.replaceState(window.history.state, '', '#results');
+            window.dispatchEvent(new Event('hashchange'));
+          }
+        }, { once: true });
+      }
+      await load();
+    } catch (error) { status.textContent = error.message; }
   }
-  window.addEventListener('hashchange', openFinance);
+  window.addEventListener('hashchange', () => { void openFinance(); });
   let accountKey;
   sb.auth.onAuthStateChange((_event, session) => {
     const user = session?.user;
     const key = JSON.stringify([user?.id, user?.app_metadata?.rock_winners_role]);
     if (key === accountKey) return;
     if (accountKey !== undefined) {
-      document.querySelectorAll('.rock-finance-dialog[open]').forEach(dialog => dialog.close());
+      document.querySelectorAll('.rock-finance-dialog[open]:not(.rock-finance-workspace)').forEach(dialog => dialog.close());
     }
     accountKey = key;
     dashboard.replaceChildren();
-    setTimeout(openFinance, 0);
+    setTimeout(() => {
+      if (location.hash === '#finance-management') void openFinance();
+      else if (adminOverlay.classList.contains('open') && ownerPanel.classList.contains('active')) void load();
+    }, 0);
   });
   openFinance();
 })();

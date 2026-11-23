@@ -151,6 +151,7 @@
       like.disabled = data.liked;
       comments.replaceChildren();
       for (const comment of data.comments) {
+        if (!editor && comment.state !== 'visible') continue;
         const row = element('div', '', 'rock-winner-comment');
         row.append(element('strong', comment.display_name), element('p', comment.message));
         if (editor && comment.state === 'pending') {
@@ -375,8 +376,8 @@
     dialog.showModal();
   }
 
-  function mount(root) {
-    const stage = root.id;
+  function mount(root, admin = false) {
+    const stage = 'results';
     const nav = element('div', '', 'rock-winner-actions');
     const stories = element('div', '', 'rock-winner-actions');
     const management = element('div', '', 'rock-winner-actions');
@@ -393,12 +394,15 @@
     };
     const modeHeading = element('h3');
     const shared = new URLSearchParams(location.search);
-    let sharedId = shared.get('post');
+    let sharedId = admin ? null : shared.get('post');
     if (location.hash !== '#' + stage || !/^[0-9a-f-]{36}$/i.test(sharedId || '')) sharedId = null;
     let mode = sharedId && modes.includes(shared.get('mode')) ? shared.get('mode') : modes[0];
     let page = 0;
     let generation = 0;
-    const refresh = () => load();
+    const refresh = () => {
+      void load();
+      if (admin) panels.get(stage)?.();
+    };
     const modeButtons = modes.map(option => button(option.toUpperCase(), () => {
       mode = option;
       sharedId = null;
@@ -426,7 +430,11 @@
           .eq('stage', stage).eq('mode', selected)
           .or('story_highlight.eq.true,story_at.gt.' + new Date(Date.now() - 86400000).toISOString())
           .order('story_at', { ascending: false }).limit(40);
-        const editor = await canEdit();
+        const editor = admin && await canEdit();
+        if (admin && !editor) {
+          if (current === generation) status.textContent = 'Owner or Finance Manager access required.';
+          return;
+        }
         if (current !== generation) return;
         const [posts, storyPosts, owner] = await Promise.all([
           request(sharedId ? postQuery.eq('id', sharedId) : postQuery), request(storyQuery),
@@ -502,7 +510,7 @@
               if (action === 'delete' && !confirm('Remove this winner post from public view?')) return;
               try {
                 await request(sb.rpc('rock_winners_manage_post', { post_id: post.id, action }));
-                await load();
+                refresh();
               } catch (error) { status.textContent = error.message; }
             }));
             card.append(actions);
@@ -552,7 +560,7 @@
       dialog.showModal();
     }
 
-    panels.set(stage, load);
+    if (!admin) panels.set(stage, load);
     return load;
   }
 
@@ -561,12 +569,7 @@
       if (!panels.has(root.id)) void mount(root)();
     }, { once: true });
   });
-  window.rockOpenWinnerEditor = async (stage, mode) => {
-    if (stage !== 'results' || !modes.includes(mode) || !await canEdit()) {
-      throw new Error('Owner or Finance Manager access required.');
-    }
-    openEditor(stage, mode, null, () => panels.get(stage)?.());
-  };
+  window.rockMountResultsManager = root => { void mount(root, true)(); };
   const openFromHash = () => {
     const root = document.getElementById(location.hash.slice(1));
     if (root?.matches('section#results') && !panels.has(root.id)) void mount(root)();
