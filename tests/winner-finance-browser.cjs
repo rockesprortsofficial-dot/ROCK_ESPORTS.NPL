@@ -73,6 +73,15 @@ const { chromium } = require('playwright');
       if (!file.startsWith(process.cwd() + path.sep) || !fs.existsSync(file) || !fs.statSync(file).isFile()) return route.abort();
       return route.fulfill({ path: file });
     });
+    let mailRequest;
+    await page.route('**/functions/v1/rock-registration-mail', route => {
+      const body = route.request().postDataJSON();
+      if (body.action === 'send') mailRequest = body;
+      return route.fulfill({
+        headers: { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': '*' },
+        json: body.action === 'status' ? { configured: true, total: 3, pending: null } : { sent: 3, processed: 3, total: 3 }
+      });
+    });
     const errors = [];
     page.on('pageerror', error => {
       if (error.stack.includes('rock-winners.js') || error.stack.includes('rock-finance.js')) errors.push(error.message);
@@ -123,6 +132,19 @@ const { chromium } = require('playwright');
     await page.setViewportSize({ width: 390, height: 844 });
     await page.locator('#adminNavButton').evaluate(button => button.click());
     const admin = page.locator('#adminOverlay.open');
+    const mailTab = admin.getByRole('button', { name: 'MAIL', exact: true });
+    await mailTab.waitFor();
+    await mailTab.evaluate(button => button.click());
+    const mail = admin.locator('#rockMailAdminPanel');
+    await mail.getByText('3 registered email addresses', { exact: true }).waitFor();
+    await mail.getByLabel('Subject', { exact: true }).fill('Tournament update');
+    await mail.getByLabel('Message', { exact: true }).fill('Check-in opens at six.');
+    page.once('dialog', dialog => dialog.accept());
+    await mail.getByRole('button', { name: 'Send', exact: true }).click();
+    await mail.getByText('3 of 3 emails accepted by Gmail.', { exact: true }).waitFor();
+    assert.equal(mailRequest.subject, 'Tournament update');
+    assert.equal(mailRequest.message, 'Check-in opens at six.');
+    assert.equal(Object.hasOwn(mailRequest, 'recipients'), false);
     const adminTab = admin.getByRole('button', { name: 'FINANCE MANAGEMENT SYSTEM', exact: true });
     await adminTab.waitFor();
     await adminTab.evaluate(button => button.click());
