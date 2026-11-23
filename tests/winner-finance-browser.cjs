@@ -30,7 +30,7 @@ const { chromium } = require('playwright');
       window.rockCalls = [];
       const client = {
         auth: {
-          getSession: async () => ({ data: { session: window.rockTestGuest ? null : { user: { id: 'test' } } } }),
+          getSession: async () => ({ data: { session: window.rockTestGuest ? null : { user: { id: 'test', email:'rockesprorts.official@gmail.com' } } } }),
           onAuthStateChange: () => ({ data: { subscription: { unsubscribe() {} } } })
         },
         from(table) {
@@ -87,18 +87,9 @@ const { chromium } = require('playwright');
         await card.getByRole('heading', { name: mode + ' Test Cup' }).waitFor();
         assert.equal(await card.locator('.rock-winner-placements > [data-rank]').count(), 4);
         assert.equal(await card.locator('.rock-winner-mvp').count(), mode === 'TDM' ? 1 : 0);
-        const remove = card.getByRole('button', { name: 'Delete comment', exact: true });
-        await remove.waitFor();
-        if (mode === 'TDM') {
-          page.once('dialog', dialog => dialog.accept());
-          await remove.click();
-          await page.waitForFunction(() => window.rockCalls.some(([name, args]) => name === 'rock_winners_interact' && args.action === 'delete_comment'));
+        for (const label of ['New post', 'Open saved drafts', 'Edit', 'Delete comment']) {
+          assert.equal(await section.getByRole('button', { name: label, exact: true }).count(), 0);
         }
-        await card.getByRole('button', { name: 'Edit', exact: true }).click();
-        const dialog = page.locator('dialog.rock-winner-dialog[open]');
-        await dialog.getByRole('button', { name: 'Preview', exact: true }).click();
-        assert.equal(await dialog.locator('.rock-winner-poster').innerText(), await card.locator('.rock-winner-poster').innerText());
-        await dialog.getByRole('button', { name: 'Close', exact: true }).click();
         await section.getByRole('button', { name: mode + ' Test Cup', exact: true }).click();
         const story = page.locator('.rock-winner-story[open]');
         await story.getByRole('button', { name: '#3', exact: true }).click();
@@ -119,20 +110,39 @@ const { chromium } = require('playwright');
     await page.setViewportSize({ width: 390, height: 844 });
     await page.locator('#results .rock-winner-card').waitFor();
     assert(await page.locator('#results .rock-winner-poster').evaluate(node => node.scrollWidth <= node.clientWidth + 1));
-    await page.evaluate(() => { location.hash = 'finance-management'; });
-    await page.getByRole('heading', { name: 'Pending Payment', exact: true }).waitFor();
-    await page.getByRole('heading', { name: 'OWNER CONTROL' }).waitFor();
-    await page.getByRole('button', { name: 'Set WOW RESULTS', exact: true }).click();
+    assert.equal(await page.locator('.nav-inner a[href="#finance-management"]').count(), 0);
+    await page.locator('#adminNavButton').evaluate(button => button.click());
+    const admin = page.locator('#adminOverlay.open');
+    const adminTab = admin.getByRole('button', { name: 'FINANCE MANAGEMENT SYSTEM', exact: true });
+    await adminTab.waitFor();
+    await adminTab.evaluate(button => button.click());
+    await admin.getByRole('heading', { name: 'Pending Payment', exact: true }).waitFor();
+    await admin.getByRole('heading', { name: 'OWNER CONTROL' }).waitFor();
+    await admin.getByRole('button', { name: 'Open saved drafts', exact: true }).click();
+    const draftsDialog = page.locator('dialog[open]');
+    await draftsDialog.getByRole('heading', { name: 'Saved drafts' }).waitFor();
+    await draftsDialog.getByRole('button', { name: 'Close', exact: true }).click();
+    const managed = admin.locator('.rock-winner-card');
+    await managed.getByRole('heading', { name: 'TDM Test Cup' }).waitFor();
+    const remove = managed.getByRole('button', { name: 'Delete comment', exact: true });
+    page.once('dialog', dialog => dialog.accept());
+    await remove.click();
+    await page.waitForFunction(() => window.rockCalls.some(([name, args]) => name === 'rock_winners_interact' && args.action === 'delete_comment'));
+    await managed.getByRole('button', { name: 'Edit', exact: true }).click();
     const resultEditor = page.locator('dialog[open]');
-    await resultEditor.getByRole('heading', { name: 'WOW RESULTS' }).waitFor();
+    await resultEditor.getByRole('button', { name: 'Preview', exact: true }).click();
+    assert.equal(await resultEditor.locator('.rock-winner-poster').innerText(), await managed.locator('.rock-winner-poster').innerText());
+    await resultEditor.getByRole('button', { name: 'Close', exact: true }).click();
+    await admin.getByRole('button', { name: 'New post', exact: true }).click();
+    await resultEditor.getByRole('heading', { name: 'TDM RESULTS' }).waitFor();
     await resultEditor.getByRole('button', { name: 'Close', exact: true }).click();
     await page.getByRole('button', { name: 'New transaction' }).click();
     await page.getByText('Receipt or proof', { exact: true }).waitFor();
     await page.locator('dialog[open]').getByRole('button', { name: 'Close', exact: true }).click();
-    await page.evaluate(() => { window.rockTestGuest = true; location.hash = 'results'; });
+    await page.evaluate(() => { closeAdmin(); window.rockTestGuest = true; location.hash = 'results'; });
     await page.evaluate(() => { location.hash = 'finance-management'; });
     await page.getByRole('button', { name: 'Finance Manager · Meeting Room login' }).waitFor();
-    assert.equal(await page.getByRole('heading', { name: 'OWNER CONTROL' }).count(), 0);
+    assert.equal(await page.locator('dialog.rock-finance-workspace[open]').getByRole('heading', { name: 'OWNER CONTROL' }).count(), 0);
     await page.evaluate(() => { location.hash = 'results'; });
     const resultCard = page.locator('#results .rock-winner-card');
     await resultCard.getByRole('button', { name: '♥ Like', exact: true }).click();
