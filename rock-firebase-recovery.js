@@ -2,7 +2,8 @@
 import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/13.4.0/firebase-app.js";
 import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/13.4.0/firebase-auth.js";
 import { getFirestore, doc, getDoc, collection, getDocs, setDoc, runTransaction, serverTimestamp } from "https://www.gstatic.com/firebasejs/13.4.0/firebase-firestore.js";
-const config={apiKey:"AIzaSyANZojqboxn6OwSd8hVQqGdsELQ_J46c-k",authDomain:"rock-esports.firebaseapp.com",projectId:"rock-esports",storageBucket:"rock-esports.firebasestorage.app",messagingSenderId:"429933819916",appId:"1:429933819916:web:6487767fbb5b12e5aed629"};
+const config = globalThis.ROCK_FIREBASE_CONFIG;
+if (!config || config.projectId !== 'rock-esports' || !config.apiKey) throw new Error('Firebase configuration required');
 const ownerUid="wKulCeUqaNQshYcPCJTuQpRGSP73";
 const app=getApps().find(a=>a.name==="rock-tdm-recovery")||initializeApp(config,"rock-tdm-recovery");
 const auth=getAuth(app),db=getFirestore(app);
