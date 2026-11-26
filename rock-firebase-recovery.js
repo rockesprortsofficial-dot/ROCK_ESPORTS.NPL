@@ -19,3 +19,25 @@ export async function readRegistrations(){requireOwner();const snap=await getDoc
 export async function checkPrivateAccess(){requireOwner();const s=await getDoc(doc(db,"tournament_registrations","_setup_test"));return s.exists()&&s.data().status==="ready";}
 export async function checkPublicAccess(){const [group,draw]=await Promise.all([readPublic("tdm_group_division"),readPublic("tdm_live_draw")]);return {group:!!group,draw:!!draw};}
 // No tournament mutation is exposed until the existing SQL state machine is ported and verified.
+
+export async function importRegistrations(records){
+ requireOwner();
+ if(!Array.isArray(records))throw Error("Expected registration array");
+ for(const row of records){
+  if(!row.id||!(/^[a-zA-Z0-9_-]{1,128}$/).test(String(row.id))||row.id==="_setup_test")throw Error("Invalid registration ID");
+ }
+ for(const row of records)await setDoc(doc(db,"tournament_registrations",String(row.id)),row,{merge:true});
+ return records.length;
+}
+export async function savePublicSnapshot(id,expectedRevision,snapshot){
+ requireOwner();
+ if(!snapshot||typeof snapshot.title!=="string"||!Array.isArray(snapshot.matches))throw Error("Invalid public snapshot");
+ const safe={title:snapshot.title,matches:snapshot.matches.map(m=>({id:String(m.id),playerA:String(m.playerA||""),playerB:String(m.playerB||""),winner:String(m.winner||""),scoreA:Number(m.scoreA||0),scoreB:Number(m.scoreB||0)}))};
+ const ref=publicRef(id);
+ return runTransaction(db,async tx=>{
+  const old=await tx.get(ref), revision=old.data()?.revision??0;
+  if(revision!==expectedRevision)throw Error("Refresh before saving");
+  tx.set(ref,{...safe,revision:revision+1,updatedAt:serverTimestamp()},{merge:true});
+  return revision+1;
+ });
+}
