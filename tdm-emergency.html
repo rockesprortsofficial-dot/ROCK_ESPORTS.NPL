@@ -3,7 +3,7 @@
 <style>body{font:16px system-ui;background:#0e1728;color:#eee;margin:20px auto;padding:16px;max-width:850px}input,textarea,select,button{font:inherit;padding:10px;margin:5px;border-radius:6px;max-width:95%}textarea{width:95%}article{border:1px solid #53647d;padding:12px;margin:10px 0;border-radius:8px}button{cursor:pointer}h1,h2{color:#8cdefa}small{display:block}input[type=number]{width:65px}</style>
 <h1>ROCK ESPORTS — TDM</h1><p>Emergency offline bracket. Local device only unless publication is configured. No original website data is changed.</p>
 <label>Tournament title <input id="title" value="ROCK ESPORTS TDM"></label><br><label>Players, one name per line<textarea id="names" rows="8"></textarea></label><button id="draw">Prepare random draw</button><button id="export">Export backup</button><input id="restore" type="file" accept=".json,application/json"><p id="status" role="status"></p><h2>Live Draw & Group Division</h2><div id="matches"></div><h2>Final positions</h2><div id="places"></div>
-<script type="module">
+<details><summary>Firebase online publication (Owner only)</summary><label>Firebase web configuration JSON<textarea id="fb-config" rows="5" autocomplete="off"></textarea></label><button id="fb-connect">Connect</button><label>Owner email<input id="fb-email" type="email" autocomplete="username"></label><label>Owner password<input id="fb-password" type="password" autocomplete="current-password"></label><button id="fb-login" disabled>Owner sign in</button><button id="fb-publish" disabled>Publish current match view</button><button id="fb-read" disabled>Read public match view</button><button id="fb-logout" disabled>Sign out</button><pre id="fb-status" style="white-space:pre-wrap"></pre></details><script type="module">
 import {sizes,graph,model} from "./rock-firebase-tdm-model.js";
 import {advance} from "./rock-firebase-tdm-state.js";
 const el=id=>document.getElementById(id),key="rock-tdm-recovery-local-v1";let s=null;
@@ -15,4 +15,12 @@ el("draw").onclick=()=>{try{if(s&&!confirm("Replace local bracket? Export backup
 el("export").onclick=()=>{if(!s)return;const u=URL.createObjectURL(new Blob([JSON.stringify(s,null,2)],{type:"application/json"})),a=document.createElement("a");a.href=u;a.download="rock-tdm-backup.json";a.click();setTimeout(()=>URL.revokeObjectURL(u),1000)};
 el("restore").onchange=async()=>{try{const t=JSON.parse(await el("restore").files[0].text());if(!sizes.includes(t.participants?.length)||!t.results||!Array.isArray(t.draws))throw Error("Invalid backup");model(t);if(s&&!confirm("Replace local bracket with backup?"))return;s=t;persist();say("Backup restored")}catch(e){say(e.message)}};
 try{s=JSON.parse(localStorage.getItem(key));render()}catch(e){say(e.message)}
+
+let fb,adapter;
+const fbSay=t=>el("fb-status").textContent=t;
+el("fb-connect").onclick=async()=>{try{const cfg=JSON.parse(el("fb-config").value);if(cfg.projectId!=="rock-esports")throw Error("Wrong project");globalThis.ROCK_FIREBASE_CONFIG=cfg;fb=await import("./rock-firebase-recovery.js");adapter=await import("./rock-firebase-tdm-adapter.js");el("fb-config").value="";el("fb-login").disabled=false;el("fb-read").disabled=false;el("fb-connect").disabled=true;fb.observeOwner(owner=>{el("fb-publish").disabled=!owner;el("fb-logout").disabled=!owner});fbSay(JSON.stringify(await fb.checkPublicAccess()));}catch(e){fbSay(e.message)}};
+el("fb-login").onclick=async()=>{try{await fb.login(el("fb-email").value,el("fb-password").value);fbSay("Owner login succeeded")}catch(e){fbSay(e.message)}finally{el("fb-password").value=""}};
+el("fb-publish").onclick=async()=>{try{if(!s)throw Error("Prepare draw first");if(!confirm("Publish current public match names and results?"))return;await adapter.publishMatchView(s,model);fbSay("Both public match views published")}catch(e){fbSay(e.message)}};
+el("fb-read").onclick=async()=>{try{fbSay(JSON.stringify(await fb.readPublic("tdm_group_division"),null,2))}catch(e){fbSay(e.message)}};
+el("fb-logout").onclick=async()=>{try{await fb.logout();fbSay("Signed out")}catch(e){fbSay(e.message)}};
 </script></html>
