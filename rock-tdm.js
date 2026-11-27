@@ -131,3 +131,20 @@ const css=document.createElement('link');css.rel='stylesheet';css.href='./rock-t
 async function authChanged(){const {data:{session}}=await sb.auth.getSession();owner=session?.user?.email?.toLowerCase()===ADMIN_EMAIL.toLowerCase();if(registeredToolbar)registeredToolbar.querySelectorAll('button').forEach(b=>b.disabled=!owner);if(!owner){root.RockTdmRegistration?.clear();if(draft.some(p=>p.registrationId)){rosterGeneration++;draft=[];draftTarget=null;el('drawPlayerNames').value='';el('liveDrawPlayerEditor').innerHTML='';}}paint();}sb.auth.onAuthStateChange(()=>setTimeout(authChanged,0));authChanged();refresh();
 setInterval(()=>{if(!busy&&!document.hidden)refresh();},8000);
 })(typeof window==='object'?window:globalThis);
+
+
+/* Emergency settings launcher inside the existing TDM tab. Does not grant legacy admin access. */
+(function(){
+ function mountRecovery(){
+  const section=document.getElementById('tdm-group-division');
+  if(!section||document.getElementById('rock-tdm-recovery-panel'))return;
+  const panel=document.createElement('details');panel.id='rock-tdm-recovery-panel';
+  panel.style.cssText='margin:12px 0;border:1px solid #9c8248;border-radius:10px;padding:12px';
+  const toggle=document.createElement('summary');toggle.textContent='✎ TDM EDIT / SETTINGS';toggle.style.cssText='cursor:pointer;font-weight:bold;color:#e8c975';
+  const note=document.createElement('p');note.textContent='Emergency tournament settings · local device only; Firebase owner login required to publish.';
+  const frame=document.createElement('iframe');frame.title='TDM tournament settings';frame.style.cssText='width:100%;height:78vh;min-height:480px;border:0;border-radius:8px';frame.loading='lazy';
+  panel.append(toggle,note,frame);section.prepend(panel);
+  panel.addEventListener('toggle',()=>{if(panel.open&&!frame.getAttribute('src'))frame.src='./tdm-emergency.html';});
+ }
+ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',mountRecovery);else mountRecovery();
+})();
